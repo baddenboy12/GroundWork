@@ -1,69 +1,27 @@
 import { motion } from "motion/react";
-import { CheckCircle, Zap } from "lucide-react";
+import { CheckCircle, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Unauthenticated, Authenticated } from "convex/react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import {
+  TIER_CONFIG,
+  type SubscriptionTier,
+} from "@/pages/dashboard/_lib/subscription.ts";
 
-const plans = [
-  {
-    name: "Starter",
-    price: "$19",
-    period: "/mo",
-    description: "Perfect for small teams just getting started.",
-    storage: "5 GB photo storage",
-    features: [
-      "Up to 3 team members",
-      "Up to 10 sites",
-      "5 GB photo storage",
-      "Unlimited log entries",
-      "Basic search & filters",
-      "CSV export",
-    ],
-    highlight: false,
-    cta: "Get started",
-  },
-  {
-    name: "Professional",
-    price: "$59",
-    period: "/mo",
-    description: "For growing operations that need more power.",
-    storage: "50 GB photo storage",
-    features: [
-      "Up to 15 team members",
-      "Unlimited sites",
-      "50 GB photo storage",
-      "Unlimited log entries",
-      "Advanced filters & search",
-      "PDF & CSV export",
-      "Email alert integrations",
-      "Priority support",
-    ],
-    highlight: true,
-    cta: "Start free trial",
-  },
-  {
-    name: "Enterprise",
-    price: "$149",
-    period: "/mo",
-    description: "For large teams with complex multi-site operations.",
-    storage: "500 GB photo storage",
-    features: [
-      "Unlimited team members",
-      "Unlimited sites",
-      "500 GB photo storage",
-      "Unlimited log entries",
-      "Custom log categories",
-      "PDF & CSV export",
-      "Email + webhook integrations",
-      "Admin dashboard",
-      "Dedicated support",
-      "SLA guarantee",
-    ],
-    highlight: false,
-    cta: "Contact sales",
-  },
+// Show the 3 paid tiers on the marketing page
+const DISPLAYED_TIERS: SubscriptionTier[] = ["starter", "pro", "business"];
+
+type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean };
+
+const FEATURE_ROWS: FeatureRow[] = [
+  { label: "Up to 15 sites", starter: true, pro: false, business: false },
+  { label: "Unlimited sites", starter: false, pro: true, business: true },
+  { label: "Unlimited logs/site", starter: true, pro: true, business: true },
+  { label: "Photo attachments", starter: true, pro: true, business: true },
+  { label: "PDF & CSV export", starter: false, pro: true, business: true },
+  { label: "Integrations & API", starter: false, pro: false, business: true },
+  { label: "Priority support", starter: false, pro: false, business: true },
 ];
 
 export default function Pricing() {
@@ -86,77 +44,102 @@ export default function Pricing() {
             Simple, transparent pricing
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            No hidden fees. Cancel anytime. Scale up as your team grows.
+            Start free. Upgrade as your team grows. No hidden fees, cancel anytime.
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              className={`rounded-2xl border p-8 relative ${
-                plan.highlight
-                  ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-                  : "border-border bg-card"
-              }`}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-            >
-              {plan.highlight && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                    <Zap className="w-3 h-3" /> Most Popular
-                  </span>
+          {DISPLAYED_TIERS.map((tier, i) => {
+            const cfg = TIER_CONFIG[tier];
+            return (
+              <motion.div
+                key={tier}
+                className={`rounded-2xl border p-8 relative ${
+                  cfg.highlight
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    : "border-border bg-card"
+                }`}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                {cfg.highlight && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                      <Zap className="w-3 h-3" /> Most Popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">{cfg.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{cfg.tagline}</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold text-foreground">{cfg.price}</span>
+                    <span className="text-muted-foreground mb-1">/{cfg.period.replace("per ", "")}</span>
+                  </div>
                 </div>
-              )}
 
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-foreground mb-1">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground mb-1">{plan.period}</span>
-                </div>
-              </div>
+                <ul className="space-y-2.5 mb-8">
+                  {FEATURE_ROWS.map((row) => {
+                    const included = row[tier as "starter" | "pro" | "business"];
+                    return (
+                      <li
+                        key={row.label}
+                        className={`flex items-center gap-2.5 text-sm ${
+                          included ? "text-muted-foreground" : "text-muted-foreground/35"
+                        }`}
+                      >
+                        {included ? (
+                          <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                        ) : (
+                          <X className="w-4 h-4 shrink-0" />
+                        )}
+                        {row.label}
+                      </li>
+                    );
+                  })}
+                </ul>
 
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Authenticated>
-                <Button
-                  className="w-full"
-                  variant={plan.highlight ? "default" : "secondary"}
-                  onClick={() => {
-                    toast.info("Subscription management coming soon in a future milestone!");
-                  }}
-                >
-                  {plan.cta}
-                </Button>
-              </Authenticated>
-              <Unauthenticated>
-                {plan.name === "Enterprise" ? (
+                <Authenticated>
                   <Button
                     className="w-full"
-                    variant="secondary"
-                    onClick={() => toast.info("Contact us at hello@logvault.app")}
+                    variant={cfg.highlight ? "default" : "secondary"}
+                    onClick={() => navigate("/billing")}
                   >
-                    Contact sales
+                    {cfg.highlight ? "Upgrade to Pro" : `Get ${cfg.name}`}
                   </Button>
-                ) : (
-                  <SignInButton className="w-full" />
-                )}
-              </Unauthenticated>
-            </motion.div>
-          ))}
+                </Authenticated>
+                <Unauthenticated>
+                  {tier === "business" ? (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      onClick={() =>
+                        window.open("mailto:hello@logvault.app?subject=Business Plan", "_blank")
+                      }
+                    >
+                      Contact sales
+                    </Button>
+                  ) : (
+                    <SignInButton className="w-full" />
+                  )}
+                </Unauthenticated>
+              </motion.div>
+            );
+          })}
         </div>
+
+        <motion.p
+          className="text-center text-sm text-muted-foreground mt-10"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          All plans include a free tier to get started — no credit card required.
+        </motion.p>
       </div>
     </section>
   );
