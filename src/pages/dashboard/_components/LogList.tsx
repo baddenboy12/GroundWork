@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileText } from "lucide-react";
+import { Plus, MapPin, FileText, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -12,12 +12,22 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu.tsx";
 import LogCard from "./LogCard.tsx";
 import CreateLogDialog from "./CreateLogDialog.tsx";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { type LogCategory } from "../_lib/constants.ts";
+import { exportCSV, exportPDF } from "../_lib/export.ts";
+import { toast } from "sonner";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -94,6 +104,34 @@ export default function LogList({ siteId }: Props) {
 
   const hasMorePages = !isSearchMode && pagedStatus === "CanLoadMore";
 
+  const handleExportCSV = () => {
+    if (activeResults.length === 0) {
+      toast.error("No logs to export");
+      return;
+    }
+    exportCSV({
+      siteName: site?.name ?? "site",
+      siteLocation: site?.location,
+      logs: activeResults,
+      filters,
+    });
+    toast.success(`Exported ${activeResults.length} log entries as CSV`);
+  };
+
+  const handleExportPDF = () => {
+    if (activeResults.length === 0) {
+      toast.error("No logs to export");
+      return;
+    }
+    exportPDF({
+      siteName: site?.name ?? "site",
+      siteLocation: site?.location,
+      logs: activeResults,
+      filters,
+    });
+    toast.success(`Exported ${activeResults.length} log entries as PDF`);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -108,9 +146,34 @@ export default function LogList({ siteId }: Props) {
               <p className="text-xs text-muted-foreground mt-0.5 ml-6">{site.location}</p>
             )}
           </div>
-          <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4" /> New log
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Export dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-1.5">
+                  <FileDown className="w-4 h-4" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                  Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
+                  Download PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
+                  Download CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4" /> New log
+            </Button>
+          </div>
         </div>
 
         {/* Filter bar */}
