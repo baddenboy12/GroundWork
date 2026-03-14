@@ -51,6 +51,42 @@ export const listBySite = query({
   },
 });
 
+export const searchBySite = query({
+  args: {
+    siteId: v.id("sites"),
+    query: v.string(),
+    category: v.optional(categoryValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+
+    const results = await ctx.db
+      .query("logs")
+      .withSearchIndex("search_title", (q) => {
+        const base = q.search("title", args.query).eq("siteId", args.siteId);
+        return args.category ? base.eq("category", args.category) : base;
+      })
+      .take(100);
+
+    return await Promise.all(
+      results.map(async (log) => {
+        const author = await ctx.db.get(log.authorId);
+        const photoUrls = log.photoStorageIds
+          ? await Promise.all(
+              log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
+            )
+          : [];
+        return {
+          ...log,
+          authorName: author?.name ?? "Unknown",
+          photoUrls: photoUrls.filter((url): url is string => url !== null),
+        };
+      })
+    );
+  },
+});
+
 export const get = query({
   args: { logId: v.id("logs") },
   handler: async (ctx, args) => {

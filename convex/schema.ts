@@ -37,5 +37,9 @@ export default defineSchema({
   })
     .index("by_site", ["siteId"])
     .index("by_site_and_category", ["siteId", "category"])
-    .index("by_author", ["authorId"]),
+    .index("by_author", ["authorId"])
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["siteId", "category"],
+    }),
 });
