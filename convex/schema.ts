@@ -32,6 +32,8 @@ export default defineSchema({
     authorId: v.id("users"),
     // ISO 8601 UTC timestamp of when the event occurred
     loggedAt: v.string(),
+    // Convex storage IDs for attached photos
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
   })
     .index("by_site", ["siteId"])
     .index("by_site_and_category", ["siteId", "category"])

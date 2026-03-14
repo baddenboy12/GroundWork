@@ -10,6 +10,7 @@
 
 import type * as logs from "../logs.js";
 import type * as sites from "../sites.js";
+import type * as storage from "../storage.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   logs: typeof logs;
   sites: typeof sites;
+  storage: typeof storage;
   users: typeof users;
 }>;
 

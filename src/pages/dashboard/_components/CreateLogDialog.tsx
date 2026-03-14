@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/select.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
+import PhotoUploader from "./PhotoUploader.tsx";
+
+type UploadedPhoto = {
+  storageId: Id<"_storage">;
+  previewUrl: string;
+  fileName: string;
+};
 
 type Props = {
   open: boolean;
@@ -35,7 +42,17 @@ export default function CreateLogDialog({ open, onClose, siteId }: Props) {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<LogCategory>("general");
   const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const handleClose = () => {
+    setTitle("");
+    setContent("");
+    setCategory("general");
+    setLoggedAt(new Date().toISOString().slice(0, 16));
+    setPhotos([]);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +65,10 @@ export default function CreateLogDialog({ open, onClose, siteId }: Props) {
         content: content.trim(),
         category,
         loggedAt: new Date(loggedAt).toISOString(),
+        photoStorageIds: photos.length > 0 ? photos.map((p) => p.storageId) : undefined,
       });
       toast.success("Log entry created");
-      setTitle("");
-      setContent("");
-      setCategory("general");
-      setLoggedAt(new Date().toISOString().slice(0, 16));
-      onClose();
+      handleClose();
     } catch {
       toast.error("Failed to create log entry");
     } finally {
@@ -63,8 +77,8 @@ export default function CreateLogDialog({ open, onClose, siteId }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New log entry</DialogTitle>
         </DialogHeader>
@@ -113,12 +127,16 @@ export default function CreateLogDialog({ open, onClose, siteId }: Props) {
               placeholder="Describe what was observed, done, or found..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={5}
+              rows={4}
               required
             />
           </div>
+          <div className="space-y-1.5">
+            <Label>Photos</Label>
+            <PhotoUploader photos={photos} onChange={setPhotos} />
+          </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !title.trim() || !content.trim()}>

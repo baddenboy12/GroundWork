@@ -1,6 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import type { Id } from "./_generated/dataModel.d.ts";
 
 const categoryValidator = v.union(
   v.literal("inspection"),
@@ -19,7 +20,6 @@ export const listBySite = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
-    // Verify site exists and user has access
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
 
@@ -29,13 +29,22 @@ export const listBySite = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    // Enrich with author names
+    // Enrich with author names and resolved photo URLs
     return {
       ...results,
       page: await Promise.all(
         results.page.map(async (log) => {
           const author = await ctx.db.get(log.authorId);
-          return { ...log, authorName: author?.name ?? "Unknown" };
+          const photoUrls = log.photoStorageIds
+            ? await Promise.all(
+                log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
+              )
+            : [];
+          return {
+            ...log,
+            authorName: author?.name ?? "Unknown",
+            photoUrls: photoUrls.filter((url): url is string => url !== null),
+          };
         })
       ),
     };
@@ -50,7 +59,16 @@ export const get = query({
     const log = await ctx.db.get(args.logId);
     if (!log) return null;
     const author = await ctx.db.get(log.authorId);
-    return { ...log, authorName: author?.name ?? "Unknown" };
+    const photoUrls = log.photoStorageIds
+      ? await Promise.all(
+          log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
+        )
+      : [];
+    return {
+      ...log,
+      authorName: author?.name ?? "Unknown",
+      photoUrls: photoUrls.filter((url): url is string => url !== null),
+    };
   },
 });
 
@@ -61,6 +79,7 @@ export const create = mutation({
     content: v.string(),
     category: categoryValidator,
     loggedAt: v.string(),
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -79,6 +98,7 @@ export const create = mutation({
       category: args.category,
       authorId: user._id,
       loggedAt: args.loggedAt,
+      photoStorageIds: args.photoStorageIds,
     });
   },
 });
@@ -90,6 +110,7 @@ export const update = mutation({
     content: v.string(),
     category: categoryValidator,
     loggedAt: v.string(),
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -107,6 +128,7 @@ export const update = mutation({
       content: args.content,
       category: args.category,
       loggedAt: args.loggedAt,
+      photoStorageIds: args.photoStorageIds,
     });
   },
 });
@@ -124,6 +146,12 @@ export const remove = mutation({
     const log = await ctx.db.get(args.logId);
     if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
+    // Delete associated storage files
+    if (log.photoStorageIds) {
+      for (const storageId of log.photoStorageIds) {
+        await ctx.storage.delete(storageId);
+      }
+    }
     await ctx.db.delete(args.logId);
   },
 });

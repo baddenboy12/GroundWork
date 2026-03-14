@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 
-type LogWithAuthor = Doc<"logs"> & { authorName: string };
+type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
 type Props = {
   siteId: Id<"sites">;
