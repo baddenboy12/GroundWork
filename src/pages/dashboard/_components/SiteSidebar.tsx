@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { MapPin, Plus, Settings, Trash2, ChevronRight } from "lucide-react";
+import { MapPin, Plus, Settings, Trash2, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -20,12 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
+import UpgradeDialog from "./UpgradeDialog.tsx";
+import { useSubscription } from "@/hooks/use-subscription.ts";
 
 type Props = {
   selectedSiteId: Id<"sites"> | null;
@@ -35,9 +36,22 @@ type Props = {
 export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
+  const { config } = useSubscription();
   const [createOpen, setCreateOpen] = useState(false);
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const siteCount = sites?.length ?? 0;
+  const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
+
+  const handleAddSite = () => {
+    if (atSiteLimit) {
+      setUpgradeOpen(true);
+    } else {
+      setCreateOpen(true);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteSiteId) return;
@@ -54,9 +68,21 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
     <aside className="w-64 shrink-0 border-r border-border bg-card h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-        <span className="text-sm font-semibold text-foreground">Sites</span>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-4 h-4" />
+        <div>
+          <span className="text-sm font-semibold text-foreground">Sites</span>
+          {config.maxSites !== null && (
+            <span className="ml-1.5 text-xs text-muted-foreground">
+              {siteCount}/{config.maxSites}
+            </span>
+          )}
+        </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          className={cn("h-7 w-7", atSiteLimit && "text-muted-foreground")}
+          onClick={handleAddSite}
+        >
+          {atSiteLimit ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
         </Button>
       </div>
 
@@ -75,7 +101,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
               size="sm"
               variant="ghost"
               className="mt-2 text-xs text-primary"
-              onClick={() => setCreateOpen(true)}
+              onClick={handleAddSite}
             >
               + Add your first site
             </Button>
@@ -130,6 +156,22 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
         )}
       </div>
 
+      {/* Upgrade prompt at bottom if at limit */}
+      {atSiteLimit && (
+        <div className="px-4 py-3 border-t border-border bg-muted/30">
+          <p className="text-xs text-muted-foreground">
+            Site limit reached.{" "}
+            <button
+              className="text-primary hover:underline font-medium"
+              onClick={() => setUpgradeOpen(true)}
+            >
+              Upgrade
+            </button>{" "}
+            for more.
+          </p>
+        </div>
+      )}
+
       {/* Dialogs */}
       <CreateSiteDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       {editSite && (
@@ -139,6 +181,13 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
           site={editSite}
         />
       )}
+      <UpgradeDialog
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        requiredTier="starter"
+        featureName="More sites"
+        featureDescription={`The ${config.name} plan allows up to ${config.maxSites} sites. Upgrade to add more.`}
+      />
       <AlertDialog
         open={!!deleteSiteId}
         onOpenChange={(v) => !v && setDeleteSiteId(null)}

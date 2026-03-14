@@ -6,6 +6,15 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
+    // Subscription tier – defaults to "free" if absent
+    subscriptionTier: v.optional(
+      v.union(
+        v.literal("free"),
+        v.literal("starter"),
+        v.literal("pro"),
+        v.literal("business")
+      )
+    ),
   }).index("by_token", ["tokenIdentifier"]),
 
   sites: defineTable({

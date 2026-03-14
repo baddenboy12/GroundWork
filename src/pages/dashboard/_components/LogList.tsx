@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileText, FileDown } from "lucide-react";
+import { Plus, MapPin, FileText, FileDown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -23,8 +23,10 @@ import {
 import LogCard from "./LogCard.tsx";
 import CreateLogDialog from "./CreateLogDialog.tsx";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
+import UpgradeDialog from "./UpgradeDialog.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
+import { useSubscription } from "@/hooks/use-subscription.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 import { exportCSV, exportPDF } from "../_lib/export.ts";
 import { toast } from "sonner";
@@ -45,7 +47,11 @@ const DEFAULT_FILTERS: FilterState = {
 export default function LogList({ siteId }: Props) {
   const sites = useQuery(api.sites.list, {});
   const site = sites?.find((s) => s._id === siteId);
+  const { isAtLeast } = useSubscription();
+  const canExport = isAtLeast("pro");
+
   const [createOpen, setCreateOpen] = useState(false);
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   // Debounce search to avoid firing on every keystroke
@@ -105,30 +111,16 @@ export default function LogList({ siteId }: Props) {
   const hasMorePages = !isSearchMode && pagedStatus === "CanLoadMore";
 
   const handleExportCSV = () => {
-    if (activeResults.length === 0) {
-      toast.error("No logs to export");
-      return;
-    }
-    exportCSV({
-      siteName: site?.name ?? "site",
-      siteLocation: site?.location,
-      logs: activeResults,
-      filters,
-    });
+    if (!canExport) { setExportUpgradeOpen(true); return; }
+    if (activeResults.length === 0) { toast.error("No logs to export"); return; }
+    exportCSV({ siteName: site?.name ?? "site", siteLocation: site?.location, logs: activeResults, filters });
     toast.success(`Exported ${activeResults.length} log entries as CSV`);
   };
 
   const handleExportPDF = () => {
-    if (activeResults.length === 0) {
-      toast.error("No logs to export");
-      return;
-    }
-    exportPDF({
-      siteName: site?.name ?? "site",
-      siteLocation: site?.location,
-      logs: activeResults,
-      filters,
-    });
+    if (!canExport) { setExportUpgradeOpen(true); return; }
+    if (activeResults.length === 0) { toast.error("No logs to export"); return; }
+    exportPDF({ siteName: site?.name ?? "site", siteLocation: site?.location, logs: activeResults, filters });
     toast.success(`Exported ${activeResults.length} log entries as PDF`);
   };
 
@@ -151,22 +143,42 @@ export default function LogList({ siteId }: Props) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-1.5">
-                  <FileDown className="w-4 h-4" /> Export
+                  {canExport ? (
+                    <FileDown className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                  Export
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-                  Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
-                  Download PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
-                  Download CSV
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-52">
+                {canExport ? (
+                  <>
+                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                      Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleExportPDF}>
+                      <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
+                      Download PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportCSV}>
+                      <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
+                      Download CSV
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                      Export requires Pro plan
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setExportUpgradeOpen(true)}>
+                      <Lock className="w-3.5 h-3.5 mr-2 text-primary" />
+                      Upgrade to unlock export
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -242,6 +254,14 @@ export default function LogList({ siteId }: Props) {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         siteId={siteId}
+      />
+
+      <UpgradeDialog
+        open={exportUpgradeOpen}
+        onClose={() => setExportUpgradeOpen(false)}
+        requiredTier="pro"
+        featureName="PDF & CSV Export"
+        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
       />
     </div>
   );
