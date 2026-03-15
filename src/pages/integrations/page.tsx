@@ -33,7 +33,7 @@ function IntegrationsGate({ children }: { children: React.ReactNode }) {
         <h2 className="text-xl font-semibold text-foreground mb-2">Business plan required</h2>
         <p className="text-sm text-muted-foreground mb-6">
           Integrations & API access is available on the Business plan. Upgrade to connect
-          LogVault with your own systems via REST API and webhooks.
+          SiteScribe with your own systems via REST API and webhooks.
         </p>
         <Badge
           variant="secondary"
@@ -76,7 +76,7 @@ function IntegrationsInner() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">Integrations & API</h1>
               <p className="text-xs text-muted-foreground">
-                Connect LogVault with your external systems
+                Connect SiteScribe with your external systems
               </p>
             </div>
           </div>

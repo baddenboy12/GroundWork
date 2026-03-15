@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { useOnlineStatus } from "./use-online-status.ts";
 
-const QUEUE_KEY = "logvault_offline_queue_v1";
-const QUEUE_CHANGED = "logvault_queue_changed";
+const QUEUE_KEY = "sitescribe_offline_queue_v1";
+const QUEUE_CHANGED = "sitescribe_queue_changed";
 
 /** A photo stored locally as a compressed base64 JPEG, waiting to be uploaded */
 export type OfflinePhoto = {

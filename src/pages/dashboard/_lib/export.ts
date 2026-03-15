@@ -1120,6 +1120,6 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
   const csv = [...meta, headers, ...rows].map((r) => r.map(escCsv).join(",")).join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = `logvault-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  a.download = `sitescribe-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
   a.click();
 }

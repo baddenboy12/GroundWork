@@ -94,7 +94,7 @@ export default function ApiDocsTab() {
       <div>
         <h2 className="font-semibold text-foreground">REST API Documentation</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Use the LogVault REST API to read and write data from any external system.
+          Use the SiteScribe REST API to read and write data from any external system.
           Requires a <strong>Business plan</strong> and an active API key.
         </p>
       </div>
@@ -287,8 +287,8 @@ export default function ApiDocsTab() {
       <Section title="Webhook Signatures">
         <p className="text-sm text-muted-foreground">
           Every webhook delivery includes an{" "}
-          <code className="text-xs bg-muted px-1 rounded">X-LogVault-Signature</code> header.
-          Verify it to ensure the payload was sent by LogVault.
+          <code className="text-xs bg-muted px-1 rounded">X-SiteScribe-Signature</code> header.
+          Verify it to ensure the payload was sent by SiteScribe.
         </p>
         <CodeBlock
           code={`// Node.js verification example
@@ -307,7 +307,7 @@ function verifySignature(secret, rawBody, signatureHeader) {
 
 // Express example
 app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
-  const sig = req.headers["x-logvault-signature"];
+  const sig = req.headers["x-sitescribe-signature"];
   if (!verifySignature(process.env.WEBHOOK_SECRET, req.body, sig)) {
     return res.status(401).send("Invalid signature");
   }

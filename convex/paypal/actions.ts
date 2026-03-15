@@ -90,11 +90,11 @@ export const initializePayPalPlans = action({
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "PayPal-Request-Id": `logvault-product-${Date.now()}`,
+        "PayPal-Request-Id": `sitescribe-product-${Date.now()}`,
       },
       body: JSON.stringify({
-        name: "LogVault",
-        description: "LogVault site logging management service",
+        name: "SiteScribe",
+        description: "SiteScribe site logging management service",
         type: "SERVICE",
         category: "SOFTWARE",
       }),
@@ -110,12 +110,12 @@ export const initializePayPalPlans = action({
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          "PayPal-Request-Id": `logvault-plan-${tier}-${Date.now()}`,
+          "PayPal-Request-Id": `sitescribe-plan-${tier}-${Date.now()}`,
         },
         body: JSON.stringify({
           product_id: productId,
-          name: `LogVault ${name}`,
-          description: `LogVault ${name} – monthly subscription`,
+          name: `SiteScribe ${name}`,
+          description: `SiteScribe ${name} – monthly subscription`,
           status: "ACTIVE",
           billing_cycles: [
             {
@@ -198,7 +198,7 @@ export const createSubscription = action({
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "PayPal-Request-Id": `logvault-sub-${user._id}-${Date.now()}`,
+        "PayPal-Request-Id": `sitescribe-sub-${user._id}-${Date.now()}`,
         Prefer: "return=representation",
       },
       body: JSON.stringify({
@@ -207,13 +207,13 @@ export const createSubscription = action({
         custom_id: user._id,
         subscriber: {
           name: {
-            given_name: user.name?.split(" ")[0] ?? "LogVault",
+            given_name: user.name?.split(" ")[0] ?? "SiteScribe",
             surname: user.name?.split(" ").slice(1).join(" ") || "User",
           },
           ...(user.email ? { email_address: user.email } : {}),
         },
         application_context: {
-          brand_name: "LogVault",
+          brand_name: "SiteScribe",
           locale: "en-US",
           shipping_preference: "NO_SHIPPING",
           user_action: "SUBSCRIBE_NOW",

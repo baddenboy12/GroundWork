@@ -52,8 +52,8 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
           onClick={() => navigate("/")}
         >
           <img
-            src="https://cdn.hercules.app/file_MTBkFtbeCZf1g1fwPkBRL5mk"
-            alt="LogVault"
+            src="https://cdn.hercules.app/file_QJ5FZNPRpRspwQGAwaCsQkQT"
+            alt="SiteScribe"
             className="w-7 h-7 rounded-md"
           />
           <span className="font-bold text-foreground hidden sm:block">

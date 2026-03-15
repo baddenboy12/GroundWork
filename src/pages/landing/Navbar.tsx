@@ -12,8 +12,8 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img
-            src="https://cdn.hercules.app/file_MTBkFtbeCZf1g1fwPkBRL5mk"
-            alt="LogVault"
+            src="https://cdn.hercules.app/file_QJ5FZNPRpRspwQGAwaCsQkQT"
+            alt="SiteScribe"
             className="w-8 h-8 rounded-lg"
           />
           <span className="text-xl font-bold tracking-tight text-foreground">

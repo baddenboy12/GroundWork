@@ -1,6 +1,6 @@
 {
-  "name": "LogVault",
-  "short_name": "LogVault",
+  "name": "SiteScribe",
+  "short_name": "SiteScribe",
   "description": "Field log and site inspection tracker",
   "start_url": "/dashboard",
   "display": "standalone",
