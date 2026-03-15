@@ -31,9 +31,10 @@ import { useSubscription } from "@/hooks/use-subscription.ts";
 type Props = {
   selectedSiteId: Id<"sites"> | null;
   onSelectSite: (id: Id<"sites">) => void;
+  onSiteDeleted?: (id: Id<"sites">) => void;
 };
 
-export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
+export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDeleted }: Props) {
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
@@ -58,6 +59,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
     try {
       await removeSite({ siteId: deleteSiteId });
       toast.success("Site deleted");
+      onSiteDeleted?.(deleteSiteId);
       setDeleteSiteId(null);
     } catch {
       toast.error("Failed to delete site");

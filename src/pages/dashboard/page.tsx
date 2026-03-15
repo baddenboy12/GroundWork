@@ -34,6 +34,9 @@ function DashboardInner() {
         <SiteSidebar
           selectedSiteId={selectedSiteId}
           onSelectSite={(id) => setSelectedSiteId(id)}
+          onSiteDeleted={(id) => {
+            if (selectedSiteId === id) setSelectedSiteId(null);
+          }}
         />
         <main className="flex-1 overflow-hidden">
           {selectedSiteId ? (

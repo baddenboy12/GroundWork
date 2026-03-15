@@ -21,7 +21,8 @@ export const listBySite = query({
     if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
     const site = await ctx.db.get(args.siteId);
-    if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    // Site may have just been deleted — return empty rather than crashing
+    if (!site) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
 
     const results = await ctx.db
       .query("logs")
