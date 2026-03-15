@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -10,63 +10,109 @@ type Props = {
 
 export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) {
   const [current, setCurrent] = useState(initialIndex);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Stop propagation so Escape doesn't also close the parent dialog
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        e.preventDefault();
+        onClose();
+        return;
+      }
       if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
       if (e.key === "ArrowRight") setCurrent((c) => Math.min(photos.length - 1, c + 1));
     };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    // Use capture phase so we intercept before Radix Dialog
+    window.addEventListener("keydown", handleKey, true);
+    return () => window.removeEventListener("keydown", handleKey, true);
   }, [photos.length, onClose]);
+
+  const prev = () => setCurrent((c) => Math.max(0, c - 1));
+  const next = () => setCurrent((c) => Math.min(photos.length - 1, c + 1));
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Only register horizontal swipes that are more horizontal than vertical
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) next();
+      else prev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center"
+      className="fixed inset-0 z-[200] bg-black/92 flex items-center justify-center select-none"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Close */}
+      {/* Close button */}
       <button
-        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-        onClick={onClose}
+        className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/25 active:bg-white/30 transition-colors"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
       >
         <X className="w-5 h-5" />
       </button>
 
       {/* Counter */}
       {photos.length > 1 && (
-        <span className="absolute top-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+        <span className="absolute top-5 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full">
           {current + 1} / {photos.length}
         </span>
       )}
 
-      {/* Prev */}
+      {/* Prev arrow */}
       {current > 0 && (
         <button
-          className="absolute left-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-          onClick={(e) => { e.stopPropagation(); setCurrent((c) => c - 1); }}
+          className="absolute left-3 sm:left-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
+          onClick={(e) => { e.stopPropagation(); prev(); }}
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-8 h-8" />
         </button>
       )}
 
-      {/* Image */}
+      {/* Image — stop clicks propagating so backdrop click only closes */}
       <img
         src={photos[current]}
         alt={`Photo ${current + 1}`}
-        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+        className="max-w-[92vw] max-h-[86vh] object-contain rounded-lg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        draggable={false}
       />
 
-      {/* Next */}
+      {/* Next arrow */}
       {current < photos.length - 1 && (
         <button
-          className="absolute right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-          onClick={(e) => { e.stopPropagation(); setCurrent((c) => c + 1); }}
+          className="absolute right-3 sm:right-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
+          onClick={(e) => { e.stopPropagation(); next(); }}
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-8 h-8" />
         </button>
+      )}
+
+      {/* Dot indicators */}
+      {photos.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+          {photos.map((_, i) => (
+            <button
+              key={i}
+              className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-white scale-125" : "bg-white/40"}`}
+              onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+            />
+          ))}
+        </div>
       )}
     </div>,
     document.body
