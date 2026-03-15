@@ -73,7 +73,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
       {/* Prev */}
       {current > 0 && (
         <button
-          className="absolute left-3 sm:left-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
+          className="absolute left-3 sm:left-5 w-14 h-14 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 active:scale-95 transition-all shadow-lg"
           onClick={(e) => { e.stopPropagation(); prev(); }}
         >
           <ChevronLeft className="w-8 h-8" />
@@ -92,7 +92,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
       {/* Next */}
       {current < photos.length - 1 && (
         <button
-          className="absolute right-3 sm:right-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
+          className="absolute right-3 sm:right-5 w-14 h-14 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 active:scale-95 transition-all shadow-lg"
           onClick={(e) => { e.stopPropagation(); next(); }}
         >
           <ChevronRight className="w-8 h-8" />
