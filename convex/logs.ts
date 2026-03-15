@@ -51,6 +51,34 @@ async function resolvePhotoUrls(
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
+export const listRecent = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return [];
+
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .order("desc")
+      .take(args.limit ?? 12);
+
+    return await Promise.all(
+      logs.map(async (log) => {
+        const site = await ctx.db.get(log.siteId);
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+      })
+    );
+  },
+});
+
 export const listBySite = query({
   args: {
     siteId: v.id("sites"),

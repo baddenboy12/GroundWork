@@ -11,18 +11,9 @@ import {
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SiteSidebar from "./_components/SiteSidebar.tsx";
 import LogList from "./_components/LogList.tsx";
+import DashboardHome from "./_components/DashboardHome.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import { Plus, ClipboardList } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
 
 function DashboardInner() {
@@ -65,30 +56,10 @@ function DashboardInner() {
               onBack={() => setSelectedSiteId(null)}
             />
           ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardList />
-                </EmptyMedia>
-                <EmptyTitle>Start logging</EmptyTitle>
-                <EmptyDescription>
-                  Tap the menu to pick a site, or create a new log entry directly.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button size="sm" onClick={() => setGlobalCreateOpen(true)}>
-                  <Plus className="w-4 h-4 mr-1.5" /> New log entry
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="mt-2"
-                  onClick={() => setSiteDrawerOpen(true)}
-                >
-                  View sites
-                </Button>
-              </EmptyContent>
-            </Empty>
+            <DashboardHome
+              onNewLog={() => setGlobalCreateOpen(true)}
+              onSelectSite={handleSelectSite}
+            />
           )}
         </main>
       ) : (
@@ -104,23 +75,10 @@ function DashboardInner() {
             {selectedSiteId ? (
               <LogList siteId={selectedSiteId} />
             ) : (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <ClipboardList />
-                  </EmptyMedia>
-                  <EmptyTitle>Start logging</EmptyTitle>
-                  <EmptyDescription>
-                    Create a log entry and type the site name — it will be created automatically.
-                    Or select a site from the sidebar to browse existing entries.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <Button size="sm" onClick={() => setGlobalCreateOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1.5" /> New log entry
-                  </Button>
-                </EmptyContent>
-              </Empty>
+              <DashboardHome
+                onNewLog={() => setGlobalCreateOpen(true)}
+                onSelectSite={setSelectedSiteId}
+              />
             )}
           </main>
         </div>
