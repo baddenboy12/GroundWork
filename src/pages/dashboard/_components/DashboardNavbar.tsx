@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { LogOut, User, CreditCard, Zap, Plus, Menu } from "lucide-react";
+import { LogOut, User, CreditCard, Zap, Plus, Menu, Plug } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 const TIER_BADGE_STYLE: Record<string, string> = {
@@ -112,6 +112,9 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/billing")}>
               <CreditCard className="w-4 h-4 mr-2" /> Subscription
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/integrations")}>
+              <Plug className="w-4 h-4 mr-2" /> Integrations & API
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
