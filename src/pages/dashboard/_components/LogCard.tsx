@@ -47,11 +47,11 @@ export default function LogCard({ log }: Props) {
   return (
     <>
       <div className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-colors">
-        {/* Photo grid — consistent 4:3 tiles, fully visible, all clickable */}
+        {/* Photo grid — consistent tiles, capped height, all clickable */}
         {photos.length > 0 && (
           <div
             className={cn(
-              "grid gap-1 p-3 pb-0",
+              "grid gap-1 p-3 pb-0 max-h-52 overflow-hidden",
               photos.length === 1 && "grid-cols-1",
               photos.length === 2 && "grid-cols-2",
               photos.length >= 3 && "grid-cols-2"
@@ -162,7 +162,7 @@ export default function LogCard({ log }: Props) {
           </div>
 
           <h3 className="font-semibold text-foreground mb-2 leading-snug">{log.title}</h3>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed line-clamp-4">
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed line-clamp-3">
             {log.content}
           </p>
 
