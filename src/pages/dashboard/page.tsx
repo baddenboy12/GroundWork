@@ -49,7 +49,7 @@ function DashboardInner() {
            No inline sidebar. Tap the hamburger to open the site drawer.
            When a site is selected: full-screen log list with back button.
            When no site is selected: full-screen "start" state.           */
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {selectedSiteId ? (
             <LogList
               siteId={selectedSiteId}
@@ -71,7 +71,7 @@ function DashboardInner() {
             onSelectSite={setSelectedSiteId}
             onSiteDeleted={handleSiteDeleted}
           />
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-hidden flex flex-col">
             {selectedSiteId ? (
               <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
             ) : (
