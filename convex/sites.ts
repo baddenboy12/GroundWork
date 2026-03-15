@@ -73,6 +73,7 @@ export const update = mutation({
 export const findOrCreate = mutation({
   args: {
     name: v.string(),
+    location: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
     const identity = await ctx.auth.getUserIdentity();
@@ -94,7 +95,13 @@ export const findOrCreate = mutation({
     const existing = allSites.find(
       (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
     );
-    if (existing) return existing._id;
+    if (existing) {
+      // Backfill location if the site doesn't have one yet
+      if (args.location && !existing.location) {
+        await ctx.db.patch(existing._id, { location: args.location });
+      }
+      return existing._id;
+    }
 
     // Check tier limit before creating a new site
     const tier = user.subscriptionTier ?? "free";
@@ -114,6 +121,7 @@ export const findOrCreate = mutation({
 
     return await ctx.db.insert("sites", {
       name: trimmedName,
+      location: args.location,
       ownerId: user._id,
     });
   },

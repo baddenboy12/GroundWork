@@ -111,7 +111,7 @@ export default function CreateLogDialog({
     if (!siteName.trim() || !title.trim() || !content.trim()) return;
     setLoading(true);
     try {
-      const siteId = await findOrCreateSite({ name: siteName.trim() });
+      const siteId = await findOrCreateSite({ name: siteName.trim(), location: location.trim() || undefined });
       await createLog({
         siteId: siteId as Id<"sites">,
         title: title.trim(),

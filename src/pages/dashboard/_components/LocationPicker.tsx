@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-type Coords = { lat: number; lng: number };
+type Coords = { lat: number; lng: number; accuracy?: number };
 
 type GpsState =
   | { status: "idle" }
@@ -131,7 +131,7 @@ export default function LocationPicker({
       async (pos) => {
         const { latitude, longitude, accuracy: acc } = pos.coords;
         const address = await reverseGeocode(latitude, longitude);
-        setCoords({ lat: latitude, lng: longitude });
+        setCoords({ lat: latitude, lng: longitude, accuracy: Math.round(acc) });
         setAccuracy(Math.round(acc));
         onChange(address);
         setShowMap(true);
@@ -151,6 +151,8 @@ export default function LocationPicker({
 
   const handlePinMove = (newCoords: Coords, address: string) => {
     setCoords(newCoords);
+    // Preserve accuracy from GPS, clear it for manual pin moves
+    if (!newCoords.accuracy) setAccuracy(null);
     onChange(address);
   };
 
@@ -204,7 +206,7 @@ export default function LocationPicker({
         <div className="rounded-xl overflow-hidden border border-border shadow-sm">
           {/* Map header */}
           <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="bg-primary rounded-full p-0.5">
                 <Navigation className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
@@ -214,6 +216,9 @@ export default function LocationPicker({
                   ±{accuracy}m
                 </span>
               )}
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+              </span>
             </div>
             <button
               type="button"

@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
-import { Trash2, User, Clock, ImageIcon, MapPin } from "lucide-react";
+import { Trash2, User, Clock, ImageIcon, MapPin, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import {
   AlertDialog,
@@ -20,6 +20,7 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/cons
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 import PhotoLightbox from "./PhotoLightbox.tsx";
+import EditLogDialog from "./EditLogDialog.tsx";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -30,6 +31,7 @@ type Props = {
 export default function LogCard({ log }: Props) {
   const removeLog = useMutation(api.logs.remove);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleDelete = async () => {
     try {
@@ -86,34 +88,44 @@ export default function LogCard({ log }: Props) {
                 </span>
               )}
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete this log entry and all attached photos.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-white hover:bg-destructive/90"
-                    onClick={handleDelete}
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
                   >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this log entry and all attached photos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
 
           <h3 className="font-semibold text-foreground mb-2 leading-snug">{log.title}</h3>
@@ -147,6 +159,11 @@ export default function LogCard({ log }: Props) {
           onClose={() => setLightboxIndex(null)}
         />
       )}
+      <EditLogDialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        log={log}
+      />
     </>
   );
 }
