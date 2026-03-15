@@ -9,8 +9,8 @@ import {
   type SubscriptionTier,
 } from "@/pages/dashboard/_lib/subscription.ts";
 
-// Show the 3 paid tiers on the marketing page
-const DISPLAYED_TIERS: SubscriptionTier[] = ["starter", "pro", "business"];
+// Show the 2 paid tiers on the marketing page
+const DISPLAYED_TIERS: SubscriptionTier[] = ["pro", "business"];
 
 type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean };
 
@@ -48,7 +48,7 @@ export default function Pricing() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-3xl mx-auto w-full">
           {DISPLAYED_TIERS.map((tier, i) => {
             const cfg = TIER_CONFIG[tier];
             return (
@@ -131,15 +131,7 @@ export default function Pricing() {
           })}
         </div>
 
-        <motion.p
-          className="text-center text-sm text-muted-foreground mt-10"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          All plans include a free tier to get started — no credit card required.
-        </motion.p>
+
       </div>
     </section>
   );

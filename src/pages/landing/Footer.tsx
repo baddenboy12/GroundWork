@@ -13,7 +13,7 @@ export default function Footer() {
               className="w-7 h-7 rounded-md"
             />
             <span className="font-bold text-foreground">
-              Log<span className="text-primary">Vault</span>
+              Ground<span className="text-primary">Work</span>
             </span>
           </div>
 

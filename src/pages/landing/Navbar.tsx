@@ -17,7 +17,7 @@ export default function Navbar() {
             className="w-8 h-8 rounded-lg"
           />
           <span className="text-xl font-bold tracking-tight text-foreground">
-            Log<span className="text-primary">Vault</span>
+            Ground<span className="text-primary">Work</span>
           </span>
         </div>
 
