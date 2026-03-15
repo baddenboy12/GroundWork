@@ -14,6 +14,72 @@ export type R2Photo = {
   fileName: string;
 };
 
+// Max dimension (width or height) in pixels before resizing kicks in
+const MAX_DIMENSION = 1920;
+// JPEG quality 0–1 (0.82 ≈ high quality, ~60–70% size reduction vs original)
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Compresses an image file using Canvas:
+ * - Resizes if either dimension exceeds MAX_DIMENSION (maintains aspect ratio)
+ * - Re-encodes as JPEG at JPEG_QUALITY
+ * Returns a new File with content-type image/jpeg
+ */
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+
+      // Scale down if too large
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        if (width >= height) {
+          height = Math.round((height / width) * MAX_DIMENSION);
+          width = MAX_DIMENSION;
+        } else {
+          width = Math.round((width / height) * MAX_DIMENSION);
+          height = MAX_DIMENSION;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas context unavailable"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Canvas toBlob failed"));
+            return;
+          }
+          // Use .jpg extension for compressed output
+          const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+          resolve(new File([blob], name, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        JPEG_QUALITY
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image"));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 type Props = {
   photos: R2Photo[];
   onChange: (photos: R2Photo[]) => void;
@@ -42,28 +108,31 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     try {
       const uploaded: R2Photo[] = [];
       for (const file of toUpload) {
-        // 1. Get presigned PUT URL from backend
+        // 1. Compress image before uploading
+        const compressed = await compressImage(file);
+
+        // 2. Get presigned PUT URL from backend (use compressed size)
         const { uploadUrl, key, publicUrl } = await getUploadUrl({
-          fileName: file.name,
-          contentType: file.type,
-          bytes: file.size,
+          fileName: compressed.name,
+          contentType: compressed.type,
+          bytes: compressed.size,
         });
 
-        // 2. Upload directly to R2
+        // 3. Upload compressed file directly to R2
         const res = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
+          headers: { "Content-Type": compressed.type },
+          body: compressed,
         });
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
 
-        // 3. Build photo object
+        // 4. Build photo object with local preview of original for speed
         uploaded.push({
           url: publicUrl,
           key,
-          bytes: file.size,
-          previewUrl: URL.createObjectURL(file),
-          fileName: file.name,
+          bytes: compressed.size,
+          previewUrl: URL.createObjectURL(compressed),
+          fileName: compressed.name,
         });
       }
       onChange([...photos, ...uploaded]);
@@ -133,7 +202,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                 <span className="text-primary font-medium">browse</span>
               </p>
               <p className="text-xs text-muted-foreground/60">
-                JPG, PNG, WEBP — up to {maxPhotos} photos
+                JPG, PNG, WEBP — auto-compressed · up to {maxPhotos} photos
               </p>
             </div>
           )}
