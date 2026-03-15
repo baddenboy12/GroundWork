@@ -436,6 +436,80 @@ export const listBySiteForExport = query({
   },
 });
 
+/** Fetch logs across multiple sites for the global dashboard export */
+export const listForGlobalExport = query({
+  args: {
+    siteIds: v.optional(v.array(v.id("sites"))), // empty = all user sites
+    dateFrom: v.optional(v.string()),
+    dateTo: v.optional(v.string()),
+    category: v.optional(categoryValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+
+    const allSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+
+    const targetSites =
+      args.siteIds && args.siteIds.length > 0
+        ? allSites.filter((s) => (args.siteIds as Id<"sites">[]).includes(s._id))
+        : allSites;
+
+    const collectedLogs: Array<{
+      _id: Id<"logs">;
+      siteId: Id<"sites">;
+      siteName: string;
+      title: string;
+      content: string;
+      category: string;
+      authorId: Id<"users">;
+      loggedAt: string;
+      location?: string;
+      latitude?: number;
+      longitude?: number;
+      authorName: string;
+      photoUrls: string[];
+      _creationTime: number;
+    }> = [];
+
+    for (const site of targetSites) {
+      const siteLogs = await ctx.db
+        .query("logs")
+        .withIndex("by_site", (q) => q.eq("siteId", site._id))
+        .order("desc")
+        .collect();
+
+      for (const log of siteLogs) {
+        if (args.category && log.category !== args.category) continue;
+        if (args.dateFrom && new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z")) continue;
+        if (args.dateTo && new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z")) continue;
+
+        const author = await ctx.db.get(log.authorId);
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        collectedLogs.push({
+          ...log,
+          siteName: site.name,
+          authorName: author?.name ?? "Unknown",
+          photoUrls,
+        });
+      }
+    }
+
+    // Sort by loggedAt descending and cap at 1000
+    collectedLogs.sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
+    return collectedLogs.slice(0, 1000);
+  },
+});
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 export const _getForWebhook = internalQuery({

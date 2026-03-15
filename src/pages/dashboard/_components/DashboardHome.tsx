@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
-import { Clock, MapPin, ImageIcon, ClipboardList, Plus } from "lucide-react";
+import { Clock, MapPin, ImageIcon, ClipboardList, Plus, FileDown, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
+import { useSubscription } from "@/hooks/use-subscription.ts";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
+import GlobalExportDialog from "./GlobalExportDialog.tsx";
+import UpgradeDialog from "./UpgradeDialog.tsx";
 import LogDetailDialog from "./LogDetailDialog.tsx";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
@@ -29,6 +32,10 @@ type Props = {
 export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [openLog, setOpenLog] = useState<RecentLog | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
+  const { isAtLeast } = useSubscription();
+  const canExport = isAtLeast("pro");
 
   const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
 
@@ -86,11 +93,22 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Your latest log entries across all sites
-        </p>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Your latest log entries across all sites
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => canExport ? setExportOpen(true) : setExportUpgradeOpen(true)}
+        >
+          {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          <span className="hidden sm:inline">Export</span>
+        </Button>
       </div>
 
       {/* Search & Filters */}
@@ -158,6 +176,16 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
           onClose={() => setOpenLog(null)}
         />
       )}
+
+      <GlobalExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
+
+      <UpgradeDialog
+        open={exportUpgradeOpen}
+        onClose={() => setExportUpgradeOpen(false)}
+        requiredTier="pro"
+        featureName="PDF & CSV Export"
+        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
+      />
     </div>
   );
 }
