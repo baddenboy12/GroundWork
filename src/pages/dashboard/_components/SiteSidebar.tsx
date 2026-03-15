@@ -131,7 +131,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
               {/* Site actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent transition-opacity">
+                  <button className="opacity-40 group-hover:opacity-100 p-0.5 rounded hover:bg-accent transition-opacity">
                     <Settings className="w-3.5 h-3.5" />
                   </button>
                 </DropdownMenuTrigger>

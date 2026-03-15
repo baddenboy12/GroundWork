@@ -3,6 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- High-DPI phone viewport: expand CSS viewport so 1080p+ phones use the
+         tablet/desktop sidebar layout instead of the narrow mobile drawer layout.
+         Runs synchronously before first render to avoid layout flash. -->
+    <script>
+      (function () {
+        var dpr = window.devicePixelRatio || 1;
+        var sw = window.screen.width; // CSS/logical pixels
+        var pw = Math.round(sw * dpr); // Physical pixels
+        // Only expand for high-res phones (>=1000px physical) that currently
+        // have a narrow CSS viewport (<768px, i.e. would trigger mobile layout).
+        if (pw >= 1000 && sw < 768) {
+          // Target CSS width: physical_width / 1.4, clamped 800–1200.
+          // This gives ~800px for 1080p and ~1030px for 1440p phones.
+          var w = Math.max(800, Math.min(Math.round(pw / 1.4), 1200));
+          document.querySelector('meta[name=viewport]').setAttribute(
+            "content",
+            "width=" + w + ", initial-scale=1.0, viewport-fit=cover"
+          );
+        }
+      })();
+    </script>
 
     <title>LogVault</title>
     <meta name="description" content="" />

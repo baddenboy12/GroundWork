@@ -125,7 +125,7 @@ export default function LogCard({ log }: Props) {
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground shrink-0"
+                className="h-7 w-7 opacity-60 group-hover:opacity-100 text-muted-foreground hover:text-foreground shrink-0"
                 onClick={() => setEditOpen(true)}
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -135,7 +135,7 @@ export default function LogCard({ log }: Props) {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
+                    className="h-7 w-7 opacity-60 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
