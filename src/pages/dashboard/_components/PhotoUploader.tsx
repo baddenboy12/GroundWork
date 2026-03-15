@@ -5,6 +5,7 @@ import { ImagePlus, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
+import { compressImage } from "../_lib/compress-image.ts";
 
 export type R2Photo = {
   url: string;       // R2 public URL (persisted to DB)
@@ -13,72 +14,6 @@ export type R2Photo = {
   previewUrl: string; // local blob URL for immediate preview
   fileName: string;
 };
-
-// Max dimension (width or height) in pixels before resizing kicks in
-const MAX_DIMENSION = 1920;
-// JPEG quality 0–1 (0.82 ≈ high quality, ~60–70% size reduction vs original)
-const JPEG_QUALITY = 0.82;
-
-/**
- * Compresses an image file using Canvas:
- * - Resizes if either dimension exceeds MAX_DIMENSION (maintains aspect ratio)
- * - Re-encodes as JPEG at JPEG_QUALITY
- * Returns a new File with content-type image/jpeg
- */
-async function compressImage(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-
-      let { width, height } = img;
-
-      // Scale down if too large
-      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-        if (width >= height) {
-          height = Math.round((height / width) * MAX_DIMENSION);
-          width = MAX_DIMENSION;
-        } else {
-          width = Math.round((width / height) * MAX_DIMENSION);
-          height = MAX_DIMENSION;
-        }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas context unavailable"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Canvas toBlob failed"));
-            return;
-          }
-          // Use .jpg extension for compressed output
-          const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
-          resolve(new File([blob], name, { type: "image/jpeg" }));
-        },
-        "image/jpeg",
-        JPEG_QUALITY
-      );
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Failed to load image"));
-    };
-
-    img.src = objectUrl;
-  });
-}
 
 type Props = {
   photos: R2Photo[];

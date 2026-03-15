@@ -400,7 +400,7 @@ export default function CreateLogDialog({
               {canAttachPhotos && isOnline ? (
                 <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={maxPhotosPerEntry} />
               ) : canAttachPhotos && !isOnline ? (
-                <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} />
+                <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} maxPhotos={maxPhotosPerEntry} />
               ) : (
                 <button
                   type="button"
