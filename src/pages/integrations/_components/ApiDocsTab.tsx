@@ -99,8 +99,8 @@ export default function ApiDocsTab() {
   "sites": [
     {
       "id": "...",
-      "name": "Tower Site 001",
-      "location": "Grid A3",
+      "name": "Warehouse A",
+      "location": "Building 3, Level 2",
       "latitude": -26.2041,
       "longitude": 28.0473,
       "createdAt": "2025-01-15T08:00:00.000Z"
@@ -136,8 +136,8 @@ export default function ApiDocsTab() {
             <CodeBlock
               code={`{
   "siteId": "<siteId>",         // required
-  "title": "Monthly inspection", // required
-  "content": "All systems nominal.",
+  "title": "Quarterly review",  // required
+  "content": "All checks completed. No issues found.",
   "category": "inspection",     // inspection | maintenance | incident | audit | general
   "loggedAt": "2025-06-01T09:00:00.000Z", // defaults to now
   "location": "Level 3 - East wing",
@@ -193,9 +193,9 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
   "data": {
     "logId": "...",
     "siteId": "...",
-    "siteName": "Tower Site 001",
-    "title": "Monthly inspection",
-    "content": "All systems nominal.",
+    "siteName": "Warehouse A",
+    "title": "Quarterly review",
+    "content": "All checks completed. No issues found.",
     "category": "inspection",
     "loggedAt": "2025-06-01T09:00:00.000Z",
     "location": "Level 3 - East wing",
