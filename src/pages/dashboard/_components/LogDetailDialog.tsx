@@ -1,0 +1,203 @@
+import { useState } from "react";
+import { format } from "date-fns";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api.js";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog.tsx";
+import { Trash2, Pencil, Clock, User, MapPin, ImageIcon } from "lucide-react";
+import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
+import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import { cn } from "@/lib/utils.ts";
+import PhotoLightbox from "./PhotoLightbox.tsx";
+import EditLogDialog from "./EditLogDialog.tsx";
+
+type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
+
+type Props = {
+  log: LogWithAuthor;
+  open: boolean;
+  onClose: () => void;
+};
+
+export default function LogDetailDialog({ log, open, onClose }: Props) {
+  const removeLog = useMutation(api.logs.remove);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const photos = log.photoUrls ?? [];
+
+  const handleDelete = async () => {
+    try {
+      await removeLog({ logId: log._id });
+      toast.success("Log entry deleted");
+      onClose();
+    } catch {
+      toast.error("Failed to delete log entry");
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          {/* Photo strip */}
+          {photos.length > 0 && (
+            <div
+              className={cn(
+                "grid gap-1",
+                photos.length === 1 && "grid-cols-1",
+                photos.length === 2 && "grid-cols-2",
+                photos.length >= 3 && "grid-cols-3"
+              )}
+            >
+              {photos.slice(0, 6).map((url, i) => {
+                const isLast = i === 5 && photos.length > 6;
+                return (
+                  <button
+                    key={url}
+                    type="button"
+                    className="relative overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-video"
+                    onClick={() => setLightboxIndex(i)}
+                  >
+                    <img
+                      src={url}
+                      alt={`Photo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {isLast && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold">+{photos.length - 6}</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="p-6 space-y-5">
+            {/* Header row */}
+            <DialogHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                      CATEGORY_COLORS[log.category as LogCategory]
+                    )}
+                  >
+                    {CATEGORY_LABELS[log.category as LogCategory]}
+                  </span>
+                  <DialogTitle className="text-xl leading-snug">{log.title}</DialogTitle>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => setEditOpen(true)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete this log entry and all attached photos.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                          onClick={handleDelete}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Content */}
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              {log.content}
+            </p>
+
+            {/* Meta */}
+            <div className="flex flex-wrap gap-x-5 gap-y-2 pt-3 border-t border-border/50 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                {format(new Date(log.loggedAt), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                {log.authorName}
+              </span>
+              {log.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {log.location}
+                </span>
+              )}
+              {log.latitude != null && log.longitude != null && (
+                <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
+                  {log.latitude.toFixed(5)}, {log.longitude.toFixed(5)}
+                </span>
+              )}
+              {photos.length > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {photos.length} photo{photos.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {lightboxIndex !== null && (
+        <PhotoLightbox
+          photos={photos}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+
+      <EditLogDialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        log={log}
+      />
+    </>
+  );
+}
