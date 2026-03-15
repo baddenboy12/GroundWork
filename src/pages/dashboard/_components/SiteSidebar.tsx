@@ -95,16 +95,11 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite }: Props) {
             ))}
           </div>
         ) : sites.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <p className="text-xs text-muted-foreground">No sites yet.</p>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="mt-2 text-xs text-primary"
-              onClick={handleAddSite}
-            >
-              + Add your first site
-            </Button>
+          <div className="px-4 py-8 text-center space-y-1">
+            <p className="text-xs font-medium text-foreground">No sites yet</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Sites are created automatically when you write your first log entry.
+            </p>
           </div>
         ) : (
           sites.map((site) => (
