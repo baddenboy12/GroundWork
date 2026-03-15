@@ -2,15 +2,24 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
-import { Clock, MapPin, ImageIcon, ClipboardList } from "lucide-react";
+import { Clock, MapPin, ImageIcon, ClipboardList, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import { cn } from "@/lib/utils.ts";
+import { useDebounce } from "@/hooks/use-debounce.ts";
+import FilterBar, { type FilterState } from "./FilterBar.tsx";
 import LogDetailDialog from "./LogDetailDialog.tsx";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type RecentLog = Doc<"logs"> & { siteName: string; photoUrls: string[] };
+
+const DEFAULT_FILTERS: FilterState = {
+  search: "",
+  category: "all",
+  dateFrom: "",
+  dateTo: "",
+};
 
 type Props = {
   onNewLog: () => void;
@@ -18,17 +27,80 @@ type Props = {
 };
 
 export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
-  const recent = useQuery(api.logs.listRecent, { limit: 12 });
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [openLog, setOpenLog] = useState<RecentLog | null>(null);
 
-  const isLoading = recent === undefined;
+  const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
+
+  const isFiltered =
+    debouncedSearch.length > 0 ||
+    filters.category !== "all" ||
+    !!filters.dateFrom ||
+    !!filters.dateTo;
+
+  const isSearchMode = debouncedSearch.length > 0;
+
+  const categoryArg =
+    filters.category !== "all" ? filters.category : undefined;
+
+  // Default recent logs (no filters)
+  const recent = useQuery(
+    api.logs.listRecent,
+    !isFiltered ? { limit: 24 } : "skip"
+  );
+
+  // Filtered (no text search)
+  const filtered = useQuery(
+    api.logs.listRecentFiltered,
+    isFiltered && !isSearchMode
+      ? {
+          category: categoryArg,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          limit: 50,
+        }
+      : "skip"
+  );
+
+  // Full-text search
+  const searched = useQuery(
+    api.logs.searchAllLogs,
+    isSearchMode
+      ? {
+          query: debouncedSearch,
+          category: categoryArg,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+        }
+      : "skip"
+  );
+
+  const logs: RecentLog[] | undefined = isSearchMode
+    ? (searched as RecentLog[] | undefined)
+    : isFiltered
+    ? (filtered as RecentLog[] | undefined)
+    : (recent as RecentLog[] | undefined);
+
+  const isLoading = logs === undefined;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Your latest log entries across all sites</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Your latest log entries across all sites
+        </p>
+      </div>
+
+      {/* Search & Filters */}
+      <div className="mb-5">
+        <FilterBar
+          filters={filters}
+          onChange={setFilters}
+          resultCount={isFiltered && !isLoading ? (logs?.length ?? 0) : null}
+          isSearchMode={isFiltered}
+        />
       </div>
 
       {/* Grid */}
@@ -38,28 +110,41 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
             <Skeleton key={i} className="h-64 w-full rounded-xl" />
           ))}
         </div>
-      ) : recent.length === 0 ? (
+      ) : logs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
           <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
             <ClipboardList className="w-7 h-7 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No entries yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first log entry to get started
-            </p>
+            {isFiltered ? (
+              <>
+                <p className="font-medium text-foreground">No results found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try adjusting your search or filters
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-foreground">No entries yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create your first log entry to get started
+                </p>
+              </>
+            )}
           </div>
-          <Button size="sm" onClick={onNewLog}>
-            <Plus className="w-4 h-4 mr-1.5" /> New log entry
-          </Button>
+          {!isFiltered && (
+            <Button size="sm" onClick={onNewLog}>
+              <Plus className="w-4 h-4 mr-1.5" /> New log entry
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {recent.map((log) => (
+          {logs.map((log) => (
             <RecentLogCard
               key={log._id}
-              log={log as RecentLog}
-              onClick={() => setOpenLog(log as RecentLog)}
+              log={log}
+              onClick={() => setOpenLog(log)}
               onSiteClick={() => onSelectSite(log.siteId)}
             />
           ))}
@@ -112,7 +197,6 @@ function RecentLogCard({ log, onClick, onSiteClick }: CardProps) {
       <div className="p-4 space-y-2.5">
         {/* Site badge + category */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Site name — clicking navigates to that site */}
           <span
             className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
             onClick={(e) => { e.stopPropagation(); onSiteClick(e); }}

@@ -108,5 +108,9 @@ export default defineSchema({
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["siteId", "category"],
+    })
+    .searchIndex("search_title_global", {
+      searchField: "title",
+      filterFields: ["authorId", "category"],
     }),
 });

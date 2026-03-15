@@ -79,6 +79,99 @@ export const listRecent = query({
   },
 });
 
+/** Filter recent logs by category/date without a text query */
+export const listRecentFiltered = query({
+  args: {
+    category: v.optional(categoryValidator),
+    dateFrom: v.optional(v.string()),
+    dateTo: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return [];
+
+    let logs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .order("desc")
+      .collect();
+
+    if (args.category) {
+      logs = logs.filter((l) => l.category === args.category);
+    }
+    if (args.dateFrom) {
+      const from = new Date(args.dateFrom).toISOString();
+      logs = logs.filter((l) => l.loggedAt >= from);
+    }
+    if (args.dateTo) {
+      const to = new Date(args.dateTo + "T23:59:59.999Z").toISOString();
+      logs = logs.filter((l) => l.loggedAt <= to);
+    }
+
+    logs = logs.slice(0, args.limit ?? 50);
+
+    return await Promise.all(
+      logs.map(async (log) => {
+        const site = await ctx.db.get(log.siteId);
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+      })
+    );
+  },
+});
+
+/** Full-text search across all user logs with optional category/date filters */
+export const searchAllLogs = query({
+  args: {
+    query: v.string(),
+    category: v.optional(categoryValidator),
+    dateFrom: v.optional(v.string()),
+    dateTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return [];
+
+    let results = await ctx.db
+      .query("logs")
+      .withSearchIndex("search_title_global", (q) => {
+        const base = q.search("title", args.query).eq("authorId", user._id);
+        return args.category ? base.eq("category", args.category) : base;
+      })
+      .take(100);
+
+    if (args.dateFrom) {
+      const from = new Date(args.dateFrom).toISOString();
+      results = results.filter((l) => l.loggedAt >= from);
+    }
+    if (args.dateTo) {
+      const to = new Date(args.dateTo + "T23:59:59.999Z").toISOString();
+      results = results.filter((l) => l.loggedAt <= to);
+    }
+
+    return await Promise.all(
+      results.map(async (log) => {
+        const site = await ctx.db.get(log.siteId);
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+      })
+    );
+  },
+});
+
 export const listBySite = query({
   args: {
     siteId: v.id("sites"),
