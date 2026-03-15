@@ -184,7 +184,7 @@ function BillingInner() {
     setCancelPending(true);
     try {
       await cancelSubscriptionAction();
-      toast.success("Subscription cancelled. You've been moved to the Free plan.");
+      toast.success("Subscription cancelled successfully.");
       setCancelDialogOpen(false);
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -266,12 +266,7 @@ function BillingInner() {
                 <p className="text-sm text-muted-foreground">Current plan</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold text-foreground text-lg">
-                    {TIER_CONFIG[tier].name}
-                    {tier === "free" && (
-                      <span className="ml-2 text-sm font-normal text-muted-foreground">
-                        — free forever
-                      </span>
-                    )}
+                    {tier === "free" ? "No active subscription" : TIER_CONFIG[tier].name}
                   </p>
                   {(user?.paypalSubscriptionStatus === "ACTIVE" ||
                     user?.paypalSubscriptionStatus === "APPROVED") && (
@@ -290,21 +285,11 @@ function BillingInner() {
                 Cancel subscription
               </Button>
             )}
-            {!hasActivePayPalSub && tier !== "free" && !isPayPalConfigured && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground text-xs"
-                onClick={() => handleManualSelect("free")}
-              >
-                Downgrade to Free
-              </Button>
-            )}
           </div>
         )}
 
         {/* Storage usage */}
-        {!isLoading && tier !== "free" && (
+        {!isLoading && TIER_CONFIG[tier].photoAttachments && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -393,12 +378,13 @@ function BillingInner() {
               : "Initialize PayPal above to enable real payment processing."}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {TIER_ORDER.map((t) => {
               const cfg = TIER_CONFIG[t];
               const isCurrent = t === tier;
               const isUpgrade =
-                TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(tier);
+                ["free", "starter", "pro", "business"].indexOf(t) >
+                ["free", "starter", "pro", "business"].indexOf(tier);
               const isPendingThis = paypalPending === t;
 
               return (
@@ -458,9 +444,9 @@ function BillingInner() {
                       ) : (
                         <X className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      {cfg.storageLimitBytes > 0
+                      {cfg.photoAttachments
                         ? `${formatBytes(cfg.storageLimitBytes)} photo storage`
-                        : "Photo attachments"}
+                        : "No photo attachments"}
                     </li>
                     <li
                       className={cn(
@@ -488,27 +474,11 @@ function BillingInner() {
                       ) : (
                         <X className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      {cfg.integrations
-                        ? "Integrations & API"
-                        : "Integrations (coming soon)"}
+                      Integrations & API
                     </li>
                   </ul>
 
-                  {t === "free" ? (
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      variant="secondary"
-                      disabled={isCurrent}
-                      onClick={() =>
-                        hasActivePayPalSub
-                          ? setCancelDialogOpen(true)
-                          : handleManualSelect("free")
-                      }
-                    >
-                      {isCurrent ? "Current plan" : "Downgrade to Free"}
-                    </Button>
-                  ) : isPayPalConfigured ? (
+                  {isPayPalConfigured ? (
                     <Button
                       size="sm"
                       className="w-full"
@@ -554,7 +524,7 @@ function BillingInner() {
                     <Button
                       size="sm"
                       className="w-full"
-                      variant={isCurrent ? "secondary" : "secondary"}
+                      variant="secondary"
                       disabled
                     >
                       PayPal required
@@ -681,8 +651,8 @@ function BillingInner() {
             <DialogDescription>
               Your{" "}
               <strong>{TIER_CONFIG[tier].name}</strong> plan will remain active
-              until the end of the current billing period, after which you will be
-              moved to the Free plan. This action cannot be undone.
+              until the end of the current billing period, after which your subscription
+              will end and access will be limited. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

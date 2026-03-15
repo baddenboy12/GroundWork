@@ -45,9 +45,9 @@ async function getToken(): Promise<string> {
 }
 
 const PLAN_CONFIG = {
-  starter: { name: "Starter", price: "9.00" },
-  pro: { name: "Pro", price: "29.00" },
-  business: { name: "Business", price: "79.00" },
+  starter: { name: "Starter", price: "3.99" },
+  pro: { name: "Pro", price: "7.99" },
+  business: { name: "Business", price: "11.99" },
 } as const;
 
 type PaidTier = keyof typeof PLAN_CONFIG;

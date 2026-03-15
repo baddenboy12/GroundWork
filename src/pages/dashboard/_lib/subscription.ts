@@ -24,9 +24,10 @@ export type TierConfig = {
 };
 
 export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
+  // Internal fallback — not shown as a selectable plan
   free: {
     name: "Free",
-    tagline: "Get started with basic logging",
+    tagline: "No active subscription",
     price: "$0",
     period: "forever",
     maxSites: 2,
@@ -38,56 +39,53 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
   starter: {
     name: "Starter",
-    tagline: "More sites, more storage",
-    price: "$9",
+    tagline: "Essential logging for small teams",
+    price: "$3.99",
     period: "per month",
-    maxSites: 15,
+    maxSites: 5,
     maxLogsPerSite: null,
-    photoAttachments: true,
-    storageLimitBytes: 100 * 1024 * 1024, // 100 MB
+    photoAttachments: false,
+    storageLimitBytes: 50 * 1024 * 1024, // 50 MB
     export: false,
     integrations: false,
   },
   pro: {
     name: "Pro",
-    tagline: "Full power for professional teams",
-    price: "$29",
+    tagline: "Photo-enabled for growing teams",
+    price: "$7.99",
     period: "per month",
-    maxSites: null,
+    maxSites: 15,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 1 * 1024 * 1024 * 1024, // 1 GB
-    export: true,
+    storageLimitBytes: 250 * 1024 * 1024, // 250 MB
+    export: false,
     integrations: false,
     highlight: true,
   },
   business: {
     name: "Business",
-    tagline: "Enterprise-grade with integrations",
-    price: "$79",
+    tagline: "Full power with exports & integrations",
+    price: "$11.99",
     period: "per month",
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 5 * 1024 * 1024 * 1024, // 5 GB
+    storageLimitBytes: 3 * 1024 * 1024 * 1024, // 3 GB
     export: true,
     integrations: true,
   },
 };
 
-export const TIER_ORDER: SubscriptionTier[] = [
-  "free",
-  "starter",
-  "pro",
-  "business",
-];
+// Only paid plans are shown in the billing UI ("free" is an internal fallback)
+export const TIER_ORDER: SubscriptionTier[] = ["starter", "pro", "business"];
 
 /** Returns true if `tier` is at least as high as `minimum` */
 export function isAtLeast(
   tier: SubscriptionTier,
   minimum: SubscriptionTier
 ): boolean {
-  return TIER_ORDER.indexOf(tier) >= TIER_ORDER.indexOf(minimum);
+  const order: SubscriptionTier[] = ["free", "starter", "pro", "business"];
+  return order.indexOf(tier) >= order.indexOf(minimum);
 }
 
 /** Human-readable label for a tier */
