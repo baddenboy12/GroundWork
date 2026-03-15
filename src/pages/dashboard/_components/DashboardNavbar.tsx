@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { LogOut, User, CreditCard, Zap } from "lucide-react";
+import { LogOut, User, CreditCard, Zap, Plus } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 const TIER_BADGE_STYLE: Record<string, string> = {
@@ -20,7 +20,11 @@ const TIER_BADGE_STYLE: Record<string, string> = {
   business: "bg-amber-500/15 text-amber-400 border-amber-500/30",
 };
 
-export default function DashboardNavbar() {
+type Props = {
+  onNewLog: () => void;
+};
+
+export default function DashboardNavbar({ onNewLog }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
@@ -43,6 +47,11 @@ export default function DashboardNavbar() {
       </button>
 
       <div className="flex items-center gap-2">
+        {/* Quick "New log" button */}
+        <Button size="sm" className="gap-1.5" onClick={onNewLog}>
+          <Plus className="w-4 h-4" /> New log
+        </Button>
+
         {/* Plan badge */}
         <button
           onClick={() => navigate("/billing")}

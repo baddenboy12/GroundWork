@@ -68,6 +68,57 @@ export const update = mutation({
   },
 });
 
+// Finds a site by name (case-insensitive) or creates a new one.
+// Used when creating a log entry with an inline site name.
+export const findOrCreate = mutation({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+
+    const trimmedName = args.name.trim();
+    if (!trimmedName) throw new ConvexError({ message: "Site name cannot be empty", code: "BAD_REQUEST" });
+
+    // Case-insensitive match against existing sites
+    const allSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+    const existing = allSites.find(
+      (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (existing) return existing._id;
+
+    // Check tier limit before creating a new site
+    const tier = user.subscriptionTier ?? "free";
+    const limits: Record<string, number | null> = {
+      free: 2,
+      starter: 15,
+      pro: null,
+      business: null,
+    };
+    const limit = limits[tier] ?? 2;
+    if (limit !== null && allSites.length >= limit) {
+      throw new ConvexError({
+        message: `Site limit reached for your plan. Upgrade to add more sites.`,
+        code: "FORBIDDEN",
+      });
+    }
+
+    return await ctx.db.insert("sites", {
+      name: trimmedName,
+      ownerId: user._id,
+    });
+  },
+});
+
 export const remove = mutation({
   args: { siteId: v.id("sites") },
   handler: async (ctx, args) => {

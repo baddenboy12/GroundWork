@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SiteSidebar from "./_components/SiteSidebar.tsx";
 import LogList from "./_components/LogList.tsx";
+import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import {
   Empty,
@@ -14,14 +15,21 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
-import { MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button.tsx";
+import { Plus, ClipboardList } from "lucide-react";
 
 function DashboardInner() {
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
+  const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
+
+  const handleLogCreated = (siteId: Id<"sites">) => {
+    // Auto-navigate to the site that was just logged against
+    setSelectedSiteId(siteId);
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <DashboardNavbar />
+      <DashboardNavbar onNewLog={() => setGlobalCreateOpen(true)} />
       <div className="flex flex-1 overflow-hidden">
         <SiteSidebar
           selectedSiteId={selectedSiteId}
@@ -34,17 +42,30 @@ function DashboardInner() {
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <MapPin />
+                  <ClipboardList />
                 </EmptyMedia>
-                <EmptyTitle>Select a site</EmptyTitle>
+                <EmptyTitle>Start logging</EmptyTitle>
                 <EmptyDescription>
-                  Choose a site from the sidebar to view its log entries, or create a new site to get started.
+                  Create a log entry and type the site name — it will be created automatically.
+                  Or select a site from the sidebar to browse existing entries.
                 </EmptyDescription>
               </EmptyHeader>
+              <EmptyContent>
+                <Button size="sm" onClick={() => setGlobalCreateOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1.5" /> New log entry
+                </Button>
+              </EmptyContent>
             </Empty>
           )}
         </main>
       </div>
+
+      {/* Global create dialog — no site pre-selected */}
+      <CreateLogDialog
+        open={globalCreateOpen}
+        onClose={() => setGlobalCreateOpen(false)}
+        onCreated={handleLogCreated}
+      />
     </div>
   );
 }

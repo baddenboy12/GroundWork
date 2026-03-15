@@ -253,7 +253,7 @@ export default function LogList({ siteId }: Props) {
       <CreateLogDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        siteId={siteId}
+        initialSiteName={site?.name}
       />
 
       <UpgradeDialog
