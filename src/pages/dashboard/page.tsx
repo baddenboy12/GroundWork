@@ -86,7 +86,7 @@ function DashboardInner() {
 
       {/* Mobile site drawer */}
       <Sheet open={siteDrawerOpen} onOpenChange={setSiteDrawerOpen}>
-        <SheetContent side="left" className="p-0 w-80 flex flex-col">
+        <SheetContent side="left" className="p-0 w-80 flex flex-col [&>button]:hidden">
           <SheetHeader className="sr-only">
             <SheetTitle>Sites</SheetTitle>
           </SheetHeader>
