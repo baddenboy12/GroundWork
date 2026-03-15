@@ -217,6 +217,56 @@ export const remove = mutation({
   },
 });
 
+// ── Public: fetch logs for export (up to 500, date-range + category filter) ──
+export const listBySiteForExport = query({
+  args: {
+    siteId: v.id("sites"),
+    dateFrom: v.optional(v.string()),  // ISO date string "YYYY-MM-DD"
+    dateTo: v.optional(v.string()),
+    category: v.optional(categoryValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+
+    const site = await ctx.db.get(args.siteId);
+    if (!site) return [];
+
+    const all = await ctx.db
+      .query("logs")
+      .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+      .order("desc")
+      .take(500);
+
+    const filtered = all.filter((log) => {
+      if (args.category && log.category !== args.category) return false;
+      if (args.dateFrom) {
+        if (new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z")) return false;
+      }
+      if (args.dateTo) {
+        if (new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z")) return false;
+      }
+      return true;
+    });
+
+    return await Promise.all(
+      filtered.map(async (log) => {
+        const author = await ctx.db.get(log.authorId);
+        const photoUrls = log.photoStorageIds
+          ? await Promise.all(
+              log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
+            )
+          : [];
+        return {
+          ...log,
+          authorName: author?.name ?? "Unknown",
+          photoUrls: photoUrls.filter((url): url is string => url !== null),
+        };
+      })
+    );
+  },
+});
+
 // ── Internal: get a log by ID for webhook delivery (no auth needed) ──────────
 export const _getForWebhook = internalQuery({
   args: { logId: v.id("logs") },
