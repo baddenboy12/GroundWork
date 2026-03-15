@@ -56,7 +56,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+        <DialogContent className="w-[calc(100%-0.5rem)] max-w-[calc(100%-0.5rem)] sm:w-[92vw] sm:max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-0 rounded-xl">
           {/* Photo strip */}
           {photos.length > 0 && (
             <div
@@ -73,7 +73,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                   <button
                     key={url}
                     type="button"
-                    className="relative overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-video"
+                    className="relative overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-[4/3]"
                     onClick={() => setLightboxIndex(i)}
                   >
                     <img
@@ -83,7 +83,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     />
                     {isLast && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">+{photos.length - 6}</span>
+                        <span className="text-white text-xl font-bold">+{photos.length - 6}</span>
                       </div>
                     )}
                   </button>
@@ -92,7 +92,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </div>
           )}
 
-          <div className="p-6 space-y-5">
+          <div className="p-6 sm:p-8 space-y-6">
             {/* Header row */}
             <DialogHeader>
               <div className="flex items-start justify-between gap-3">
@@ -105,7 +105,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                   >
                     {CATEGORY_LABELS[log.category as LogCategory]}
                   </span>
-                  <DialogTitle className="text-xl leading-snug">{log.title}</DialogTitle>
+                  <DialogTitle className="text-2xl leading-snug">{log.title}</DialogTitle>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
