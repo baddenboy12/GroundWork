@@ -154,27 +154,22 @@ export default function LogList({ siteId, onBack }: Props) {
           {/* Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isMobile ? (
-              /* Mobile: icon-only new log + overflow menu */
-              <>
-                <Button size="icon" className="h-8 w-8" onClick={() => setCreateOpen(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={handleOpenExport}>
-                      {canExport
-                        ? <FileDown className="w-3.5 h-3.5 mr-2 text-primary" />
-                        : <Lock className="w-3.5 h-3.5 mr-2 text-primary" />}
-                      {canExport ? "Export logs…" : "Upgrade to export"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
+              /* Mobile: overflow menu only */
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleOpenExport}>
+                    {canExport
+                      ? <FileDown className="w-3.5 h-3.5 mr-2 text-primary" />
+                      : <Lock className="w-3.5 h-3.5 mr-2 text-primary" />}
+                    {canExport ? "Export logs…" : "Upgrade to export"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               /* Desktop: export button only */
               <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
