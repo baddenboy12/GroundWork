@@ -262,12 +262,18 @@ export const create = mutation({
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
 
-    // Enforce max 15 photos per entry
-    const MAX_PHOTOS_PER_ENTRY = 15;
-    if ((args.photos?.length ?? 0) > MAX_PHOTOS_PER_ENTRY) {
+    // Enforce per-tier photo limit per entry
+    const photoLimits: Record<string, number> = {
+      free: 0,
+      starter: 5,
+      pro: 5,
+      business: 20,
+    };
+    const maxPhotos = photoLimits[user.subscriptionTier ?? "free"] ?? 0;
+    if ((args.photos?.length ?? 0) > maxPhotos) {
       throw new ConvexError({
         code: "BAD_REQUEST",
-        message: `Maximum ${MAX_PHOTOS_PER_ENTRY} photos per entry.`,
+        message: `Maximum ${maxPhotos} photos per entry on your plan.`,
       });
     }
 
