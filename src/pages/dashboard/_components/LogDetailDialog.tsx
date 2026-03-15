@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogPortal,
 } from "@/components/ui/dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -68,15 +69,6 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             if (lightboxIndex !== null) e.preventDefault();
           }}
         >
-          {/* Lightbox — rendered inside DialogContent so Radix focus trap allows interaction */}
-          {lightboxIndex !== null && (
-            <PhotoLightbox
-              photos={photos}
-              initialIndex={lightboxIndex}
-              onClose={() => setLightboxIndex(null)}
-            />
-          )}
-
           {/* Photo strip */}
           {photos.length > 0 && (
             <div
@@ -203,6 +195,18 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </div>
           </div>
         </DialogContent>
+
+        {/* Lightbox inside DialogPortal — same Radix portal container keeps pointer-events
+            enabled and escapes the dialog's animation transform */}
+        {lightboxIndex !== null && (
+          <DialogPortal>
+            <PhotoLightbox
+              photos={photos}
+              initialIndex={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+            />
+          </DialogPortal>
+        )}
       </Dialog>
 
       <EditLogDialog
