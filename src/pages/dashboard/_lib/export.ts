@@ -998,7 +998,7 @@ async function renderReport(opts: RenderOpts): Promise<void> {
   const now = new Date();
   for (let i = 2; i <= total; i++) {
     doc.setPage(i);
-    drawRunningHeader(doc, pageW, theme, siteTitle, reportLabel, `Generated: ${format(now, "MMM d, yyyy")}`, margin);
+    drawRunningHeader(doc, pageW, theme, reportLabel, siteTitle, `Generated: ${format(now, "MMM d, yyyy")}`, margin);
     drawFooter(doc, pageW, pageH, i - 1, total - 1, theme, margin);
   }
 
