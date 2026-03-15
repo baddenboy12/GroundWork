@@ -184,4 +184,30 @@ http.route({
   }),
 });
 
+// ── POST /paypal-webhook ──────────────────────────────────────────────────────
+http.route({
+  path: "/paypal-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.text();
+
+    // Extract specific PayPal signature headers for verification
+    const h = request.headers;
+    const headers: Record<string, string> = {
+      "paypal-auth-algo": h.get("paypal-auth-algo") ?? "",
+      "paypal-cert-url": h.get("paypal-cert-url") ?? "",
+      "paypal-transmission-id": h.get("paypal-transmission-id") ?? "",
+      "paypal-transmission-sig": h.get("paypal-transmission-sig") ?? "",
+      "paypal-transmission-time": h.get("paypal-transmission-time") ?? "",
+    };
+
+    await ctx.runAction(internal.paypal.actions.processWebhook, {
+      body,
+      headers,
+    });
+
+    return new Response(null, { status: 200 });
+  }),
+});
+
 export default http;

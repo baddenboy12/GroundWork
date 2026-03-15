@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, internalQuery } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel.d.ts";
 
 export const updateCurrentUser = mutation({
   args: {},
@@ -96,5 +97,39 @@ export const _getById = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.userId);
+  },
+});
+
+/**
+ * Updates PayPal subscription data on a user.
+ * Pass subscriptionTier=null to leave the tier unchanged (e.g. when recording a pending approval).
+ */
+export const _setPaypalSubscription = internalMutation({
+  args: {
+    userId: v.id("users"),
+    paypalSubscriptionId: v.string(),
+    paypalSubscriptionStatus: v.string(),
+    subscriptionTier: v.union(
+      v.null(),
+      v.literal("free"),
+      v.literal("starter"),
+      v.literal("pro"),
+      v.literal("business")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    if (args.subscriptionTier !== null) {
+      await ctx.db.patch(userId, {
+        paypalSubscriptionId: args.paypalSubscriptionId,
+        paypalSubscriptionStatus: args.paypalSubscriptionStatus,
+        subscriptionTier: args.subscriptionTier,
+      });
+    } else {
+      await ctx.db.patch(userId, {
+        paypalSubscriptionId: args.paypalSubscriptionId,
+        paypalSubscriptionStatus: args.paypalSubscriptionStatus,
+      });
+    }
   },
 });

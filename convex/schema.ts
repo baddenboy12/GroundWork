@@ -15,7 +15,23 @@ export default defineSchema({
         v.literal("business")
       )
     ),
+    // PayPal subscription tracking
+    paypalSubscriptionId: v.optional(v.string()),
+    paypalSubscriptionStatus: v.optional(v.string()),
   }).index("by_token", ["tokenIdentifier"]),
+
+  // Stores PayPal product + plan IDs created via initializePayPalPlans
+  paypalPlans: defineTable({
+    tier: v.union(
+      v.literal("starter"),
+      v.literal("pro"),
+      v.literal("business")
+    ),
+    planId: v.string(),
+    productId: v.string(),
+  })
+    .index("by_tier", ["tier"])
+    .index("by_plan_id", ["planId"]),
 
   sites: defineTable({
     name: v.string(),

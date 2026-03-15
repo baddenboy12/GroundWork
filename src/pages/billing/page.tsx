@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import {
@@ -13,15 +13,27 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   Check,
   X,
   ArrowLeft,
   Zap,
-  Info,
+  CreditCard,
+  AlertTriangle,
+  RefreshCw,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ConvexError } from "convex/values";
 
 // Feature rows shown in the comparison table
 const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.free }[] = [
@@ -43,22 +55,139 @@ function featureValue(
   return <span className="font-medium">{String(v)}</span>;
 }
 
+/** Extract a readable error message from a ConvexError or generic Error */
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof ConvexError) {
+    const d = err.data as { message?: string } | undefined;
+    return d?.message ?? "An unexpected error occurred.";
+  }
+  if (err instanceof Error) return err.message;
+  return "An unexpected error occurred.";
+}
+
+function PayPalBadge({ status }: { status: string }) {
+  const isActive = status === "ACTIVE" || status === "APPROVED";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full",
+        isActive
+          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+          : "bg-muted text-muted-foreground"
+      )}
+    >
+      <CreditCard className="w-2.5 h-2.5" />
+      PayPal {isActive ? "Active" : status}
+    </span>
+  );
+}
+
 function BillingInner() {
   const { tier, isLoading } = useSubscription();
-  const setTier = useMutation(api.users.setSubscriptionTier);
-  const [pending, setPending] = useState<SubscriptionTier | null>(null);
+  const user = useQuery(api.users.getCurrentUser, {});
+  const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
+
+  const setTierManual = useMutation(api.users.setSubscriptionTier);
+  const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
+  const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
+  const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
+  const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
+
+  const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
+  const [syncPending, setSyncPending] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelPending, setCancelPending] = useState(false);
+  const [initPending, setInitPending] = useState(false);
   const navigate = useNavigate();
 
-  const handleSelect = async (newTier: SubscriptionTier) => {
-    if (newTier === tier) return;
-    setPending(newTier);
+  const isPayPalConfigured = paypalStatus?.isInitialized ?? false;
+  const hasActivePayPalSub =
+    user?.paypalSubscriptionStatus === "ACTIVE" ||
+    user?.paypalSubscriptionStatus === "APPROVED";
+
+  // Handle return from PayPal approval or cancellation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const subscriptionId = params.get("subscription_id");
+    const paypalCancelled = params.get("paypal_cancelled");
+
+    if (subscriptionId || paypalCancelled) {
+      // Clean up URL immediately
+      window.history.replaceState({}, "", "/billing");
+    }
+
+    if (paypalCancelled === "1") {
+      toast.info("PayPal subscription not completed — no changes made.");
+      return;
+    }
+
+    if (subscriptionId) {
+      setSyncPending(true);
+      syncSubscriptionAction({ subscriptionId })
+        .then(({ tier: newTier }) => {
+          const tierName =
+            TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier;
+          toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
+        })
+        .catch((err: unknown) => {
+          toast.error(extractErrorMessage(err));
+        })
+        .finally(() => setSyncPending(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePayPalSubscribe = async (newTier: SubscriptionTier) => {
+    if (newTier === "free" || newTier === tier) return;
+    setPaypalPending(newTier);
     try {
-      await setTier({ tier: newTier });
+      const origin = window.location.origin;
+      const { approvalUrl } = await createSubscriptionAction({
+        tier: newTier as "starter" | "pro" | "business",
+        returnUrl: `${origin}/billing`,
+        cancelUrl: `${origin}/billing?paypal_cancelled=1`,
+      });
+      window.location.href = approvalUrl;
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+      setPaypalPending(null);
+    }
+  };
+
+  const handleManualSelect = async (newTier: SubscriptionTier) => {
+    if (newTier === tier) return;
+    try {
+      await setTierManual({ tier: newTier });
       toast.success(`Switched to ${TIER_CONFIG[newTier].name} plan`);
     } catch {
       toast.error("Failed to update plan");
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelPending(true);
+    try {
+      await cancelSubscriptionAction();
+      toast.success("Subscription cancelled. You've been moved to the Free plan.");
+      setCancelDialogOpen(false);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
     } finally {
-      setPending(null);
+      setCancelPending(false);
+    }
+  };
+
+  const handleInitializePlans = async () => {
+    setInitPending(true);
+    try {
+      const result = await initializePlansAction();
+      toast.success(
+        `PayPal plans ready! Starter: ${result.planIds.starter ?? "–"}`
+      );
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setInitPending(false);
     }
   };
 
@@ -78,34 +207,58 @@ function BillingInner() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      {/* Sync loading overlay */}
+      {syncPending && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-8 flex flex-col items-center gap-4 shadow-xl">
+            <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+            <p className="font-semibold text-foreground">Verifying subscription…</p>
+            <p className="text-sm text-muted-foreground">This may take a few seconds.</p>
+          </div>
+        </div>
+      )}
 
+      <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
         {/* Current plan banner */}
         {!isLoading && (
-          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4">
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Current plan</p>
-                <p className="font-bold text-foreground text-lg">
-                  {TIER_CONFIG[tier].name}
-                  {tier === "free" && (
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">
-                      — free forever
-                    </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-foreground text-lg">
+                    {TIER_CONFIG[tier].name}
+                    {tier === "free" && (
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        — free forever
+                      </span>
+                    )}
+                  </p>
+                  {user?.paypalSubscriptionStatus && (
+                    <PayPalBadge status={user.paypalSubscriptionStatus} />
                   )}
-                </p>
+                </div>
               </div>
             </div>
-            {tier !== "free" && (
+            {hasActivePayPalSub && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground text-xs"
-                onClick={() => handleSelect("free")}
-                disabled={pending !== null}
+                onClick={() => setCancelDialogOpen(true)}
+              >
+                Cancel subscription
+              </Button>
+            )}
+            {!hasActivePayPalSub && tier !== "free" && !isPayPalConfigured && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground text-xs"
+                onClick={() => handleManualSelect("free")}
               >
                 Downgrade to Free
               </Button>
@@ -113,12 +266,46 @@ function BillingInner() {
           </div>
         )}
 
+        {/* PayPal not yet configured — admin setup */}
+        {!isPayPalConfigured && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Settings2 className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">PayPal not yet configured</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
+                  <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
+                  Secrets tab, then click Initialize.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={initPending}
+              onClick={handleInitializePlans}
+              className="shrink-0"
+            >
+              {initPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Initializing…
+                </>
+              ) : (
+                "Initialize PayPal"
+              )}
+            </Button>
+          </div>
+        )}
+
         {/* Plans grid */}
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Choose your plan</h2>
-          <p className="text-muted-foreground mb-8 flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5" />
-            Payment processing is coming soon — switching plans is free during the preview.
+          <p className="text-muted-foreground mb-8 text-sm">
+            {isPayPalConfigured
+              ? "Subscribe securely via PayPal. Cancel any time."
+              : "Initialize PayPal above to enable real payment processing."}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -127,6 +314,7 @@ function BillingInner() {
               const isCurrent = t === tier;
               const isUpgrade =
                 TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(tier);
+              const isPendingThis = paypalPending === t;
 
               return (
                 <div
@@ -169,7 +357,9 @@ function BillingInner() {
                   <ul className="space-y-1.5 flex-1">
                     <li className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {cfg.maxSites === null ? "Unlimited sites" : `Up to ${cfg.maxSites} sites`}
+                      {cfg.maxSites === null
+                        ? "Unlimited sites"
+                        : `Up to ${cfg.maxSites} sites`}
                     </li>
                     <li className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -177,45 +367,120 @@ function BillingInner() {
                         ? "Unlimited logs/site"
                         : `${cfg.maxLogsPerSite} logs/site`}
                     </li>
-                    <li className={cn("flex items-center gap-2 text-xs", cfg.photoAttachments ? "text-muted-foreground" : "text-muted-foreground/40")}>
-                      {cfg.photoAttachments
-                        ? <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                        : <X className="w-3.5 h-3.5 shrink-0" />}
+                    <li
+                      className={cn(
+                        "flex items-center gap-2 text-xs",
+                        cfg.photoAttachments
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/40"
+                      )}
+                    >
+                      {cfg.photoAttachments ? (
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      ) : (
+                        <X className="w-3.5 h-3.5 shrink-0" />
+                      )}
                       Photo attachments
                     </li>
-                    <li className={cn("flex items-center gap-2 text-xs", cfg.export ? "text-muted-foreground" : "text-muted-foreground/40")}>
-                      {cfg.export
-                        ? <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                        : <X className="w-3.5 h-3.5 shrink-0" />}
+                    <li
+                      className={cn(
+                        "flex items-center gap-2 text-xs",
+                        cfg.export ? "text-muted-foreground" : "text-muted-foreground/40"
+                      )}
+                    >
+                      {cfg.export ? (
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      ) : (
+                        <X className="w-3.5 h-3.5 shrink-0" />
+                      )}
                       PDF & CSV export
                     </li>
-                    <li className={cn("flex items-center gap-2 text-xs", cfg.integrations ? "text-muted-foreground" : "text-muted-foreground/40")}>
+                    <li
+                      className={cn(
+                        "flex items-center gap-2 text-xs",
+                        cfg.integrations
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/40"
+                      )}
+                    >
+                      {cfg.integrations ? (
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      ) : (
+                        <X className="w-3.5 h-3.5 shrink-0" />
+                      )}
                       {cfg.integrations
-                        ? <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                        : <X className="w-3.5 h-3.5 shrink-0" />}
-                      {cfg.integrations ? "Integrations & API" : "Integrations (coming soon)"}
+                        ? "Integrations & API"
+                        : "Integrations (coming soon)"}
                     </li>
                   </ul>
 
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    variant={isCurrent ? "secondary" : cfg.highlight ? "default" : "secondary"}
-                    disabled={isCurrent || pending !== null}
-                    onClick={() => handleSelect(t)}
-                  >
-                    {pending === t
-                      ? "Updating..."
-                      : isCurrent
-                      ? "Current plan"
-                      : isUpgrade
-                      ? `Upgrade to ${cfg.name}`
-                      : `Switch to ${cfg.name}`}
-                  </Button>
+                  {t === "free" ? (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={isCurrent ? "secondary" : "secondary"}
+                      disabled={isCurrent || hasActivePayPalSub}
+                      onClick={() => handleManualSelect("free")}
+                    >
+                      {isCurrent ? "Current plan" : "Downgrade"}
+                    </Button>
+                  ) : isPayPalConfigured ? (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={
+                        isCurrent
+                          ? "secondary"
+                          : cfg.highlight
+                          ? "default"
+                          : "secondary"
+                      }
+                      disabled={
+                        isCurrent ||
+                        paypalPending !== null ||
+                        (hasActivePayPalSub && !isCurrent)
+                      }
+                      onClick={() => handlePayPalSubscribe(t)}
+                    >
+                      {isPendingThis ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Redirecting…
+                        </>
+                      ) : isCurrent ? (
+                        "Current plan"
+                      ) : isUpgrade ? (
+                        <>
+                          <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                          Subscribe via PayPal
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                          Switch via PayPal
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={isCurrent ? "secondary" : "secondary"}
+                      disabled
+                    >
+                      PayPal required
+                    </Button>
+                  )}
                 </div>
               );
             })}
           </div>
+
+          {hasActivePayPalSub && (
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              To switch plans, cancel your current subscription first then subscribe to the new plan.
+            </p>
+          )}
         </div>
 
         {/* Feature comparison table */}
@@ -225,7 +490,9 @@ function BillingInner() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-5 py-3 text-muted-foreground font-medium w-1/3">Feature</th>
+                  <th className="text-left px-5 py-3 text-muted-foreground font-medium w-1/3">
+                    Feature
+                  </th>
                   {TIER_ORDER.map((t) => (
                     <th
                       key={t}
@@ -236,7 +503,9 @@ function BillingInner() {
                     >
                       {TIER_CONFIG[t].name}
                       {t === tier && (
-                        <span className="block text-[10px] font-normal text-primary/70">current</span>
+                        <span className="block text-[10px] font-normal text-primary/70">
+                          current
+                        </span>
                       )}
                     </th>
                   ))}
@@ -251,7 +520,9 @@ function BillingInner() {
                       i % 2 === 0 ? "bg-background" : "bg-muted/20"
                     )}
                   >
-                    <td className="px-5 py-3 text-muted-foreground font-medium">{row.label}</td>
+                    <td className="px-5 py-3 text-muted-foreground font-medium">
+                      {row.label}
+                    </td>
                     {TIER_ORDER.map((t) => (
                       <td key={t} className="px-4 py-3 text-center text-foreground">
                         {featureValue(row.key, t)}
@@ -265,7 +536,7 @@ function BillingInner() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground pb-8">
-          Payment processing is coming soon. Plans can be switched freely during the preview period.
+          Payments are processed securely via PayPal.
           <br />
           Questions? Contact us at{" "}
           <a href="mailto:hello@logvault.app" className="text-primary hover:underline">
@@ -273,6 +544,40 @@ function BillingInner() {
           </a>
         </p>
       </div>
+
+      {/* Cancel subscription confirmation dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Cancel subscription?
+            </DialogTitle>
+            <DialogDescription>
+              Your{" "}
+              <strong>{TIER_CONFIG[tier].name}</strong> plan will remain active
+              until the end of the current billing period, after which you will be
+              moved to the Free plan. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={cancelPending}
+            >
+              Keep plan
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelSubscription}
+              disabled={cancelPending}
+            >
+              {cancelPending ? "Cancelling…" : "Yes, cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

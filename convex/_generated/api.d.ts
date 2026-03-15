@@ -14,6 +14,8 @@ import type * as integrations_apiKeysActions from "../integrations/apiKeysAction
 import type * as integrations_webhookActions from "../integrations/webhookActions.js";
 import type * as integrations_webhooks from "../integrations/webhooks.js";
 import type * as logs from "../logs.js";
+import type * as paypal_actions from "../paypal/actions.js";
+import type * as paypal_plans from "../paypal/plans.js";
 import type * as sites from "../sites.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
@@ -31,6 +33,8 @@ declare const fullApi: ApiFromModules<{
   "integrations/webhookActions": typeof integrations_webhookActions;
   "integrations/webhooks": typeof integrations_webhooks;
   logs: typeof logs;
+  "paypal/actions": typeof paypal_actions;
+  "paypal/plans": typeof paypal_plans;
   sites: typeof sites;
   storage: typeof storage;
   users: typeof users;
