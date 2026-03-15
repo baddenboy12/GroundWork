@@ -138,6 +138,45 @@ export const _getById = internalQuery({
   },
 });
 
+// ── Internal: account stats for the REST API /stats endpoint ─────────────────
+export const _getStatsForApi = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+
+    const sites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
+      .collect();
+
+    let totalLogs = 0;
+    for (const site of sites) {
+      const logs = await ctx.db
+        .query("logs")
+        .withIndex("by_site", (q) => q.eq("siteId", site._id))
+        .collect();
+      totalLogs += logs.length;
+    }
+
+    const tier = user.subscriptionTier ?? "free";
+    const storageLimits: Record<string, number> = {
+      free: 0,
+      starter: 100 * 1024 * 1024,
+      pro: 1 * 1024 * 1024 * 1024,
+      business: 5 * 1024 * 1024 * 1024,
+    };
+
+    return {
+      totalSites: sites.length,
+      totalLogs,
+      storageUsedBytes: user.storageUsedBytes ?? 0,
+      storageLimitBytes: storageLimits[tier] ?? 0,
+      subscriptionTier: tier,
+    };
+  },
+});
+
 /**
  * Updates PayPal subscription data on a user.
  * Pass subscriptionTier=null to leave the tier unchanged (e.g. when recording a pending approval).

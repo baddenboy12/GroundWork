@@ -4,12 +4,12 @@ import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
-// Per-tier storage limits (bytes) — must match convex/r2/storageActions.ts
+// Per-tier storage limits (bytes) — must match subscription.ts
 const TIER_STORAGE_LIMITS: Record<string, number> = {
   free: 0,
-  starter: 2 * 1024 * 1024 * 1024,
-  pro: 5 * 1024 * 1024 * 1024,
-  business: 10 * 1024 * 1024 * 1024,
+  starter: 100 * 1024 * 1024,        // 100 MB
+  pro: 1 * 1024 * 1024 * 1024,        // 1 GB
+  business: 5 * 1024 * 1024 * 1024,   // 5 GB
 };
 
 const categoryValidator = v.union(
@@ -424,5 +424,129 @@ export const _createFromApi = internalMutation({
       siteName: site.name,
     });
     return logId;
+  },
+});
+
+// ── Internal: get a single log by ID, checking site ownership ────────────────
+export const _getByIdForApi = internalQuery({
+  args: { logId: v.id("logs"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const log = await ctx.db.get(args.logId);
+    if (!log) return null;
+    const site = await ctx.db.get(log.siteId);
+    if (!site || site.ownerId !== args.userId) return null;
+    return {
+      id: log._id,
+      siteId: log.siteId,
+      title: log.title,
+      content: log.content,
+      category: log.category,
+      loggedAt: log.loggedAt,
+      location: log.location ?? null,
+      latitude: log.latitude ?? null,
+      longitude: log.longitude ?? null,
+      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      createdAt: new Date(log._creationTime).toISOString(),
+    };
+  },
+});
+
+// ── Internal: update a log (used by REST API) ─────────────────────────────────
+export const _updateFromApi = internalMutation({
+  args: {
+    logId: v.id("logs"),
+    userId: v.id("users"),
+    title: v.optional(v.string()),
+    content: v.optional(v.string()),
+    category: v.optional(categoryValidator),
+    loggedAt: v.optional(v.string()),
+    location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const log = await ctx.db.get(args.logId);
+    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    const site = await ctx.db.get(log.siteId);
+    if (!site || site.ownerId !== args.userId) {
+      throw new ConvexError({ message: "Log not found or access denied", code: "NOT_FOUND" });
+    }
+    await ctx.db.patch(args.logId, {
+      ...(args.title !== undefined && { title: args.title.trim() }),
+      ...(args.content !== undefined && { content: args.content }),
+      ...(args.category !== undefined && { category: args.category }),
+      ...(args.loggedAt !== undefined && { loggedAt: args.loggedAt }),
+      ...(args.location !== undefined && { location: args.location }),
+      ...(args.latitude !== undefined && { latitude: args.latitude }),
+      ...(args.longitude !== undefined && { longitude: args.longitude }),
+    });
+  },
+});
+
+// ── Internal: delete a log (used by REST API) ─────────────────────────────────
+export const _deleteFromApi = internalMutation({
+  args: { logId: v.id("logs"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const log = await ctx.db.get(args.logId);
+    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    const site = await ctx.db.get(log.siteId);
+    if (!site || site.ownerId !== args.userId) {
+      throw new ConvexError({ message: "Log not found or access denied", code: "NOT_FOUND" });
+    }
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+
+    const photoBytes = log.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
+    if (photoBytes > 0) {
+      await ctx.db.patch(user._id, {
+        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - photoBytes),
+      });
+    }
+    if (log.photos?.length) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
+        keys: log.photos.map((p) => p.key),
+      });
+    }
+    if (log.photoStorageIds?.length) {
+      for (const storageId of log.photoStorageIds) {
+        await ctx.storage.delete(storageId);
+      }
+    }
+    await ctx.db.delete(args.logId);
+  },
+});
+
+// ── Internal: full-text search within a site for API ─────────────────────────
+export const _searchForApi = internalQuery({
+  args: {
+    siteId: v.id("sites"),
+    userId: v.id("users"),
+    q: v.string(),
+    category: v.optional(categoryValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.userId) return null;
+    const results = await ctx.db
+      .query("logs")
+      .withSearchIndex("search_title", (q) => {
+        const base = q.search("title", args.q).eq("siteId", args.siteId);
+        return args.category ? base.eq("category", args.category) : base;
+      })
+      .take(Math.min(args.limit ?? 50, 100));
+    return results.map((log) => ({
+      id: log._id,
+      siteId: log.siteId,
+      title: log.title,
+      content: log.content,
+      category: log.category,
+      loggedAt: log.loggedAt,
+      location: log.location ?? null,
+      latitude: log.latitude ?? null,
+      longitude: log.longitude ?? null,
+      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      createdAt: new Date(log._creationTime).toISOString(),
+    }));
   },
 });

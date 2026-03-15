@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query, internalQuery } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 export const list = query({
@@ -193,6 +193,111 @@ export const remove = mutation({
       });
     }
 
+    await ctx.db.delete(args.siteId);
+  },
+});
+
+// ── Internal: get a single site by ID, checking ownership ────────────────────
+export const _getByIdForApi = internalQuery({
+  args: { siteId: v.id("sites"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.userId) return null;
+    return site;
+  },
+});
+
+// ── Internal: create a site (used by REST API) ────────────────────────────────
+export const _createFromApi = internalMutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const trimmedName = args.name.trim();
+    if (!trimmedName) throw new ConvexError({ message: "Site name is required", code: "BAD_REQUEST" });
+    return await ctx.db.insert("sites", {
+      name: trimmedName,
+      description: args.description,
+      location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      ownerId: args.userId,
+    });
+  },
+});
+
+// ── Internal: update a site (used by REST API) ────────────────────────────────
+export const _updateFromApi = internalMutation({
+  args: {
+    siteId: v.id("sites"),
+    userId: v.id("users"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.userId) {
+      throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    }
+    await ctx.db.patch(args.siteId, {
+      ...(args.name !== undefined && { name: args.name.trim() }),
+      ...(args.description !== undefined && { description: args.description }),
+      ...(args.location !== undefined && { location: args.location }),
+      ...(args.latitude !== undefined && { latitude: args.latitude }),
+      ...(args.longitude !== undefined && { longitude: args.longitude }),
+    });
+  },
+});
+
+// ── Internal: delete a site and all its logs (used by REST API) ───────────────
+export const _deleteFromApi = internalMutation({
+  args: { siteId: v.id("sites"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.userId) {
+      throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    }
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+      .collect();
+
+    let totalFreedBytes = 0;
+    const allR2Keys: string[] = [];
+
+    for (const log of logs) {
+      if (log.photos?.length) {
+        for (const photo of log.photos) {
+          allR2Keys.push(photo.key);
+          totalFreedBytes += photo.bytes;
+        }
+      }
+      if (log.photoStorageIds?.length) {
+        for (const storageId of log.photoStorageIds) {
+          await ctx.storage.delete(storageId);
+        }
+      }
+      await ctx.db.delete(log._id);
+    }
+
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: allR2Keys });
+    }
+    if (totalFreedBytes > 0) {
+      await ctx.db.patch(user._id, {
+        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - totalFreedBytes),
+      });
+    }
     await ctx.db.delete(args.siteId);
   },
 });
