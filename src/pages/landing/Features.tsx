@@ -2,12 +2,10 @@ import { motion } from "motion/react";
 import {
   Camera,
   MapPin,
-  Users,
   FileDown,
   Tag,
   Search,
   ShieldCheck,
-  Bell,
 } from "lucide-react";
 
 const features = [
@@ -30,12 +28,6 @@ const features = [
       "Create your own log types — inspections, maintenance, incidents, audits — and filter by them instantly.",
   },
   {
-    icon: Users,
-    title: "Team Collaboration",
-    description:
-      "Invite your whole team. Everyone logs from their own account; managers get a full unified view.",
-  },
-  {
     icon: FileDown,
     title: "Export Reports",
     description:
@@ -46,12 +38,6 @@ const features = [
     title: "Powerful Search & Filters",
     description:
       "Find any entry instantly by date, site, category, keyword, or author — no scrolling through endless notes.",
-  },
-  {
-    icon: Bell,
-    title: "Email Alerts",
-    description:
-      "Set up notifications for critical log entries. Keep stakeholders in the loop without manual follow-ups.",
   },
   {
     icon: ShieldCheck,
