@@ -176,16 +176,11 @@ export default function LogList({ siteId, onBack }: Props) {
                 </DropdownMenu>
               </>
             ) : (
-              /* Desktop: export button + new log button */
-              <>
-                <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
-                  {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                  Export
-                </Button>
-                <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
-                  <Plus className="w-4 h-4" /> New log
-                </Button>
-              </>
+              /* Desktop: export button only */
+              <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
+                {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                Export
+              </Button>
             )}
           </div>
         </div>
