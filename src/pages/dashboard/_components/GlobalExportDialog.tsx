@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
-  FileText, FileDown, TableProperties, Calendar, Tag, Loader2,
+  FileText, FileDown, Calendar, Tag, Loader2,
   MapPin, CheckSquare, Square, Search, ListChecks, Filter,
   X, Palette, ChevronDown,
 } from "lucide-react";
@@ -32,7 +32,6 @@ import {
 import { cn } from "@/lib/utils.ts";
 import {
   exportGlobalCSV,
-  exportGlobalPDF,
   exportGlobalFullReportPDF,
   THEMES,
   DEFAULT_THEME_ID,
@@ -43,7 +42,7 @@ import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { format } from "date-fns";
 import ThemePicker from "./ThemePicker.tsx";
 
-type ExportFormat = "full-pdf" | "table-pdf" | "csv";
+type ExportFormat = "full-pdf" | "csv";
 type SelectionMode = "filter" | "individual";
 
 const FORMAT_OPTIONS: {
@@ -59,13 +58,6 @@ const FORMAT_OPTIONS: {
     description: "Detailed PDF with full notes",
     icon: <FileText className="w-5 h-5" />,
     accent: "text-red-400 bg-red-500/10 border-red-500/30",
-  },
-  {
-    id: "table-pdf",
-    label: "Summary Table",
-    description: "Compact PDF overview",
-    icon: <TableProperties className="w-5 h-5" />,
-    accent: "text-orange-400 bg-orange-500/10 border-orange-500/30",
   },
   {
     id: "csv",
@@ -270,9 +262,6 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
       if (format_ === "full-pdf") {
         await exportGlobalFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
-      } else if (format_ === "table-pdf") {
-        exportGlobalPDF(opts);
-        toast.success(`Summary PDF exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else {
         exportGlobalCSV(opts);
         toast.success(`CSV exported — ${count} ${count === 1 ? "entry" : "entries"}`);
@@ -324,7 +313,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
           {/* Format */}
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground uppercase tracking-wide">Format</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {FORMAT_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}

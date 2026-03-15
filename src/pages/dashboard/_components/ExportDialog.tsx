@@ -3,8 +3,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
-  FileText, FileDown, TableProperties, Calendar, Tag, Loader2,
-  Palette, ChevronDown, Check,
+  FileText, FileDown, Calendar, Tag, Loader2,
+  Palette, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -30,14 +30,14 @@ import {
 } from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
-  exportCSV, exportPDF, exportFullReportPDF,
+  exportCSV, exportFullReportPDF,
   THEMES, DEFAULT_THEME_ID, type Theme,
 } from "../_lib/export.ts";
 import { CATEGORY_LABELS } from "../_lib/constants.ts";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import ThemePicker from "./ThemePicker.tsx";
 
-type ExportFormat = "full-pdf" | "table-pdf" | "csv";
+type ExportFormat = "full-pdf" | "csv";
 
 const FORMAT_OPTIONS: {
   id: ExportFormat;
@@ -52,13 +52,6 @@ const FORMAT_OPTIONS: {
     description: "Detailed PDF with full notes per entry",
     icon: <FileText className="w-5 h-5" />,
     accent: "text-red-400 bg-red-500/10 border-red-500/30",
-  },
-  {
-    id: "table-pdf",
-    label: "Summary Table",
-    description: "Compact PDF table overview",
-    icon: <TableProperties className="w-5 h-5" />,
-    accent: "text-orange-400 bg-orange-500/10 border-orange-500/30",
   },
   {
     id: "csv",
@@ -147,9 +140,6 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
       if (format === "full-pdf") {
         await exportFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
-      } else if (format === "table-pdf") {
-        exportPDF(opts);
-        toast.success(`Summary PDF exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else {
         exportCSV(opts);
         toast.success(`CSV exported — ${count} ${count === 1 ? "entry" : "entries"}`);
@@ -171,7 +161,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
           {/* Format selector */}
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground uppercase tracking-wide">Format</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {FORMAT_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
