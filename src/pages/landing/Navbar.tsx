@@ -12,7 +12,7 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img
-            src="https://cdn.hercules.app/file_QJ5FZNPRpRspwQGAwaCsQkQT"
+            src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
             alt="SiteScribe"
             className="w-8 h-8 rounded-lg"
           />

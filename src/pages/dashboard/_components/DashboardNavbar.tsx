@@ -52,7 +52,7 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
           onClick={() => navigate("/")}
         >
           <img
-            src="https://cdn.hercules.app/file_QJ5FZNPRpRspwQGAwaCsQkQT"
+            src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
             alt="SiteScribe"
             className="w-7 h-7 rounded-md"
           />
