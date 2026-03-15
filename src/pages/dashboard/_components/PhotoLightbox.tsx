@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -47,9 +48,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
     touchStartY.current = null;
   };
 
-  // Rendered inline inside DialogContent — position:fixed escapes overflow and
-  // stays within Radix's focus trap so buttons remain interactive.
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] bg-black/92 flex items-center justify-center select-none"
       onClick={onClose}
@@ -112,6 +111,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
