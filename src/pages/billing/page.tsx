@@ -243,7 +243,8 @@ function BillingInner() {
                       </span>
                     )}
                   </p>
-                  {user?.paypalSubscriptionStatus && (
+                  {(user?.paypalSubscriptionStatus === "ACTIVE" ||
+                    user?.paypalSubscriptionStatus === "APPROVED") && (
                     <PayPalBadge status={user.paypalSubscriptionStatus} />
                   )}
                 </div>
