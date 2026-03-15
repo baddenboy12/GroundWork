@@ -57,7 +57,7 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
             className="w-7 h-7 rounded-md"
           />
           <span className="font-bold text-foreground hidden sm:block">
-            Log<span className="text-primary">Vault</span>
+            Ground<span className="text-primary">Work</span>
           </span>
         </button>
       </div>
