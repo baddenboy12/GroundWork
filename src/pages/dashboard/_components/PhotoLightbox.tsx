@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -20,9 +21,9 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
     return () => window.removeEventListener("keydown", handleKey);
   }, [photos.length, onClose]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center"
       onClick={onClose}
     >
       {/* Close */}
@@ -67,6 +68,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
           <ChevronRight className="w-5 h-5" />
         </button>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

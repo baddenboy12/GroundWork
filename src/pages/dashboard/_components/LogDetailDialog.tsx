@@ -56,7 +56,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[92vh] overflow-y-auto p-0">
           {/* Photo strip */}
           {photos.length > 0 && (
             <div
@@ -149,7 +149,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </DialogHeader>
 
             {/* Content */}
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <p className="text-base text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {log.content}
             </p>
 
