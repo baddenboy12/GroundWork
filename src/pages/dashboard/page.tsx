@@ -73,7 +73,7 @@ function DashboardInner() {
           />
           <main className="flex-1 overflow-hidden">
             {selectedSiteId ? (
-              <LogList siteId={selectedSiteId} />
+              <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
             ) : (
               <DashboardHome
                 onNewLog={() => setGlobalCreateOpen(true)}

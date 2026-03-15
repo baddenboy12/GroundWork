@@ -124,8 +124,8 @@ export default function LogList({ siteId, onBack }: Props) {
 
         {/* Top row */}
         <div className="flex items-center gap-2">
-          {/* Back button (mobile) */}
-          {isMobile && onBack && (
+          {/* Back button */}
+          {onBack && (
             <Button
               variant="ghost"
               size="icon"
