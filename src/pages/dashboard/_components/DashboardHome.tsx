@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
-import { Clock, MapPin, ImageIcon, Plus, ClipboardList } from "lucide-react";
+import { Clock, MapPin, ImageIcon, ClipboardList } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
@@ -26,14 +26,9 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Your latest log entries across all sites</p>
-        </div>
-        <Button size="sm" onClick={onNewLog} className="shrink-0">
-          <Plus className="w-4 h-4 mr-1.5" /> New log
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Your latest log entries across all sites</p>
       </div>
 
       {/* Grid */}
