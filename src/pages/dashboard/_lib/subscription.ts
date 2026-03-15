@@ -13,6 +13,8 @@ export type TierConfig = {
   maxLogsPerSite: number | null;
   /** Photo attachments on log entries */
   photoAttachments: boolean;
+  /** Storage limit in bytes (0 = no photos) */
+  storageLimitBytes: number;
   /** PDF/CSV export */
   export: boolean;
   /** Third-party integrations (API, webhooks) */
@@ -30,6 +32,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: 2,
     maxLogsPerSite: 10,
     photoAttachments: false,
+    storageLimitBytes: 0,
     export: false,
     integrations: false,
   },
@@ -41,6 +44,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: 15,
     maxLogsPerSite: null,
     photoAttachments: true,
+    storageLimitBytes: 2 * 1024 * 1024 * 1024, // 2 GB
     export: false,
     integrations: false,
   },
@@ -52,6 +56,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
+    storageLimitBytes: 5 * 1024 * 1024 * 1024, // 5 GB
     export: true,
     integrations: false,
     highlight: true,
@@ -64,6 +69,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
+    storageLimitBytes: 10 * 1024 * 1024 * 1024, // 10 GB
     export: true,
     integrations: true,
   },

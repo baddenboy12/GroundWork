@@ -24,18 +24,12 @@ import {
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import { findFuzzyMatches } from "../_lib/fuzzy-match.ts";
-import PhotoUploader from "./PhotoUploader.tsx";
+import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
 import LocationPicker from "./LocationPicker.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { AlertTriangle, Lock, MapPin, Plus } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
-
-type UploadedPhoto = {
-  storageId: Id<"_storage">;
-  previewUrl: string;
-  fileName: string;
-};
 
 type Props = {
   open: boolean;
@@ -66,7 +60,7 @@ export default function CreateLogDialog({
   const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [location, setLocation] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [photos, setPhotos] = useState<R2Photo[]>([]);
   const [loading, setLoading] = useState(false);
   const [photoUpgradeOpen, setPhotoUpgradeOpen] = useState(false);
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
@@ -125,7 +119,9 @@ export default function CreateLogDialog({
         content: content.trim(),
         category,
         loggedAt: new Date(loggedAt).toISOString(),
-        photoStorageIds: photos.length > 0 ? photos.map((p) => p.storageId) : undefined,
+        photos: photos.length > 0
+          ? photos.map((p) => ({ url: p.url, key: p.key, bytes: p.bytes }))
+          : undefined,
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,

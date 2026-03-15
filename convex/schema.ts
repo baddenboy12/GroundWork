@@ -18,6 +18,8 @@ export default defineSchema({
     // PayPal subscription tracking
     paypalSubscriptionId: v.optional(v.string()),
     paypalSubscriptionStatus: v.optional(v.string()),
+    // R2 photo storage usage tracking (bytes)
+    storageUsedBytes: v.optional(v.number()),
   }).index("by_token", ["tokenIdentifier"]),
 
   // Stores PayPal product + plan IDs created via initializePayPalPlans
@@ -87,8 +89,18 @@ export default defineSchema({
     // GPS coordinates (stored separately for map display)
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
-    // Convex storage IDs for attached photos
+    // Legacy: Convex built-in file storage IDs (kept for backward compatibility)
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    // R2 cloud storage photos (url, key, bytes per photo)
+    photos: v.optional(
+      v.array(
+        v.object({
+          url: v.string(),
+          key: v.string(),
+          bytes: v.number(),
+        })
+      )
+    ),
   })
     .index("by_site", ["siteId"])
     .index("by_site_and_category", ["siteId", "category"])

@@ -78,8 +78,8 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,
-        // Preserve existing photo storage IDs
-        photoStorageIds: log.photoStorageIds,
+        // Preserve existing R2 photos (photo editing not supported in this dialog)
+        photos: log.photos,
       });
       toast.success("Log entry updated");
       onClose();

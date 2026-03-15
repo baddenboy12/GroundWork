@@ -4,6 +4,14 @@ import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
+// Per-tier storage limits (bytes) — must match convex/r2/storageActions.ts
+const TIER_STORAGE_LIMITS: Record<string, number> = {
+  free: 0,
+  starter: 2 * 1024 * 1024 * 1024,
+  pro: 5 * 1024 * 1024 * 1024,
+  business: 10 * 1024 * 1024 * 1024,
+};
+
 const categoryValidator = v.union(
   v.literal("inspection"),
   v.literal("maintenance"),
@@ -11,6 +19,37 @@ const categoryValidator = v.union(
   v.literal("audit"),
   v.literal("general")
 );
+
+// Validator for a single R2 photo object
+const photoValidator = v.object({
+  url: v.string(),
+  key: v.string(),
+  bytes: v.number(),
+});
+
+/** Resolve photo URLs from a log — uses R2 `photos` if present, falls back to legacy Convex storage */
+async function resolvePhotoUrls(
+  log: {
+    photos?: Array<{ url: string; key: string; bytes: number }>;
+    photoStorageIds?: Id<"_storage">[];
+  },
+  storageGetUrl: (id: Id<"_storage">) => Promise<string | null>
+): Promise<string[]> {
+  // R2 photos take priority
+  if (log.photos?.length) {
+    return log.photos.map((p) => p.url);
+  }
+  // Legacy Convex storage fallback
+  if (log.photoStorageIds?.length) {
+    const urls = await Promise.all(
+      log.photoStorageIds.map((id) => storageGetUrl(id))
+    );
+    return urls.filter((u): u is string => u !== null);
+  }
+  return [];
+}
+
+// ── Queries ──────────────────────────────────────────────────────────────────
 
 export const listBySite = query({
   args: {
@@ -22,7 +61,6 @@ export const listBySite = query({
     if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
     const site = await ctx.db.get(args.siteId);
-    // Site may have just been deleted — return empty rather than crashing
     if (!site) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
 
     const results = await ctx.db
@@ -31,22 +69,13 @@ export const listBySite = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    // Enrich with author names and resolved photo URLs
     return {
       ...results,
       page: await Promise.all(
         results.page.map(async (log) => {
           const author = await ctx.db.get(log.authorId);
-          const photoUrls = log.photoStorageIds
-            ? await Promise.all(
-                log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
-              )
-            : [];
-          return {
-            ...log,
-            authorName: author?.name ?? "Unknown",
-            photoUrls: photoUrls.filter((url): url is string => url !== null),
-          };
+          const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+          return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
         })
       ),
     };
@@ -74,16 +103,8 @@ export const searchBySite = query({
     return await Promise.all(
       results.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = log.photoStorageIds
-          ? await Promise.all(
-              log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
-            )
-          : [];
-        return {
-          ...log,
-          authorName: author?.name ?? "Unknown",
-          photoUrls: photoUrls.filter((url): url is string => url !== null),
-        };
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
       })
     );
   },
@@ -97,18 +118,12 @@ export const get = query({
     const log = await ctx.db.get(args.logId);
     if (!log) return null;
     const author = await ctx.db.get(log.authorId);
-    const photoUrls = log.photoStorageIds
-      ? await Promise.all(
-          log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
-        )
-      : [];
-    return {
-      ...log,
-      authorName: author?.name ?? "Unknown",
-      photoUrls: photoUrls.filter((url): url is string => url !== null),
-    };
+    const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+    return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
   },
 });
+
+// ── Mutations ────────────────────────────────────────────────────────────────
 
 export const create = mutation({
   args: {
@@ -117,7 +132,8 @@ export const create = mutation({
     content: v.string(),
     category: categoryValidator,
     loggedAt: v.string(),
-    photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    // R2 photos
+    photos: v.optional(v.array(photoValidator)),
     location: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -132,6 +148,20 @@ export const create = mutation({
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+
+    // Enforce storage quota
+    const newPhotoBytes = args.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
+    if (newPhotoBytes > 0) {
+      const used = user.storageUsedBytes ?? 0;
+      const limit = TIER_STORAGE_LIMITS[user.subscriptionTier ?? "free"] ?? 0;
+      if (used + newPhotoBytes > limit) {
+        throw new ConvexError({
+          code: "FORBIDDEN",
+          message: `Storage limit exceeded. You have used all available storage on your plan.`,
+        });
+      }
+    }
+
     const logId = await ctx.db.insert("logs", {
       siteId: args.siteId,
       title: args.title,
@@ -142,16 +172,23 @@ export const create = mutation({
       location: args.location,
       latitude: args.latitude,
       longitude: args.longitude,
-      photoStorageIds: args.photoStorageIds,
+      photos: args.photos,
     });
+
+    // Update per-user storage counter
+    if (newPhotoBytes > 0) {
+      await ctx.db.patch(user._id, {
+        storageUsedBytes: (user.storageUsedBytes ?? 0) + newPhotoBytes,
+      });
+    }
+
     // Fire webhook delivery for Business-plan users
     if ((user.subscriptionTier ?? "free") === "business") {
-      const site = await ctx.db.get(args.siteId);
       await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
         userId: user._id,
         event: "log.created",
         logId,
-        siteName: site?.name ?? "",
+        siteName: site.name,
       });
     }
     return logId;
@@ -165,7 +202,8 @@ export const update = mutation({
     content: v.string(),
     category: categoryValidator,
     loggedAt: v.string(),
-    photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    // R2 photos (preserved from existing log — edit dialog doesn't allow photo changes)
+    photos: v.optional(v.array(photoValidator)),
     location: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -189,7 +227,7 @@ export const update = mutation({
       location: args.location,
       latitude: args.latitude,
       longitude: args.longitude,
-      photoStorageIds: args.photoStorageIds,
+      photos: args.photos,
     });
   },
 });
@@ -207,21 +245,39 @@ export const remove = mutation({
     const log = await ctx.db.get(args.logId);
     if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
-    // Delete associated storage files
-    if (log.photoStorageIds) {
+
+    // Decrement storage counter for R2 photos
+    const photoBytes = log.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
+    if (photoBytes > 0) {
+      await ctx.db.patch(user._id, {
+        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - photoBytes),
+      });
+    }
+
+    // Schedule R2 deletion (best-effort, non-blocking)
+    if (log.photos?.length) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
+        keys: log.photos.map((p) => p.key),
+      });
+    }
+
+    // Legacy Convex storage cleanup
+    if (log.photoStorageIds?.length) {
       for (const storageId of log.photoStorageIds) {
         await ctx.storage.delete(storageId);
       }
     }
+
     await ctx.db.delete(args.logId);
   },
 });
 
-// ── Public: fetch logs for export (up to 500, date-range + category filter) ──
+// ── Public: fetch logs for export ────────────────────────────────────────────
+
 export const listBySiteForExport = query({
   args: {
     siteId: v.id("sites"),
-    dateFrom: v.optional(v.string()),  // ISO date string "YYYY-MM-DD"
+    dateFrom: v.optional(v.string()),
     dateTo: v.optional(v.string()),
     category: v.optional(categoryValidator),
   },
@@ -252,22 +308,15 @@ export const listBySiteForExport = query({
     return await Promise.all(
       filtered.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = log.photoStorageIds
-          ? await Promise.all(
-              log.photoStorageIds.map((id: Id<"_storage">) => ctx.storage.getUrl(id))
-            )
-          : [];
-        return {
-          ...log,
-          authorName: author?.name ?? "Unknown",
-          photoUrls: photoUrls.filter((url): url is string => url !== null),
-        };
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
       })
     );
   },
 });
 
-// ── Internal: get a log by ID for webhook delivery (no auth needed) ──────────
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
 export const _getForWebhook = internalQuery({
   args: { logId: v.id("logs") },
   handler: async (ctx, args) => {
@@ -275,7 +324,6 @@ export const _getForWebhook = internalQuery({
   },
 });
 
-// ── Internal: list logs for a site (used by REST API) ────────────────────────
 export const _listBySiteForApi = internalQuery({
   args: {
     siteId: v.id("sites"),
@@ -283,7 +331,6 @@ export const _listBySiteForApi = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Verify site ownership
     const site = await ctx.db.get(args.siteId);
     if (!site || site.ownerId !== args.userId) return null;
 
@@ -308,7 +355,6 @@ export const _listBySiteForApi = internalQuery({
   },
 });
 
-// ── Internal: create a log via the REST API (no OIDC, uses authorId directly) ─
 export const _createFromApi = internalMutation({
   args: {
     siteId: v.id("sites"),
@@ -343,7 +389,6 @@ export const _createFromApi = internalMutation({
       latitude: args.latitude,
       longitude: args.longitude,
     });
-    // Schedule webhook delivery
     await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
       userId: args.authorId,
       event: "log.created",

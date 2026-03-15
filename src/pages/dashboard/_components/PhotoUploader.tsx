@@ -1,25 +1,27 @@
 import { useRef, useState } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
-import type { Id } from "@/convex/_generated/dataModel.d.ts";
+import { ConvexError } from "convex/values";
 
-type UploadedPhoto = {
-  storageId: Id<"_storage">;
-  previewUrl: string;
+export type R2Photo = {
+  url: string;       // R2 public URL (persisted to DB)
+  key: string;       // R2 object key
+  bytes: number;     // file size in bytes
+  previewUrl: string; // local blob URL for immediate preview
   fileName: string;
 };
 
 type Props = {
-  photos: UploadedPhoto[];
-  onChange: (photos: UploadedPhoto[]) => void;
+  photos: R2Photo[];
+  onChange: (photos: R2Photo[]) => void;
   maxPhotos?: number;
 };
 
 export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Props) {
-  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+  const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,22 +40,40 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     const toUpload = fileArray.slice(0, remaining);
     setUploading(true);
     try {
-      const uploaded: UploadedPhoto[] = [];
+      const uploaded: R2Photo[] = [];
       for (const file of toUpload) {
-        const uploadUrl = await generateUploadUrl();
+        // 1. Get presigned PUT URL from backend
+        const { uploadUrl, key, publicUrl } = await getUploadUrl({
+          fileName: file.name,
+          contentType: file.type,
+          bytes: file.size,
+        });
+
+        // 2. Upload directly to R2
         const res = await fetch(uploadUrl, {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": file.type },
           body: file,
         });
-        if (!res.ok) throw new Error("Upload failed");
-        const { storageId } = await res.json() as { storageId: Id<"_storage"> };
-        const previewUrl = URL.createObjectURL(file);
-        uploaded.push({ storageId, previewUrl, fileName: file.name });
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+
+        // 3. Build photo object
+        uploaded.push({
+          url: publicUrl,
+          key,
+          bytes: file.size,
+          previewUrl: URL.createObjectURL(file),
+          fileName: file.name,
+        });
       }
       onChange([...photos, ...uploaded]);
-    } catch {
-      toast.error("Failed to upload photo(s)");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string };
+        toast.error(d.message ?? "Upload failed");
+      } else {
+        toast.error("Failed to upload photo(s). Check your R2 configuration.");
+      }
     } finally {
       setUploading(false);
     }
@@ -73,8 +93,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
   };
 
   const removePhoto = (index: number) => {
-    const updated = photos.filter((_, i) => i !== index);
-    onChange(updated);
+    onChange(photos.filter((_, i) => i !== index));
   };
 
   return (
@@ -104,7 +123,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
           {uploading ? (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm">Uploading...</span>
+              <span className="text-sm">Uploading to cloud storage…</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -125,7 +144,10 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {photos.map((photo, i) => (
-            <div key={photo.storageId} className="relative group rounded-lg overflow-hidden aspect-square bg-muted">
+            <div
+              key={photo.key}
+              className="relative group rounded-lg overflow-hidden aspect-square bg-muted"
+            >
               <img
                 src={photo.previewUrl}
                 alt={photo.fileName}

@@ -31,15 +31,18 @@ import {
   AlertTriangle,
   RefreshCw,
   Settings2,
+  HardDrive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
+import { formatBytes } from "@/lib/utils.ts";
 
 // Feature rows shown in the comparison table
 const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.free }[] = [
   { label: "Sites", key: "maxSites" },
   { label: "Logs per site", key: "maxLogsPerSite" },
   { label: "Photo attachments", key: "photoAttachments" },
+  { label: "Photo storage", key: "storageLimitBytes" },
   { label: "PDF & CSV export", key: "export" },
   { label: "Integrations & API", key: "integrations" },
 ];
@@ -49,6 +52,11 @@ function featureValue(
   tier: SubscriptionTier
 ): React.ReactNode {
   const v = TIER_CONFIG[tier][key];
+  if (key === "storageLimitBytes") {
+    const bytes = v as number;
+    if (bytes === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
+    return <span className="font-medium">{formatBytes(bytes)}</span>;
+  }
   if (v === true) return <Check className="w-4 h-4 text-primary mx-auto" />;
   if (v === false) return <X className="w-4 h-4 text-muted-foreground/40 mx-auto" />;
   if (v === null) return <span className="text-primary font-medium">Unlimited</span>;
@@ -266,6 +274,54 @@ function BillingInner() {
           </div>
         )}
 
+        {/* Storage usage */}
+        {!isLoading && tier !== "free" && (
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Photo storage</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {formatBytes(user?.storageUsedBytes ?? 0)} /{" "}
+                {formatBytes(TIER_CONFIG[tier].storageLimitBytes)}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className={cn(
+                  "h-2 rounded-full transition-all",
+                  (() => {
+                    const pct =
+                      TIER_CONFIG[tier].storageLimitBytes > 0
+                        ? ((user?.storageUsedBytes ?? 0) /
+                            TIER_CONFIG[tier].storageLimitBytes) *
+                          100
+                        : 0;
+                    if (pct > 90) return "bg-destructive";
+                    if (pct > 70) return "bg-amber-500";
+                    return "bg-primary";
+                  })()
+                )}
+                style={{
+                  width: `${Math.min(
+                    100,
+                    TIER_CONFIG[tier].storageLimitBytes > 0
+                      ? ((user?.storageUsedBytes ?? 0) /
+                          TIER_CONFIG[tier].storageLimitBytes) *
+                          100
+                      : 0
+                  )}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used by photo attachments stored in Cloudflare R2.
+            </p>
+          </div>
+        )}
+
         {/* PayPal not yet configured — admin setup */}
         {!isPayPalConfigured && (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 flex items-center justify-between gap-4 flex-wrap">
@@ -367,20 +423,15 @@ function BillingInner() {
                         ? "Unlimited logs/site"
                         : `${cfg.maxLogsPerSite} logs/site`}
                     </li>
-                    <li
-                      className={cn(
-                        "flex items-center gap-2 text-xs",
-                        cfg.photoAttachments
-                          ? "text-muted-foreground"
-                          : "text-muted-foreground/40"
-                      )}
-                    >
+                    <li className={cn("flex items-center gap-2 text-xs", cfg.photoAttachments ? "text-muted-foreground" : "text-muted-foreground/40")}>
                       {cfg.photoAttachments ? (
                         <Check className="w-3.5 h-3.5 text-primary shrink-0" />
                       ) : (
                         <X className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      Photo attachments
+                      {cfg.storageLimitBytes > 0
+                        ? `${formatBytes(cfg.storageLimitBytes)} photo storage`
+                        : "Photo attachments"}
                     </li>
                     <li
                       className={cn(
