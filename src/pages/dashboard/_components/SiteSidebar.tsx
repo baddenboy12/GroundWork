@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { MapPin, Plus, Settings, Trash2, ChevronRight, Lock } from "lucide-react";
+import { MapPin, Plus, Settings, Trash2, ChevronRight, Lock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -20,6 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover.tsx";
 import { toast } from "sonner";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
@@ -77,13 +82,56 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
     )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-        <div>
+        <div className="flex items-center gap-1.5">
           <span className="text-sm font-semibold text-foreground">Sites</span>
           {config.maxSites !== null && (
-            <span className="ml-1.5 text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {siteCount}/{config.maxSites}
             </span>
           )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Site naming help">
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="right" align="start" className="w-72 p-4 space-y-3 text-sm">
+              <p className="font-semibold text-foreground">How Sites Work</p>
+
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Site name = grouping key</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  All log entries with the same site name are grouped under one site. Changing a site&apos;s name renames it for every log entry under it instantly.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Smart features that help</p>
+                <ul className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
+                  <li className="flex gap-2">
+                    <span className="text-primary shrink-0">→</span>
+                    <span><strong className="text-foreground">Auto-create on first log</strong> — type a new site name when writing a log entry and the site is created for you automatically.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary shrink-0">→</span>
+                    <span><strong className="text-foreground">Autocomplete selector</strong> — the site field in the log dialog suggests your existing sites as you type, so you never accidentally create a duplicate.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary shrink-0">→</span>
+                    <span><strong className="text-foreground">Fuzzy-match warning</strong> — if a typed name is very close to an existing site (e.g. "Site A" vs "Site‑A"), a "Did you mean?" hint appears to prevent near-duplicates.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary shrink-0">→</span>
+                    <span><strong className="text-foreground">GPS & map location</strong> — each site and log entry can store GPS coordinates captured automatically or picked on a live map, so entries stay accurately tied to a location.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary shrink-0">→</span>
+                    <span><strong className="text-foreground">Bulk rename via Edit Site</strong> — renaming a site updates all of its log entries at once, keeping your history consistent.</span>
+                  </li>
+                </ul>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         <Button
           size="icon"
