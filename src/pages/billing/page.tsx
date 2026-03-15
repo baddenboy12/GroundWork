@@ -31,35 +31,28 @@ import {
   AlertTriangle,
   RefreshCw,
   Settings2,
-  HardDrive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import { formatBytes } from "@/lib/utils.ts";
 
 // Feature rows shown in the comparison table
-const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.free }[] = [
+const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.pro }[] = [
   { label: "Sites", key: "maxSites" },
   { label: "Logs per site", key: "maxLogsPerSite" },
   { label: "Photo attachments", key: "photoAttachments" },
-  { label: "Photo storage", key: "storageLimitBytes" },
+  { label: "Photos per entry", key: "maxPhotosPerEntry" },
   { label: "PDF & CSV export", key: "export" },
   { label: "Integrations & API", key: "integrations" },
 ];
 
 function featureValue(
-  key: keyof typeof TIER_CONFIG.free,
+  key: keyof typeof TIER_CONFIG.pro,
   tier: SubscriptionTier
 ): React.ReactNode {
   const v = TIER_CONFIG[tier][key];
-  if (key === "storageLimitBytes") {
-    const bytes = v as number;
-    if (bytes === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
-    return <span className="font-medium">{formatBytes(bytes)}</span>;
-  }
   if (v === true) return <Check className="w-3 h-3 text-primary mx-auto" />;
   if (v === false) return <X className="w-3 h-3 text-muted-foreground/40 mx-auto" />;
-  if (v === null) return <span className="text-primary font-medium">Unlimited</span>;
+  if (v === null) return <span className="text-muted-foreground/40 text-xs">—</span>;
   return <span className="font-medium">{String(v)}</span>;
 }
 
@@ -96,7 +89,6 @@ function BillingInner() {
   const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
-  const recalculateStorage = useMutation(api.users.recalculateStorage);
   const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
   const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
@@ -117,18 +109,11 @@ function BillingInner() {
     user?.paypalSubscriptionStatus === "ACTIVE" ||
     user?.paypalSubscriptionStatus === "APPROVED";
 
-  // Recalculate storage on mount to fix any drift from pre-cleanup deletions
-  useEffect(() => {
-    void recalculateStorage();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Handle return from PayPal approval or cancellation (via /paypal/return)
   useEffect(() => {
     const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
 
-    // Clear immediately so a page refresh doesn't re-trigger
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
 
@@ -154,12 +139,12 @@ function BillingInner() {
   }, []);
 
   const handlePayPalSubscribe = async (newTier: SubscriptionTier) => {
-    if (newTier === "free" || newTier === tier) return;
+    if (newTier === "free" || newTier === "starter" || newTier === tier) return;
     setPaypalPending(newTier);
     try {
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
-        tier: newTier as "starter" | "pro" | "business",
+        tier: newTier as "pro" | "business",
         returnUrl: `${origin}/paypal/return`,
         cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
       });
@@ -180,6 +165,9 @@ function BillingInner() {
     }
   };
 
+  // Unused but kept for potential admin use
+  void handleManualSelect;
+
   const handleCancelSubscription = async () => {
     setCancelPending(true);
     try {
@@ -193,7 +181,6 @@ function BillingInner() {
     }
   };
 
-  // Cancel current subscription then immediately redirect to PayPal for the new plan
   const handleSwitchPlan = async () => {
     if (!switchTarget) return;
     setSwitchPending(true);
@@ -201,7 +188,7 @@ function BillingInner() {
       await cancelSubscriptionAction();
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
-        tier: switchTarget as "starter" | "pro" | "business",
+        tier: switchTarget as "pro" | "business",
         returnUrl: `${origin}/paypal/return`,
         cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
       });
@@ -218,7 +205,7 @@ function BillingInner() {
     try {
       const result = await initializePlansAction();
       toast.success(
-        `PayPal plans ready! Starter: ${result.planIds.starter ?? "–"}`
+        `PayPal plans ready! Pro: ${result.planIds.pro ?? "–"}`
       );
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -226,6 +213,9 @@ function BillingInner() {
       setInitPending(false);
     }
   };
+
+  // Tier order for comparison (use index from full order)
+  const tierOrder: SubscriptionTier[] = ["free", "pro", "business"];
 
   return (
     <div className="min-h-screen bg-background">
@@ -239,7 +229,7 @@ function BillingInner() {
         </button>
         <div>
           <h1 className="font-bold text-foreground">Subscription</h1>
-          <p className="text-xs text-muted-foreground">Manage your LogVault plan</p>
+          <p className="text-xs text-muted-foreground">Manage your plan</p>
         </div>
       </div>
 
@@ -254,7 +244,7 @@ function BillingInner() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <div className="max-w-4xl mx-auto px-6 py-12 space-y-12">
         {/* Current plan banner */}
         {!isLoading && (
           <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap">
@@ -285,54 +275,6 @@ function BillingInner() {
                 Cancel subscription
               </Button>
             )}
-          </div>
-        )}
-
-        {/* Storage usage */}
-        {!isLoading && TIER_CONFIG[tier].photoAttachments && (
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Photo storage</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {formatBytes(user?.storageUsedBytes ?? 0)} /{" "}
-                {formatBytes(TIER_CONFIG[tier].storageLimitBytes)}
-              </span>
-            </div>
-            {/* Progress bar */}
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div
-                className={cn(
-                  "h-2 rounded-full transition-all",
-                  (() => {
-                    const pct =
-                      TIER_CONFIG[tier].storageLimitBytes > 0
-                        ? ((user?.storageUsedBytes ?? 0) /
-                            TIER_CONFIG[tier].storageLimitBytes) *
-                          100
-                        : 0;
-                    if (pct > 90) return "bg-destructive";
-                    if (pct > 70) return "bg-amber-500";
-                    return "bg-primary";
-                  })()
-                )}
-                style={{
-                  width: `${Math.min(
-                    100,
-                    TIER_CONFIG[tier].storageLimitBytes > 0
-                      ? ((user?.storageUsedBytes ?? 0) /
-                          TIER_CONFIG[tier].storageLimitBytes) *
-                          100
-                      : 0
-                  )}%`,
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Storage used by photo attachments on your account.
-            </p>
           </div>
         )}
 
@@ -378,13 +320,12 @@ function BillingInner() {
               : "Initialize PayPal above to enable real payment processing."}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
             {TIER_ORDER.map((t) => {
               const cfg = TIER_CONFIG[t];
               const isCurrent = t === tier;
               const isUpgrade =
-                ["free", "starter", "pro", "business"].indexOf(t) >
-                ["free", "starter", "pro", "business"].indexOf(tier);
+                tierOrder.indexOf(t) > tierOrder.indexOf(tier);
               const isPendingThis = paypalPending === t;
 
               return (
@@ -434,19 +375,11 @@ function BillingInner() {
                     </li>
                     <li className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {cfg.maxLogsPerSite === null
-                        ? "Unlimited logs/site"
-                        : `${cfg.maxLogsPerSite} logs/site`}
+                      Unlimited logs per site
                     </li>
-                    <li className={cn("flex items-center gap-2 text-xs", cfg.photoAttachments ? "text-muted-foreground" : "text-muted-foreground/40")}>
-                      {cfg.photoAttachments ? (
-                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                      ) : (
-                        <X className="w-3.5 h-3.5 shrink-0" />
-                      )}
-                      {cfg.photoAttachments
-                        ? `${formatBytes(cfg.storageLimitBytes)} photo storage`
-                        : "No photo attachments"}
+                    <li className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      Up to {cfg.maxPhotosPerEntry} photos per entry
                     </li>
                     <li
                       className={cn(
@@ -536,7 +469,7 @@ function BillingInner() {
           </div>
 
           {hasActivePayPalSub && (
-            <p className="text-xs text-muted-foreground mt-4 text-center">
+            <p className="text-xs text-muted-foreground mt-4">
               Switching plans will cancel your current subscription and start a new one via PayPal.
             </p>
           )}
@@ -549,14 +482,14 @@ function BillingInner() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-2.5 py-2 text-muted-foreground font-medium text-[11px] w-[30%]">
+                  <th className="text-left px-3 py-2.5 text-muted-foreground font-medium text-[11px] w-[40%]">
                     Feature
                   </th>
                   {TIER_ORDER.map((t) => (
                     <th
                       key={t}
                       className={cn(
-                        "text-center px-1 py-2 font-semibold text-[11px] whitespace-nowrap",
+                        "text-center px-2 py-2.5 font-semibold text-[11px] whitespace-nowrap",
                         t === tier ? "text-primary" : "text-foreground"
                       )}
                     >
@@ -579,11 +512,11 @@ function BillingInner() {
                       i % 2 === 0 ? "bg-background" : "bg-muted/20"
                     )}
                   >
-                    <td className="px-2.5 py-2 text-muted-foreground font-medium text-[11px] leading-snug">
+                    <td className="px-3 py-2.5 text-muted-foreground font-medium text-[11px] leading-snug">
                       {row.label}
                     </td>
                     {TIER_ORDER.map((t) => (
-                      <td key={t} className="px-1 py-2 text-center text-foreground text-[11px]">
+                      <td key={t} className="px-2 py-2.5 text-center text-foreground text-[11px]">
                         {featureValue(row.key, t)}
                       </td>
                     ))}

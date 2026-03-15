@@ -236,7 +236,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
       <UpgradeDialog
         open={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}
-        requiredTier="starter"
+        requiredTier="pro"
         featureName="More sites"
         featureDescription={`The ${config.name} plan allows up to ${config.maxSites} sites. Upgrade to add more.`}
       />

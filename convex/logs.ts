@@ -4,14 +4,6 @@ import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
-// Per-tier storage limits (bytes) — must match subscription.ts
-const TIER_STORAGE_LIMITS: Record<string, number> = {
-  free: 0,
-  starter: 100 * 1024 * 1024,        // 100 MB
-  pro: 1 * 1024 * 1024 * 1024,        // 1 GB
-  business: 5 * 1024 * 1024 * 1024,   // 5 GB
-};
-
 const categoryValidator = v.union(
   v.literal("inspection"),
   v.literal("maintenance"),
@@ -270,17 +262,13 @@ export const create = mutation({
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
 
-    // Enforce storage quota
-    const newPhotoBytes = args.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
-    if (newPhotoBytes > 0) {
-      const used = user.storageUsedBytes ?? 0;
-      const limit = TIER_STORAGE_LIMITS[user.subscriptionTier ?? "free"] ?? 0;
-      if (used + newPhotoBytes > limit) {
-        throw new ConvexError({
-          code: "FORBIDDEN",
-          message: `Storage limit exceeded. You have used all available storage on your plan.`,
-        });
-      }
+    // Enforce max 15 photos per entry
+    const MAX_PHOTOS_PER_ENTRY = 15;
+    if ((args.photos?.length ?? 0) > MAX_PHOTOS_PER_ENTRY) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: `Maximum ${MAX_PHOTOS_PER_ENTRY} photos per entry.`,
+      });
     }
 
     const logId = await ctx.db.insert("logs", {
@@ -295,13 +283,6 @@ export const create = mutation({
       longitude: args.longitude,
       photos: args.photos,
     });
-
-    // Update per-user storage counter
-    if (newPhotoBytes > 0) {
-      await ctx.db.patch(user._id, {
-        storageUsedBytes: (user.storageUsedBytes ?? 0) + newPhotoBytes,
-      });
-    }
 
     // Fire webhook delivery for Business-plan users
     if ((user.subscriptionTier ?? "free") === "business") {

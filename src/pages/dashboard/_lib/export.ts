@@ -468,7 +468,7 @@ function drawFooter(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...theme.ftrText);
-  doc.text("LogVault — Confidential field report", margin, pageH - 3.5);
+  doc.text("Confidential field report", margin, pageH - 3.5);
   doc.text(`Page ${page} of ${total}`, pageW - margin, pageH - 3.5, { align: "right" });
 }
 
@@ -545,7 +545,7 @@ function drawCoverDark(doc: jsPDF, o: CoverOpts): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...theme.coverSub);
-  doc.text("LogVault — Confidential field report", margin, pageH - 12);
+  doc.text("Confidential field report", margin, pageH - 12);
 }
 
 function drawCoverBand(doc: jsPDF, o: CoverOpts): void {
@@ -599,7 +599,7 @@ function drawCoverBand(doc: jsPDF, o: CoverOpts): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...theme.entryMuted);
-  doc.text("LogVault — Confidential field report", margin, pageH - 12);
+  doc.text("Confidential field report", margin, pageH - 12);
 }
 
 function drawCoverSidebar(doc: jsPDF, o: CoverOpts): void {
@@ -666,7 +666,7 @@ function drawCoverSidebar(doc: jsPDF, o: CoverOpts): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...theme.entryMuted);
-  doc.text("LogVault — Confidential field report", CONTENT_X, pageH - 12);
+  doc.text("Confidential field report", CONTENT_X, pageH - 12);
 }
 
 function drawStatsBox(
@@ -1057,7 +1057,7 @@ export async function exportGlobalFullReportPDF({
     siteTitle,
     siteSubtitle,
     dateFrom, dateTo, category, theme,
-    filename: `logvault-multi-site-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
+    filename: `multi-site-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
   });
 }
 
@@ -1081,7 +1081,7 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     String(l.photoUrls?.length ?? 0),
   ]);
   const meta = [
-    ["LogVault Field Log Export"],
+    ["Field Log Export"],
     [`Site: ${siteName}`],
     ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
     ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
@@ -1109,7 +1109,7 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
     String(l.photoUrls?.length ?? 0),
   ]);
   const meta = [
-    ["LogVault Multi-Site Export"],
+    ["Multi-Site Export"],
     [`Sites: ${siteNames.join(", ")}`],
     ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
     ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),

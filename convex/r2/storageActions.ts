@@ -11,22 +11,6 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// ── Storage limits by tier (bytes) ───────────────────────────────────────────
-export const TIER_STORAGE_LIMITS: Record<string, number> = {
-  free: 0,
-  starter: 2 * 1024 * 1024 * 1024,   // 2 GB
-  pro: 5 * 1024 * 1024 * 1024,        // 5 GB
-  business: 10 * 1024 * 1024 * 1024,  // 10 GB
-};
-
-export function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
 // ── R2 helpers ────────────────────────────────────────────────────────────────
 
 function requireEnv(name: string): string {
@@ -87,13 +71,13 @@ export const getUploadUrl = action({
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
 
-    // Soft quota check — hard check enforced at log save time
-    const used = user.storageUsedBytes ?? 0;
-    const limit = TIER_STORAGE_LIMITS[user.subscriptionTier ?? "free"] ?? 0;
-    if (limit > 0 && used + args.bytes > limit) {
+    // Verify user has a plan that supports photo attachments
+    const tier = user.subscriptionTier ?? "free";
+    const photoPlanAllowed = tier === "pro" || tier === "business" || tier === "starter";
+    if (!photoPlanAllowed) {
       throw new ConvexError({
         code: "FORBIDDEN",
-        message: `Storage limit reached. Used: ${formatBytes(used)} of ${formatBytes(limit)}.`,
+        message: "Photo attachments require a Pro or Business subscription.",
       });
     }
 

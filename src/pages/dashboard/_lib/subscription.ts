@@ -1,5 +1,6 @@
 // Subscription tier definitions, limits, and utilities
 
+// "starter" kept as a valid type for backward DB compatibility but treated as "pro" in toTier()
 export type SubscriptionTier = "free" | "starter" | "pro" | "business";
 
 export type TierConfig = {
@@ -13,8 +14,8 @@ export type TierConfig = {
   maxLogsPerSite: number | null;
   /** Photo attachments on log entries */
   photoAttachments: boolean;
-  /** Storage limit in bytes (0 = no photos) */
-  storageLimitBytes: number;
+  /** Max photos per log entry (null = plan doesn't support photos) */
+  maxPhotosPerEntry: number | null;
   /** PDF/CSV export */
   export: boolean;
   /** Third-party integrations (API, webhooks) */
@@ -33,21 +34,23 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: 2,
     maxLogsPerSite: 10,
     photoAttachments: false,
-    storageLimitBytes: 0,
+    maxPhotosPerEntry: null,
     export: false,
     integrations: false,
   },
+  // Kept for backward compat only — treated as "pro" by toTier()
   starter: {
-    name: "Starter",
-    tagline: "Essential logging for small teams",
-    price: "$3.99",
+    name: "Pro",
+    tagline: "Photo-enabled for growing teams",
+    price: "$7.99",
     period: "per month",
-    maxSites: 5,
+    maxSites: 15,
     maxLogsPerSite: null,
-    photoAttachments: false,
-    storageLimitBytes: 50 * 1024 * 1024, // 50 MB
+    photoAttachments: true,
+    maxPhotosPerEntry: 15,
     export: false,
     integrations: false,
+    highlight: true,
   },
   pro: {
     name: "Pro",
@@ -57,7 +60,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: 15,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 250 * 1024 * 1024, // 250 MB
+    maxPhotosPerEntry: 15,
     export: false,
     integrations: false,
     highlight: true,
@@ -70,22 +73,23 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 3 * 1024 * 1024 * 1024, // 3 GB
+    maxPhotosPerEntry: 15,
     export: true,
     integrations: true,
   },
 };
 
-// Only paid plans are shown in the billing UI ("free" is an internal fallback)
-export const TIER_ORDER: SubscriptionTier[] = ["starter", "pro", "business"];
+// Only paid plans shown in the billing UI (starter is hidden – treated as pro)
+export const TIER_ORDER: SubscriptionTier[] = ["pro", "business"];
 
 /** Returns true if `tier` is at least as high as `minimum` */
 export function isAtLeast(
   tier: SubscriptionTier,
   minimum: SubscriptionTier
 ): boolean {
-  const order: SubscriptionTier[] = ["free", "starter", "pro", "business"];
-  return order.indexOf(tier) >= order.indexOf(minimum);
+  const order: SubscriptionTier[] = ["free", "pro", "business"];
+  const normalizedTier = tier === "starter" ? "pro" : tier;
+  return order.indexOf(normalizedTier) >= order.indexOf(minimum);
 }
 
 /** Human-readable label for a tier */
@@ -93,8 +97,10 @@ export function tierLabel(tier: SubscriptionTier): string {
   return TIER_CONFIG[tier].name;
 }
 
-/** Coerce a raw DB value to a valid SubscriptionTier (defaults to "free") */
+/** Coerce a raw DB value to a valid SubscriptionTier.
+ *  "starter" is remapped to "pro" since the plan no longer exists. */
 export function toTier(raw: string | undefined | null): SubscriptionTier {
-  if (raw === "starter" || raw === "pro" || raw === "business") return raw;
+  if (raw === "starter") return "pro"; // legacy → upgrade silently
+  if (raw === "pro" || raw === "business") return raw;
   return "free";
 }

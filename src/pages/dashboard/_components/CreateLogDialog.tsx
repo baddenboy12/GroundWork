@@ -49,8 +49,9 @@ export default function CreateLogDialog({
   const createLog = useMutation(api.logs.create);
   const findOrCreateSite = useMutation(api.sites.findOrCreate);
   const sites = useQuery(api.sites.list, {});
-  const { isAtLeast } = useSubscription();
-  const canAttachPhotos = isAtLeast("starter");
+  const { isAtLeast, config } = useSubscription();
+  const canAttachPhotos = isAtLeast("pro");
+  const maxPhotosPerEntry = config.maxPhotosPerEntry ?? 15;
 
   const [siteName, setSiteName] = useState(initialSiteName ?? "");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -352,7 +353,7 @@ export default function CreateLogDialog({
                 )}
               </Label>
               {canAttachPhotos ? (
-                <PhotoUploader photos={photos} onChange={setPhotos} />
+                <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={maxPhotosPerEntry} />
               ) : (
                 <button
                   type="button"
@@ -360,7 +361,7 @@ export default function CreateLogDialog({
                   className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                 >
                   <Lock className="w-5 h-5" />
-                  <span className="text-sm font-medium">Photo attachments require Starter or higher</span>
+                  <span className="text-sm font-medium">Photo attachments require Pro or higher</span>
                   <span className="text-xs">Click to upgrade</span>
                 </button>
               )}
@@ -384,14 +385,14 @@ export default function CreateLogDialog({
       <UpgradeDialog
         open={photoUpgradeOpen}
         onClose={() => setPhotoUpgradeOpen(false)}
-        requiredTier="starter"
+        requiredTier="pro"
         featureName="Photo attachments"
-        featureDescription="Attach photos to log entries on the Starter plan and above."
+        featureDescription="Attach photos to log entries on the Pro plan and above."
       />
       <UpgradeDialog
         open={siteUpgradeOpen}
         onClose={() => setSiteUpgradeOpen(false)}
-        requiredTier="starter"
+        requiredTier="pro"
         featureName="More sites"
         featureDescription="You've reached your site limit. Upgrade to add more sites."
       />
