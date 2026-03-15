@@ -415,7 +415,44 @@ http.route({
   }),
 });
 
-// ── POST /paypal-webhook ──────────────────────────────────────────────────────
+// ── GET /photo-proxy?url=<encoded-url> ───────────────────────────────────────
+// Fetches a photo server-side and re-serves it with CORS headers so the browser
+// can read the bytes for PDF generation (avoids R2 CORS restrictions).
+http.route({
+  path: "/photo-proxy",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    const photoUrl = new URL(request.url).searchParams.get("url");
+    if (!photoUrl) {
+      return new Response("Missing url parameter", { status: 400 });
+    }
+    try {
+      const upstream = await fetch(photoUrl);
+      if (!upstream.ok) {
+        return new Response("Photo not found", { status: 404 });
+      }
+      const blob = await upstream.blob();
+      return new Response(blob, {
+        status: 200,
+        headers: {
+          "Content-Type": upstream.headers.get("Content-Type") ?? "image/jpeg",
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    } catch {
+      return new Response("Failed to fetch photo", { status: 502 });
+    }
+  }),
+});
+
+http.route({
+  path: "/photo-proxy",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: corsHeaders })),
+});
+
+
 http.route({
   path: "/paypal-webhook",
   method: "POST",

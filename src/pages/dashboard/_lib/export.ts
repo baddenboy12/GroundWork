@@ -312,13 +312,24 @@ export type GlobalExportOptions = {
 
 // ─── Image helpers ────────────────────────────────────────────────────────────
 
+// Derive the Convex HTTP actions site URL from the Vite Convex URL env var.
+// VITE_CONVEX_URL looks like https://<name>.convex.cloud
+// HTTP actions are served at   https://<name>.convex.site
+function getConvexSiteUrl(): string {
+  const url = (import.meta.env.VITE_CONVEX_URL as string | undefined) ?? "";
+  return url.replace(".convex.cloud", ".convex.site");
+}
+
 type PhotoInfo = { dataUrl: string; ar: number };
 
 async function fetchPhotoInfo(url: string): Promise<PhotoInfo | null> {
   try {
+    // Route through Convex HTTP proxy to avoid R2 CORS restrictions.
+    // The proxy fetches server-side and re-serves with Access-Control-Allow-Origin: *
+    const proxyUrl = `${getConvexSiteUrl()}/photo-proxy?url=${encodeURIComponent(url)}`;
     const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(url, { signal: controller.signal });
+    const tid = setTimeout(() => controller.abort(), 20000); // 20s for proxy round-trip
+    const res = await fetch(proxyUrl, { signal: controller.signal });
     clearTimeout(tid);
     if (!res.ok) return null;
     const blob = await res.blob();
