@@ -317,7 +317,7 @@ function BillingInner() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Used by photo attachments stored in Cloudflare R2.
+              Storage used by photo attachments on your account.
             </p>
           </div>
         )}
@@ -590,8 +590,8 @@ function BillingInner() {
           Payments are processed securely via PayPal.
           <br />
           Questions? Contact us at{" "}
-          <a href="mailto:hello@logvault.app" className="text-primary hover:underline">
-            hello@logvault.app
+          <a href="mailto:info@teezfpo.com" className="text-primary hover:underline">
+            info@teezfpo.com
           </a>
         </p>
       </div>
