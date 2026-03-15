@@ -576,51 +576,54 @@ function BillingInner() {
         <div>
           <h2 className="text-xl font-bold text-foreground mb-6">Full comparison</h2>
           <div className="rounded-2xl border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-5 py-3 text-muted-foreground font-medium w-1/3">
-                    Feature
-                  </th>
-                  {TIER_ORDER.map((t) => (
-                    <th
-                      key={t}
-                      className={cn(
-                        "text-center px-4 py-3 font-semibold",
-                        t === tier ? "text-primary" : "text-foreground"
-                      )}
-                    >
-                      {TIER_CONFIG[t].name}
-                      {t === tier && (
-                        <span className="block text-[10px] font-normal text-primary/70">
-                          current
-                        </span>
-                      )}
+            {/* Scrollable wrapper for narrow screens */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[480px]">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium w-[120px] min-w-[100px]">
+                      Feature
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {FEATURE_ROWS.map((row, i) => (
-                  <tr
-                    key={row.key}
-                    className={cn(
-                      "border-b border-border last:border-0",
-                      i % 2 === 0 ? "bg-background" : "bg-muted/20"
-                    )}
-                  >
-                    <td className="px-5 py-3 text-muted-foreground font-medium">
-                      {row.label}
-                    </td>
                     {TIER_ORDER.map((t) => (
-                      <td key={t} className="px-4 py-3 text-center text-foreground">
-                        {featureValue(row.key, t)}
-                      </td>
+                      <th
+                        key={t}
+                        className={cn(
+                          "text-center px-3 py-3 font-semibold whitespace-nowrap",
+                          t === tier ? "text-primary" : "text-foreground"
+                        )}
+                      >
+                        {TIER_CONFIG[t].name}
+                        {t === tier && (
+                          <span className="block text-[10px] font-normal text-primary/70">
+                            current
+                          </span>
+                        )}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {FEATURE_ROWS.map((row, i) => (
+                    <tr
+                      key={row.key}
+                      className={cn(
+                        "border-b border-border last:border-0",
+                        i % 2 === 0 ? "bg-background" : "bg-muted/20"
+                      )}
+                    >
+                      <td className="px-4 py-3 text-muted-foreground font-medium text-xs leading-snug">
+                        {row.label}
+                      </td>
+                      {TIER_ORDER.map((t) => (
+                        <td key={t} className="px-3 py-3 text-center text-foreground">
+                          {featureValue(row.key, t)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
