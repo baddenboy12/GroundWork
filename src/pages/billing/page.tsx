@@ -499,10 +499,14 @@ function BillingInner() {
                       size="sm"
                       className="w-full"
                       variant="secondary"
-                      disabled={isCurrent || hasActivePayPalSub}
-                      onClick={() => handleManualSelect("free")}
+                      disabled={isCurrent}
+                      onClick={() =>
+                        hasActivePayPalSub
+                          ? setCancelDialogOpen(true)
+                          : handleManualSelect("free")
+                      }
                     >
-                      {isCurrent ? "Current plan" : "Downgrade"}
+                      {isCurrent ? "Current plan" : "Downgrade to Free"}
                     </Button>
                   ) : isPayPalConfigured ? (
                     <Button
