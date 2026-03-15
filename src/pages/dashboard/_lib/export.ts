@@ -35,6 +35,32 @@ type GlobalExportOptions = {
   category?: string;
 };
 
+// ─── Image helpers ────────────────────────────────────────────────────────────
+
+async function fetchImageDataUrl(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function getImgFormat(dataUrl: string): string {
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  return "JPEG";
+}
+
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 
 function escapeCsvCell(value: string): string {
@@ -56,7 +82,6 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     String(log.photoUrls?.length ?? 0),
   ]);
 
-  // Metadata header rows
   const meta: string[][] = [
     ["LogVault Field Log Export"],
     [`Site: ${siteName}`],
@@ -75,16 +100,13 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  const dateStr = format(new Date(), "yyyy-MM-dd");
-  const safeName = siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase();
-  link.download = `logvault-${safeName}-${dateStr}.csv`;
+  link.download = `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
 // ─── Shared PDF helpers ───────────────────────────────────────────────────────
 
-// Brand colours (RGB)
 const AMBER: [number, number, number] = [245, 158, 11];
 const DARK: [number, number, number] = [18, 24, 38];
 const MID: [number, number, number] = [40, 48, 66];
@@ -100,6 +122,7 @@ const CATEGORY_PDF_COLORS: Record<LogCategory, [number, number, number]> = {
   general: [100, 116, 139],
 };
 
+// Thin amber accent bar drawn at top of each content page
 function drawPageHeader(doc: jsPDF, pageW: number): void {
   doc.setFillColor(...DARK);
   doc.rect(0, 0, pageW, 28, "F");
@@ -131,6 +154,9 @@ function periodLabel(dateFrom?: string, dateTo?: string): string {
   return `Up to ${dateTo}`;
 }
 
+// Content pages start below the 28mm header + padding
+const CONTENT_START_Y = 35;
+
 // ─── Summary Table PDF ────────────────────────────────────────────────────────
 
 export function exportPDF({
@@ -149,21 +175,19 @@ export function exportPDF({
 
   drawPageHeader(doc, pageW);
 
+  // Report label (not brand)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...WHITE);
-  doc.text("LogVault", margin, 12);
+  doc.setFontSize(9);
+  doc.setTextColor(...AMBER);
+  doc.text("SUMMARY TABLE REPORT", margin, 11);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...MUTED);
-  doc.text("Summary Table Report", margin, 19);
-
   doc.setFontSize(8);
-  doc.text(`Generated: ${format(now, "MMM d, yyyy 'at' h:mm a")}`, pageW - margin, 12, { align: "right" });
+  doc.setTextColor(...MUTED);
+  doc.text(`Generated: ${format(now, "MMM d, yyyy 'at' h:mm a")}`, pageW - margin, 11, { align: "right" });
 
   // Site info block
-  let y = 38;
+  let y = CONTENT_START_Y;
   doc.setFillColor(...MID);
   doc.roundedRect(margin, y, pageW - margin * 2, siteLocation ? 18 : 12, 2, 2, "F");
   doc.setFont("helvetica", "bold");
@@ -178,7 +202,6 @@ export function exportPDF({
   }
   y += (siteLocation ? 18 : 12) + 4;
 
-  // Filter summary
   const activeFilters: string[] = [];
   if (dateFrom || dateTo) activeFilters.push(`Period: ${periodLabel(dateFrom, dateTo)}`);
   if (category && category !== "all")
@@ -199,7 +222,7 @@ export function exportPDF({
   y += 6;
 
   const tableBody = logs.map((log) => [
-    format(new Date(log.loggedAt), "MMM d, yyyy\nh:mm a"),
+    format(new Date(log.loggedAt), "MMM d, yyyy") + "\n" + format(new Date(log.loggedAt), "h:mm a"),
     log.title,
     CATEGORY_LABELS[log.category as LogCategory] ?? log.category,
     log.authorName,
@@ -217,7 +240,7 @@ export function exportPDF({
     bodyStyles: { fontSize: 8, cellPadding: 3, textColor: [30, 36, 50], valign: "top" },
     alternateRowStyles: { fillColor: LIGHT },
     columnStyles: {
-      0: { cellWidth: 24, halign: "center" },
+      0: { cellWidth: 32, halign: "center" }, // wider date column
       1: { cellWidth: 38, fontStyle: "bold" },
       2: { cellWidth: 22, halign: "center" },
       3: { cellWidth: 24 },
@@ -230,13 +253,8 @@ export function exportPDF({
         const color = CATEGORY_PDF_COLORS[log.category as LogCategory] ?? MUTED;
         doc.setFillColor(...color);
         doc.roundedRect(
-          data.cell.x + 2,
-          data.cell.y + (data.cell.height - 5) / 2,
-          data.cell.width - 4,
-          5,
-          1,
-          1,
-          "F"
+          data.cell.x + 2, data.cell.y + (data.cell.height - 5) / 2,
+          data.cell.width - 4, 5, 1, 1, "F"
         );
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7);
@@ -257,66 +275,66 @@ export function exportPDF({
     drawPageFooter(doc, pageW, pageH, i, totalPages, margin);
   }
 
-  const dateStr = format(now, "yyyy-MM-dd");
-  const safeName = siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase();
-  doc.save(`logvault-${safeName}-${dateStr}.pdf`);
+  doc.save(`${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-summary-${format(now, "yyyy-MM-dd")}.pdf`);
 }
 
 // ─── Full Report PDF ──────────────────────────────────────────────────────────
 
-export function exportFullReportPDF({
+export async function exportFullReportPDF({
   siteName,
   siteLocation,
   logs,
   dateFrom,
   dateTo,
   category,
-}: ExportOptions): void {
+}: ExportOptions): Promise<void> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentW = pageW - margin * 2;
   const now = new Date();
-  const LINE_H = 4.5; // mm per text line at ~9pt
+  const LINE_H = 4.5;
+
+  // Pre-fetch all photos
+  const allPhotoUrls = Array.from(new Set(logs.flatMap((l) => l.photoUrls ?? [])));
+  const photoDataMap = new Map<string, string | null>();
+  await Promise.all(allPhotoUrls.map(async (url) => {
+    photoDataMap.set(url, await fetchImageDataUrl(url));
+  }));
 
   // ── Cover page ──────────────────────────────────────────────────────────────
   doc.setFillColor(...DARK);
   doc.rect(0, 0, pageW, pageH, "F");
-
-  // Amber accent band
   doc.setFillColor(...AMBER);
-  doc.rect(0, 60, pageW, 4, "F");
+  doc.rect(0, 0, pageW, 3, "F"); // thin top bar
 
-  // Branding
+  let y = 40;
+  // Report type label (amber, small)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(36);
-  doc.setTextColor(...WHITE);
-  doc.text("LogVault", margin, 46);
+  doc.setFontSize(9);
+  doc.setTextColor(...AMBER);
+  doc.text("FIELD LOG REPORT", margin, y);
+  y += 14;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.setTextColor(...MUTED);
-  doc.text("Full Field Log Report", margin, 56);
-
-  // Site block
-  let y = 80;
+  // Site name as main heading
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(28);
   doc.setTextColor(...WHITE);
-  doc.text(siteName, margin, y);
-  y += 9;
+  const siteNameLines = doc.splitTextToSize(siteName, contentW);
+  doc.text(siteNameLines, margin, y);
+  y += siteNameLines.length * 11;
 
   if (siteLocation) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(...MUTED);
     doc.text(siteLocation, margin, y);
     y += 8;
   }
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   doc.text(`Period: ${periodLabel(dateFrom, dateTo)}`, margin, y);
   y += 6;
@@ -335,18 +353,15 @@ export function exportFullReportPDF({
   doc.setFontSize(32);
   doc.setTextColor(...AMBER);
   doc.text(String(logs.length), margin + 8, y + 20);
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...MUTED);
   doc.text(`total ${logs.length === 1 ? "entry" : "entries"}`, margin + 8, y + 28);
 
-  // Category breakdown
   const catCounts: Partial<Record<LogCategory, number>> = {};
   logs.forEach((log) => {
     catCounts[log.category as LogCategory] = (catCounts[log.category as LogCategory] ?? 0) + 1;
   });
-
   let cx = margin + 52;
   for (const [cat, count] of Object.entries(catCounts)) {
     if (cx > pageW - margin - 30) break;
@@ -364,7 +379,7 @@ export function exportFullReportPDF({
     cx += 35;
   }
 
-  // Cover footer
+  // Footer watermark
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
@@ -372,10 +387,21 @@ export function exportFullReportPDF({
 
   // ── Log entry pages ─────────────────────────────────────────────────────────
   doc.addPage();
-  y = 18;
+  y = CONTENT_START_Y;
 
   logs.forEach((log) => {
     const catColor = CATEGORY_PDF_COLORS[log.category as LogCategory] ?? MUTED;
+
+    // Photo data
+    const photosData = (log.photoUrls ?? []).slice(0, 3)
+      .map((url) => ({ url, dataUrl: photoDataMap.get(url) ?? null }));
+    const photosToRender = photosData.filter((p) => p.dataUrl !== null);
+    const photoCount = photosToRender.length;
+    const photoGap = 3;
+    const photoAreaW = contentW - 16;
+    const photoW = photoCount > 0 ? (photoAreaW - photoGap * (photoCount - 1)) / photoCount : 0;
+    const photoH = photoCount > 0 ? Math.min(40, photoW * 0.65) : 0;
+    const photoRowH = photoCount > 0 ? photoH + 8 : 0;
 
     // Pre-calculate text heights
     doc.setFont("helvetica", "bold");
@@ -388,36 +414,28 @@ export function exportFullReportPDF({
     const contentLines = doc.splitTextToSize(contentText, contentW - 14);
 
     const hasLocation = !!(log.location);
-    const hasPhotos = (log.photoUrls?.length ?? 0) > 0;
-    const metaRows = 1 + (hasLocation ? 1 : 0) + (hasPhotos ? 1 : 0);
-
+    const metaRows = hasLocation ? 1 : 0;
     const titleH = titleLines.length * 5.5;
     const contentH = contentLines.length * LINE_H;
-    const blockH = 6 + titleH + 8 + 0.5 + 4 + contentH + metaRows * 4 + 6;
+    const blockH = 6 + titleH + 8 + 0.5 + 4 + contentH + metaRows * 4 + photoRowH + 6;
 
-    // Page break
     if (y + blockH > pageH - 14) {
       doc.addPage();
-      y = 18;
+      y = CONTENT_START_Y;
     }
 
-    // Block background
     doc.setFillColor(...LIGHT);
     doc.roundedRect(margin, y, contentW, blockH, 2, 2, "F");
-
-    // Left category colour bar
     doc.setFillColor(...catColor);
     doc.roundedRect(margin, y, 3.5, blockH, 1.5, 1.5, "F");
 
-    // Date/time (top right)
+    // Date (top right)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
     doc.text(
       format(new Date(log.loggedAt), "MMM d, yyyy  h:mm a"),
-      pageW - margin - 2,
-      y + 8,
-      { align: "right" }
+      pageW - margin - 2, y + 8, { align: "right" }
     );
 
     // Title
@@ -436,59 +454,54 @@ export function exportFullReportPDF({
     doc.setTextColor(...WHITE);
     doc.text(
       CATEGORY_LABELS[log.category as LogCategory] ?? log.category,
-      margin + 20,
-      ey + 3.8,
-      { align: "center" }
+      margin + 20, ey + 3.8, { align: "center" }
     );
-
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
     doc.text(`By ${log.authorName}`, margin + 36, ey + 3.8);
     ey += 8;
 
-    // Separator
     doc.setDrawColor(215, 220, 230);
     doc.line(margin + 8, ey, pageW - margin - 2, ey);
     ey += 4;
 
-    // Notes content
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(45, 55, 72);
     doc.text(contentLines, margin + 8, ey);
     ey += contentH + 3;
 
-    // Location
     if (hasLocation) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(8);
       doc.setTextColor(...MUTED);
       doc.text(`Location: ${log.location}`, margin + 8, ey);
-      ey += 4;
+      ey += 5;
     }
 
-    // Photo count
-    if (hasPhotos) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(8);
-      doc.setTextColor(...MUTED);
-      doc.text(
-        `${log.photoUrls.length} photo attachment${log.photoUrls.length > 1 ? "s" : ""}`,
-        margin + 8,
-        ey
-      );
+    // Embedded photos
+    if (photoCount > 0) {
+      photosToRender.forEach((photo, idx) => {
+        if (!photo.dataUrl) return;
+        const px = margin + 8 + idx * (photoW + photoGap);
+        try {
+          doc.addImage(photo.dataUrl, getImgFormat(photo.dataUrl), px, ey, photoW, photoH, undefined, "FAST");
+        } catch {
+          doc.setFillColor(...MID);
+          doc.roundedRect(px, ey, photoW, photoH, 2, 2, "F");
+        }
+      });
     }
 
     y += blockH + 4;
   });
 
-  // ── Footer on every page (skip cover page 1) ────────────────────────────────
+  // ── Headers/footers on content pages ────────────────────────────────────────
   const totalPages = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
   for (let i = 2; i <= totalPages; i++) {
     doc.setPage(i);
     drawPageHeader(doc, pageW);
-    // Repeat site name in running header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...WHITE);
@@ -496,15 +509,14 @@ export function exportFullReportPDF({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text("Full Field Log Report", margin, 21);
-    doc.setFontSize(8);
+    doc.text("Field Log Report", margin, 21);
     doc.text(`Generated: ${format(now, "MMM d, yyyy")}`, pageW - margin, 14, { align: "right" });
     drawPageFooter(doc, pageW, pageH, i - 1, totalPages - 1, margin);
   }
 
   const dateStr = format(now, "yyyy-MM-dd");
   const safeName = siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase();
-  doc.save(`logvault-${safeName}-full-report-${dateStr}.pdf`);
+  doc.save(`${safeName}-full-report-${dateStr}.pdf`);
 }
 
 // ─── Global (multi-site) CSV Export ──────────────────────────────────────────
@@ -561,24 +573,25 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
 
   drawPageHeader(doc, pageW);
 
+  // Report label
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...WHITE);
-  doc.text("LogVault", margin, 12);
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(...MUTED);
-  doc.text("Multi-Site Summary Report", margin, 19);
+  doc.setTextColor(...AMBER);
+  doc.text("MULTI-SITE SUMMARY REPORT", margin, 11);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(`Generated: ${format(now, "MMM d, yyyy 'at' h:mm a")}`, pageW - margin, 12, { align: "right" });
+  doc.setTextColor(...MUTED);
+  doc.text(`Generated: ${format(now, "MMM d, yyyy 'at' h:mm a")}`, pageW - margin, 11, { align: "right" });
 
-  let y = 38;
+  let y = CONTENT_START_Y;
   doc.setFillColor(...MID);
   doc.roundedRect(margin, y, pageW - margin * 2, 12, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(...WHITE);
-  const sitesLabel = siteNames.length <= 3 ? siteNames.join(", ") : `${siteNames.slice(0, 3).join(", ")} +${siteNames.length - 3} more`;
+  const sitesLabel = siteNames.length <= 3
+    ? siteNames.join(", ")
+    : `${siteNames.slice(0, 3).join(", ")} +${siteNames.length - 3} more`;
   doc.text(sitesLabel, margin + 4, y + 8);
   y += 16;
 
@@ -592,6 +605,7 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
     doc.text(`Filters: ${activeFilters.join("  ·  ")}`, margin, y);
     y += 6;
   }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...AMBER);
@@ -599,7 +613,7 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
   y += 6;
 
   const tableBody = logs.map((log) => [
-    format(new Date(log.loggedAt), "MMM d, yyyy\nh:mm a"),
+    format(new Date(log.loggedAt), "MMM d, yyyy") + "\n" + format(new Date(log.loggedAt), "h:mm a"),
     log.siteName,
     log.title,
     CATEGORY_LABELS[log.category as LogCategory] ?? log.category,
@@ -618,11 +632,11 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
     bodyStyles: { fontSize: 7.5, cellPadding: 2.5, textColor: [30, 36, 50], valign: "top" },
     alternateRowStyles: { fillColor: LIGHT },
     columnStyles: {
-      0: { cellWidth: 24, halign: "center" },
-      1: { cellWidth: 30, fontStyle: "bold" },
-      2: { cellWidth: 38 },
+      0: { cellWidth: 30, halign: "center" }, // wider date col — fits "Mar 15, 2026"
+      1: { cellWidth: 36, fontStyle: "bold" },
+      2: { cellWidth: 40 },
       3: { cellWidth: 22, halign: "center" },
-      4: { cellWidth: 24 },
+      4: { cellWidth: 26 },
       5: { cellWidth: "auto" },
       6: { cellWidth: 14, halign: "center" },
     },
@@ -631,11 +645,19 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
         const log = logs[data.row.index];
         const color = CATEGORY_PDF_COLORS[log.category as LogCategory] ?? MUTED;
         doc.setFillColor(...color);
-        doc.roundedRect(data.cell.x + 2, data.cell.y + (data.cell.height - 5) / 2, data.cell.width - 4, 5, 1, 1, "F");
+        doc.roundedRect(
+          data.cell.x + 2, data.cell.y + (data.cell.height - 5) / 2,
+          data.cell.width - 4, 5, 1, 1, "F"
+        );
         doc.setFont("helvetica", "bold");
         doc.setFontSize(6.5);
         doc.setTextColor(...WHITE);
-        doc.text(CATEGORY_LABELS[log.category as LogCategory] ?? log.category, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 0.5, { align: "center" });
+        doc.text(
+          CATEGORY_LABELS[log.category as LogCategory] ?? log.category,
+          data.cell.x + data.cell.width / 2,
+          data.cell.y + data.cell.height / 2 + 0.5,
+          { align: "center" }
+        );
       }
     },
   });
@@ -646,12 +668,18 @@ export function exportGlobalPDF({ logs, siteNames, dateFrom, dateTo, category }:
     drawPageFooter(doc, pageW, pageH, i, totalPages, margin);
   }
 
-  doc.save(`logvault-multi-site-${format(now, "yyyy-MM-dd")}.pdf`);
+  doc.save(`logvault-multi-site-summary-${format(now, "yyyy-MM-dd")}.pdf`);
 }
 
 // ─── Global (multi-site) Full Report PDF ─────────────────────────────────────
 
-export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
+export async function exportGlobalFullReportPDF({
+  logs,
+  siteNames,
+  dateFrom,
+  dateTo,
+  category,
+}: GlobalExportOptions): Promise<void> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -660,40 +688,49 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
   const now = new Date();
   const LINE_H = 4.5;
 
-  // Cover page
+  // Pre-fetch all photos
+  const allPhotoUrls = Array.from(new Set(logs.flatMap((l) => l.photoUrls ?? [])));
+  const photoDataMap = new Map<string, string | null>();
+  await Promise.all(allPhotoUrls.map(async (url) => {
+    photoDataMap.set(url, await fetchImageDataUrl(url));
+  }));
+
+  // ── Cover page ──────────────────────────────────────────────────────────────
   doc.setFillColor(...DARK);
   doc.rect(0, 0, pageW, pageH, "F");
   doc.setFillColor(...AMBER);
-  doc.rect(0, 60, pageW, 4, "F");
+  doc.rect(0, 0, pageW, 3, "F"); // thin top accent
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(36);
-  doc.setTextColor(...WHITE);
-  doc.text("LogVault", margin, 46);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.setTextColor(...MUTED);
-  doc.text("Multi-Site Field Log Report", margin, 56);
+  let y = 40;
 
-  let y = 80;
+  // Report type label
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...WHITE);
+  doc.setFontSize(9);
+  doc.setTextColor(...AMBER);
+  doc.text("MULTI-SITE FIELD LOG REPORT", margin, y);
+  y += 14;
+
+  // Main heading: site count or single site name
   const coverTitle = siteNames.length === 1 ? siteNames[0] : `${siteNames.length} Sites`;
-  doc.text(coverTitle, margin, y);
-  y += 9;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(28);
+  doc.setTextColor(...WHITE);
+  const coverTitleLines = doc.splitTextToSize(coverTitle, contentW);
+  doc.text(coverTitleLines, margin, y);
+  y += coverTitleLines.length * 11;
 
   if (siteNames.length > 1) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...MUTED);
     const listStr = siteNames.slice(0, 6).join(", ") + (siteNames.length > 6 ? ` +${siteNames.length - 6} more` : "");
-    doc.text(listStr, margin, y);
-    y += 7;
+    const listLines = doc.splitTextToSize(listStr, contentW);
+    doc.text(listLines, margin, y);
+    y += listLines.length * 5 + 4;
   }
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   doc.text(`Period: ${periodLabel(dateFrom, dateTo)}`, margin, y);
   y += 6;
@@ -735,17 +772,30 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
     cx += 35;
   }
 
+  // Footer watermark
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
   doc.text("LogVault — Confidential field report", margin, pageH - 14);
 
-  // Log pages
+  // ── Log entry pages ─────────────────────────────────────────────────────────
   doc.addPage();
-  y = 18;
+  y = CONTENT_START_Y;
 
   logs.forEach((log) => {
     const catColor = CATEGORY_PDF_COLORS[log.category as LogCategory] ?? MUTED;
+
+    // Photo data
+    const photosData = (log.photoUrls ?? []).slice(0, 3)
+      .map((url) => ({ url, dataUrl: photoDataMap.get(url) ?? null }));
+    const photosToRender = photosData.filter((p) => p.dataUrl !== null);
+    const photoCount = photosToRender.length;
+    const photoGap = 3;
+    const photoAreaW = contentW - 16;
+    const photoW = photoCount > 0 ? (photoAreaW - photoGap * (photoCount - 1)) / photoCount : 0;
+    const photoH = photoCount > 0 ? Math.min(40, photoW * 0.65) : 0;
+    const photoRowH = photoCount > 0 ? photoH + 8 : 0;
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     const titleLines = doc.splitTextToSize(log.title, contentW - 52);
@@ -754,24 +804,28 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
     const contentText = log.content.trim() || "(no notes)";
     const contentLines = doc.splitTextToSize(contentText, contentW - 14);
     const hasLocation = !!log.location;
-    const hasPhotos = (log.photoUrls?.length ?? 0) > 0;
-    const metaRows = 1 + (hasLocation ? 1 : 0) + (hasPhotos ? 1 : 0);
+    const metaRows = hasLocation ? 1 : 0;
     const titleH = titleLines.length * 5.5;
     const contentH = contentLines.length * LINE_H;
-    const blockH = 6 + titleH + 8 + 0.5 + 4 + contentH + metaRows * 4 + 6;
+    const blockH = 6 + titleH + 8 + 0.5 + 4 + contentH + metaRows * 4 + photoRowH + 6;
 
-    if (y + blockH > pageH - 14) { doc.addPage(); y = 18; }
+    if (y + blockH > pageH - 14) { doc.addPage(); y = CONTENT_START_Y; }
 
     doc.setFillColor(...LIGHT);
     doc.roundedRect(margin, y, contentW, blockH, 2, 2, "F");
     doc.setFillColor(...catColor);
     doc.roundedRect(margin, y, 3.5, blockH, 1.5, 1.5, "F");
 
+    // Date (top right)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text(format(new Date(log.loggedAt), "MMM d, yyyy  h:mm a"), pageW - margin - 2, y + 8, { align: "right" });
+    doc.text(
+      format(new Date(log.loggedAt), "MMM d, yyyy  h:mm a"),
+      pageW - margin - 2, y + 8, { align: "right" }
+    );
 
+    // Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(...DARK);
@@ -790,7 +844,10 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
     // Category pill
     doc.setFillColor(...catColor);
     doc.roundedRect(margin + 42, ey, 24, 5.5, 1.2, 1.2, "F");
-    doc.text(CATEGORY_LABELS[log.category as LogCategory] ?? log.category, margin + 54, ey + 3.8, { align: "center" });
+    doc.text(
+      CATEGORY_LABELS[log.category as LogCategory] ?? log.category,
+      margin + 54, ey + 3.8, { align: "center" }
+    );
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
@@ -813,17 +870,27 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
       doc.setFontSize(8);
       doc.setTextColor(...MUTED);
       doc.text(`Location: ${log.location}`, margin + 8, ey);
-      ey += 4;
+      ey += 5;
     }
-    if (hasPhotos) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(8);
-      doc.setTextColor(...MUTED);
-      doc.text(`${log.photoUrls.length} photo attachment${log.photoUrls.length > 1 ? "s" : ""}`, margin + 8, ey);
+
+    // Embedded photos
+    if (photoCount > 0) {
+      photosToRender.forEach((photo, idx) => {
+        if (!photo.dataUrl) return;
+        const px = margin + 8 + idx * (photoW + photoGap);
+        try {
+          doc.addImage(photo.dataUrl, getImgFormat(photo.dataUrl), px, ey, photoW, photoH, undefined, "FAST");
+        } catch {
+          doc.setFillColor(...MID);
+          doc.roundedRect(px, ey, photoW, photoH, 2, 2, "F");
+        }
+      });
     }
+
     y += blockH + 4;
   });
 
+  // ── Headers/footers on content pages ────────────────────────────────────────
   const totalPages = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
   for (let i = 2; i <= totalPages; i++) {
     doc.setPage(i);
@@ -831,14 +898,18 @@ export function exportGlobalFullReportPDF({ logs, siteNames, dateFrom, dateTo, c
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...WHITE);
-    doc.text("Multi-Site Report", margin, 14);
+    const headerTitle = siteNames.length === 1 ? siteNames[0] : `${siteNames.length} Sites`;
+    doc.text(headerTitle, margin, 14);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text("Full Field Log Report", margin, 21);
+    doc.text("Multi-Site Field Log Report", margin, 21);
     doc.text(`Generated: ${format(now, "MMM d, yyyy")}`, pageW - margin, 14, { align: "right" });
     drawPageFooter(doc, pageW, pageH, i - 1, totalPages - 1, margin);
   }
 
   doc.save(`logvault-multi-site-full-report-${format(now, "yyyy-MM-dd")}.pdf`);
 }
+
+// Keep LogWithSite exported in case it's used elsewhere
+export type { LogWithSite };

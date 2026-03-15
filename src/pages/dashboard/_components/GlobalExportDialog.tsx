@@ -234,7 +234,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
       };
 
       if (format_ === "full-pdf") {
-        exportGlobalFullReportPDF(opts);
+        await exportGlobalFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else if (format_ === "table-pdf") {
         exportGlobalPDF(opts);

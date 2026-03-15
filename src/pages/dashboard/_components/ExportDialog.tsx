@@ -112,7 +112,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
         category: category !== "all" ? category : undefined,
       };
       if (format === "full-pdf") {
-        exportFullReportPDF(opts);
+        await exportFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else if (format === "table-pdf") {
         exportPDF(opts);
