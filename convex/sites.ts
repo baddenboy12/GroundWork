@@ -1,5 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const list = query({
   args: {},
@@ -152,14 +153,46 @@ export const remove = mutation({
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
     if (site.ownerId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
-    // Delete all logs for this site first
+    // Delete all logs for this site, cleaning up R2 photos and storage counters
     const logs = await ctx.db
       .query("logs")
       .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
       .collect();
+
+    let totalFreedBytes = 0;
+    const allR2Keys: string[] = [];
+
     for (const log of logs) {
+      // Collect R2 photo keys for bulk deletion
+      if (log.photos?.length) {
+        for (const photo of log.photos) {
+          allR2Keys.push(photo.key);
+          totalFreedBytes += photo.bytes;
+        }
+      }
+      // Legacy Convex storage cleanup
+      if (log.photoStorageIds?.length) {
+        for (const storageId of log.photoStorageIds) {
+          await ctx.storage.delete(storageId);
+        }
+      }
       await ctx.db.delete(log._id);
     }
+
+    // Schedule bulk R2 deletion (best-effort, non-blocking)
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
+        keys: allR2Keys,
+      });
+    }
+
+    // Decrement the user's storage counter
+    if (totalFreedBytes > 0) {
+      await ctx.db.patch(user._id, {
+        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - totalFreedBytes),
+      });
+    }
+
     await ctx.db.delete(args.siteId);
   },
 });
