@@ -1,5 +1,6 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
@@ -131,7 +132,7 @@ export const create = mutation({
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
-    return await ctx.db.insert("logs", {
+    const logId = await ctx.db.insert("logs", {
       siteId: args.siteId,
       title: args.title,
       content: args.content,
@@ -143,6 +144,17 @@ export const create = mutation({
       longitude: args.longitude,
       photoStorageIds: args.photoStorageIds,
     });
+    // Fire webhook delivery for Business-plan users
+    if ((user.subscriptionTier ?? "free") === "business") {
+      const site = await ctx.db.get(args.siteId);
+      await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
+        userId: user._id,
+        event: "log.created",
+        logId,
+        siteName: site?.name ?? "",
+      });
+    }
+    return logId;
   },
 });
 
@@ -202,5 +214,92 @@ export const remove = mutation({
       }
     }
     await ctx.db.delete(args.logId);
+  },
+});
+
+// ── Internal: get a log by ID for webhook delivery (no auth needed) ──────────
+export const _getForWebhook = internalQuery({
+  args: { logId: v.id("logs") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.logId);
+  },
+});
+
+// ── Internal: list logs for a site (used by REST API) ────────────────────────
+export const _listBySiteForApi = internalQuery({
+  args: {
+    siteId: v.id("sites"),
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Verify site ownership
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.userId) return null;
+
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+      .order("desc")
+      .take(args.limit ?? 50);
+
+    return logs.map((log) => ({
+      id: log._id,
+      siteId: log.siteId,
+      title: log.title,
+      content: log.content,
+      category: log.category,
+      loggedAt: log.loggedAt,
+      location: log.location ?? null,
+      latitude: log.latitude ?? null,
+      longitude: log.longitude ?? null,
+      createdAt: new Date(log._creationTime).toISOString(),
+    }));
+  },
+});
+
+// ── Internal: create a log via the REST API (no OIDC, uses authorId directly) ─
+export const _createFromApi = internalMutation({
+  args: {
+    siteId: v.id("sites"),
+    authorId: v.id("users"),
+    title: v.string(),
+    content: v.string(),
+    category: v.union(
+      v.literal("inspection"),
+      v.literal("maintenance"),
+      v.literal("incident"),
+      v.literal("audit"),
+      v.literal("general")
+    ),
+    loggedAt: v.string(),
+    location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerId !== args.authorId) {
+      throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    }
+    const logId = await ctx.db.insert("logs", {
+      siteId: args.siteId,
+      title: args.title,
+      content: args.content,
+      category: args.category,
+      authorId: args.authorId,
+      loggedAt: args.loggedAt,
+      location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
+    });
+    // Schedule webhook delivery
+    await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
+      userId: args.authorId,
+      event: "log.created",
+      logId,
+      siteName: site.name,
+    });
+    return logId;
   },
 });

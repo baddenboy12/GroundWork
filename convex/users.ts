@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 export const updateCurrentUser = mutation({
   args: {},
@@ -77,5 +77,24 @@ export const setSubscriptionTier = mutation({
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
     await ctx.db.patch(user._id, { subscriptionTier: args.tier });
+  },
+});
+
+// ── Internal helpers used by integrations backend ────────────────────────────
+
+export const _getByToken = internalQuery({
+  args: { tokenIdentifier: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", args.tokenIdentifier))
+      .unique();
+  },
+});
+
+export const _getById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
   },
 });

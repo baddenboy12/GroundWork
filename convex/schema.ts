@@ -29,6 +29,29 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_name", ["name"]),
 
+  apiKeys: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    // SHA-256 hash of the full key (never store the raw key)
+    keyHash: v.string(),
+    // First characters of the key for display: "lv_a1b2c3d4…"
+    keyPrefix: v.string(),
+    isActive: v.boolean(),
+    lastUsedAt: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_hash", ["keyHash"]),
+
+  webhooks: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    url: v.string(),
+    events: v.array(v.string()),
+    // HMAC-SHA256 signing secret (stored plain — only server-side accessible)
+    secret: v.string(),
+    isActive: v.boolean(),
+  }).index("by_user", ["userId"]),
+
   logs: defineTable({
     siteId: v.id("sites"),
     title: v.string(),

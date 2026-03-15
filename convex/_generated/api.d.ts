@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as http from "../http.js";
+import type * as integrations_apiKeys from "../integrations/apiKeys.js";
+import type * as integrations_apiKeysActions from "../integrations/apiKeysActions.js";
+import type * as integrations_webhookActions from "../integrations/webhookActions.js";
+import type * as integrations_webhooks from "../integrations/webhooks.js";
 import type * as logs from "../logs.js";
 import type * as sites from "../sites.js";
 import type * as storage from "../storage.js";
@@ -20,6 +25,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  http: typeof http;
+  "integrations/apiKeys": typeof integrations_apiKeys;
+  "integrations/apiKeysActions": typeof integrations_apiKeysActions;
+  "integrations/webhookActions": typeof integrations_webhookActions;
+  "integrations/webhooks": typeof integrations_webhooks;
   logs: typeof logs;
   sites: typeof sites;
   storage: typeof storage;

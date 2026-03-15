@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 export const list = query({
   args: {},
@@ -161,5 +161,17 @@ export const remove = mutation({
       await ctx.db.delete(log._id);
     }
     await ctx.db.delete(args.siteId);
+  },
+});
+
+// ── Internal: list all sites owned by a user (used by REST API) ─────────────
+export const _listByUserId = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
+      .order("asc")
+      .collect();
   },
 });
