@@ -32,9 +32,11 @@ type Props = {
   selectedSiteId: Id<"sites"> | null;
   onSelectSite: (id: Id<"sites">) => void;
   onSiteDeleted?: (id: Id<"sites">) => void;
+  /** Renders as a full-height panel instead of a fixed-width sidebar (for mobile) */
+  fullscreen?: boolean;
 };
 
-export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDeleted }: Props) {
+export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDeleted, fullscreen }: Props) {
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
@@ -67,7 +69,12 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-card h-full flex flex-col">
+    <aside className={cn(
+      "border-border bg-card flex flex-col",
+      fullscreen
+        ? "w-full h-full border-r-0"
+        : "w-64 shrink-0 border-r h-full"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <div>
@@ -108,7 +115,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
             <div
               key={site._id}
               className={cn(
-                "group flex items-center gap-2 mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
+                "group flex items-center gap-2 mx-2 px-3 py-3 md:py-2.5 rounded-lg cursor-pointer transition-colors",
                 selectedSiteId === site._id
                   ? "bg-primary/15 text-foreground"
                   : "hover:bg-accent text-muted-foreground hover:text-foreground"

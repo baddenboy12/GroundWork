@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileText, FileDown, Lock } from "lucide-react";
+import { Plus, MapPin, FileText, FileDown, Lock, ChevronLeft, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -27,6 +27,7 @@ import UpgradeDialog from "./UpgradeDialog.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
+import { useIsMobile } from "@/hooks/use-mobile.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 import { exportCSV, exportPDF } from "../_lib/export.ts";
 import { toast } from "sonner";
@@ -35,6 +36,8 @@ type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
 type Props = {
   siteId: Id<"sites">;
+  /** Mobile: callback to navigate back to the site list */
+  onBack?: () => void;
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -44,11 +47,12 @@ const DEFAULT_FILTERS: FilterState = {
   dateTo: "",
 };
 
-export default function LogList({ siteId }: Props) {
+export default function LogList({ siteId, onBack }: Props) {
   const sites = useQuery(api.sites.list, {});
   const site = sites?.find((s) => s._id === siteId);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
+  const isMobile = useIsMobile();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
@@ -127,64 +131,127 @@ export default function LogList({ siteId }: Props) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="border-b border-border px-6 py-3 bg-background shrink-0 space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-lg">{site?.name ?? "Loading..."}</h2>
+      <div className="border-b border-border px-4 md:px-6 py-3 bg-background shrink-0 space-y-3">
+
+        {/* Top row */}
+        <div className="flex items-center gap-2">
+          {/* Back button (mobile) */}
+          {isMobile && onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 -ml-1"
+              onClick={onBack}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+
+          {/* Site name */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+              <h2 className="font-semibold text-foreground truncate">
+                {site?.name ?? "Loading..."}
+              </h2>
             </div>
             {site?.location && (
-              <p className="text-xs text-muted-foreground mt-0.5 ml-6">{site.location}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 ml-5 truncate">
+                {site.location}
+              </p>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Export dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-1.5">
-                  {canExport ? (
-                    <FileDown className="w-4 h-4" />
-                  ) : (
-                    <Lock className="w-4 h-4" />
-                  )}
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                {canExport ? (
-                  <>
-                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-                      Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleExportPDF}>
-                      <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
-                      Download PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportCSV}>
-                      <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
-                      Download CSV
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-                      Export requires Pro plan
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setExportUpgradeOpen(true)}>
-                      <Lock className="w-3.5 h-3.5 mr-2 text-primary" />
-                      Upgrade to unlock export
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
-            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
-              <Plus className="w-4 h-4" /> New log
-            </Button>
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isMobile ? (
+              /* Mobile: icon-only new log + overflow menu */
+              <>
+                <Button size="icon" className="h-8 w-8" onClick={() => setCreateOpen(true)}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    {canExport ? (
+                      <>
+                        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                          Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleExportPDF}>
+                          <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportCSV}>
+                          <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
+                          Download CSV
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                          Export requires Pro plan
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setExportUpgradeOpen(true)}>
+                          <Lock className="w-3.5 h-3.5 mr-2 text-primary" />
+                          Upgrade to unlock export
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              /* Desktop: export dropdown + new log button */
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="gap-1.5">
+                      {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    {canExport ? (
+                      <>
+                        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                          Export {activeResults.length} {activeResults.length === 1 ? "entry" : "entries"}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleExportPDF}>
+                          <FileText className="w-3.5 h-3.5 mr-2 text-red-400" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportCSV}>
+                          <FileDown className="w-3.5 h-3.5 mr-2 text-green-400" />
+                          Download CSV
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                          Export requires Pro plan
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setExportUpgradeOpen(true)}>
+                          <Lock className="w-3.5 h-3.5 mr-2 text-primary" />
+                          Upgrade to unlock export
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+                  <Plus className="w-4 h-4" /> New log
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -198,7 +265,7 @@ export default function LogList({ siteId }: Props) {
       </div>
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
