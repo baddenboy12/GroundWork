@@ -3,6 +3,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
+import { enqueueOfflineEntry } from "@/hooks/use-offline-queue.ts";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +30,7 @@ import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
 import LocationPicker from "./LocationPicker.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
-import { AlertTriangle, Lock, MapPin, Plus } from "lucide-react";
+import { AlertTriangle, Lock, MapPin, Plus, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 type Props = {
@@ -67,6 +69,7 @@ export default function CreateLogDialog({
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
 
   const siteInputRef = useRef<HTMLInputElement>(null);
+  const isOnline = useOnlineStatus();
 
   // Sync initialSiteName when dialog opens
   useEffect(() => {
@@ -107,6 +110,29 @@ export default function CreateLogDialog({
     e.preventDefault();
     if (!siteName.trim() || !title.trim() || !content.trim()) return;
     setLoading(true);
+
+    // ── Offline path: queue entry locally ─────────────────────────────────
+    if (!isOnline) {
+      enqueueOfflineEntry({
+        siteName: siteName.trim(),
+        siteLocation: location.trim() || undefined,
+        siteLat: coords?.lat,
+        siteLng: coords?.lng,
+        title: title.trim(),
+        content: content.trim(),
+        category,
+        loggedAt: new Date(loggedAt).toISOString(),
+        location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
+      });
+      toast.success("Entry saved offline — will sync when reconnected");
+      handleClose();
+      setLoading(false);
+      return;
+    }
+
+    // ── Online path: save to Convex ────────────────────────────────────────
     try {
       const siteId = await findOrCreateSite({
         name: siteName.trim(),
@@ -154,6 +180,17 @@ export default function CreateLogDialog({
             <DialogTitle>New log entry</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+
+            {/* Offline notice */}
+            {!isOnline && (
+              <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+                <WifiOff className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  You&apos;re offline. Entry will be saved locally and synced when you reconnect.
+                  Photos cannot be attached while offline.
+                </span>
+              </div>
+            )}
 
             {/* Site name — autocomplete with auto-create */}
             <div className="space-y-1.5">
@@ -342,7 +379,7 @@ export default function CreateLogDialog({
               />
             </div>
 
-            {/* Photos — gated behind Starter plan */}
+            {/* Photos — gated behind Pro plan and requires online */}
             <div className="space-y-1.5">
               <Label className={cn("flex items-center gap-2")}>
                 Photos
@@ -351,9 +388,19 @@ export default function CreateLogDialog({
                     <Lock className="w-2.5 h-2.5" /> Starter+
                   </span>
                 )}
+                {canAttachPhotos && !isOnline && (
+                  <span className="text-[10px] font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-1.5 py-0.5 flex items-center gap-1">
+                    <WifiOff className="w-2.5 h-2.5" /> Offline
+                  </span>
+                )}
               </Label>
-              {canAttachPhotos ? (
+              {canAttachPhotos && isOnline ? (
                 <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={maxPhotosPerEntry} />
+              ) : canAttachPhotos && !isOnline ? (
+                <div className="w-full border-2 border-dashed border-amber-500/20 rounded-xl p-5 flex flex-col items-center gap-1.5 text-muted-foreground/60">
+                  <WifiOff className="w-4 h-4" />
+                  <span className="text-xs">Photos unavailable while offline</span>
+                </div>
               ) : (
                 <button
                   type="button"

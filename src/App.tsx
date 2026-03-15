@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
+import { useServiceWorker } from "@/hooks/use-service-worker.ts";
 import AuthCallback from "./pages/auth/Callback.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -10,6 +11,7 @@ import IntegrationsPage from "./pages/integrations/page.tsx";
 import PayPalReturn from "./pages/paypal/return.tsx";
 
 export default function App() {
+  useServiceWorker();
   return (
     <DefaultProviders>
       <BrowserRouter>

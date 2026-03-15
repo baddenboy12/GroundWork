@@ -8,6 +8,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet.tsx";
+import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SiteSidebar from "./_components/SiteSidebar.tsx";
 import LogList from "./_components/LogList.tsx";
@@ -20,8 +22,11 @@ function DashboardInner() {
   const isMobile = useIsMobile();
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
-  // Mobile-only: slide-in site list drawer
   const [siteDrawerOpen, setSiteDrawerOpen] = useState(false);
+
+  // Offline sync — auto-syncs queue when coming back online
+  const { isSyncing, syncQueue, isOnline } = useOfflineSync();
+  const offlineQueue = useOfflineQueueState();
 
   const handleSiteDeleted = (id: Id<"sites">) => {
     if (selectedSiteId === id) setSelectedSiteId(null);
@@ -42,6 +47,12 @@ function DashboardInner() {
       <DashboardNavbar
         onNewLog={() => setGlobalCreateOpen(true)}
         onMenuClick={isMobile ? () => setSiteDrawerOpen(true) : undefined}
+      />
+      <OfflineBanner
+        isOnline={isOnline}
+        pendingCount={offlineQueue.length}
+        isSyncing={isSyncing}
+        onSync={syncQueue}
       />
 
       {isMobile ? (
