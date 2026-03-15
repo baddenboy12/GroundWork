@@ -113,7 +113,12 @@ export default function CreateLogDialog({
     if (!siteName.trim() || !title.trim() || !content.trim()) return;
     setLoading(true);
     try {
-      const siteId = await findOrCreateSite({ name: siteName.trim(), location: location.trim() || undefined });
+      const siteId = await findOrCreateSite({
+        name: siteName.trim(),
+        location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
+      });
       await createLog({
         siteId: siteId as Id<"sites">,
         title: title.trim(),

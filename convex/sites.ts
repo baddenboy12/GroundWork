@@ -24,6 +24,8 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -37,6 +39,8 @@ export const create = mutation({
       name: args.name,
       description: args.description,
       location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
       ownerId: user._id,
     });
   },
@@ -48,6 +52,8 @@ export const update = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -64,16 +70,18 @@ export const update = mutation({
       name: args.name,
       description: args.description,
       location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
     });
   },
 });
 
-// Finds a site by name (case-insensitive) or creates a new one.
-// Used when creating a log entry with an inline site name.
 export const findOrCreate = mutation({
   args: {
     name: v.string(),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<string> => {
     const identity = await ctx.auth.getUserIdentity();
@@ -96,10 +104,12 @@ export const findOrCreate = mutation({
       (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
     );
     if (existing) {
-      // Backfill location if the site doesn't have one yet
-      if (args.location && !existing.location) {
-        await ctx.db.patch(existing._id, { location: args.location });
-      }
+      // Backfill location/coords if the site doesn't have them yet
+      const patch: Record<string, string | number> = {};
+      if (args.location && !existing.location) patch.location = args.location;
+      if (args.latitude != null && existing.latitude == null) patch.latitude = args.latitude;
+      if (args.longitude != null && existing.longitude == null) patch.longitude = args.longitude;
+      if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
 
@@ -122,6 +132,8 @@ export const findOrCreate = mutation({
     return await ctx.db.insert("sites", {
       name: trimmedName,
       location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
       ownerId: user._id,
     });
   },

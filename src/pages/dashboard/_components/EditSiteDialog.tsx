@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
-import LocationPicker from "./LocationPicker.tsx";
+import LocationPicker, { type PickerCoords } from "./LocationPicker.tsx";
 
 type Props = {
   open: boolean;
@@ -27,6 +27,12 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
   const [name, setName] = useState(site.name);
   const [description, setDescription] = useState(site.description ?? "");
   const [location, setLocation] = useState(site.location ?? "");
+  // Initialise coords from stored values so the map opens pre-pinned
+  const [coords, setCoords] = useState<PickerCoords | null>(
+    site.latitude != null && site.longitude != null
+      ? { lat: site.latitude, lng: site.longitude }
+      : null
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,6 +45,8 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
         name: name.trim(),
         description: description.trim() || undefined,
         location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
       });
       toast.success("Site updated");
       onClose();
@@ -74,6 +82,8 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               id="edit-site-location"
               value={location}
               onChange={setLocation}
+              onCoordsChange={setCoords}
+              initialCoords={coords}
               placeholder="123 Main St, City"
             />
           </div>

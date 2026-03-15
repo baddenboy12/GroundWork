@@ -21,6 +21,8 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     ownerId: v.id("users"),
     // Shared with all team members of the owner
   })

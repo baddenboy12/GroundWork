@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import LocationPicker from "./LocationPicker.tsx";
+import LocationPicker, { type PickerCoords } from "./LocationPicker.tsx";
 
 type Props = {
   open: boolean;
@@ -25,6 +25,7 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  const [coords, setCoords] = useState<PickerCoords | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,11 +37,14 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
         name: name.trim(),
         description: description.trim() || undefined,
         location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
       });
       toast.success("Site created");
       setName("");
       setDescription("");
       setLocation("");
+      setCoords(null);
       onClose();
     } catch {
       toast.error("Failed to create site");
@@ -72,6 +76,7 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
               id="site-location"
               value={location}
               onChange={setLocation}
+              onCoordsChange={setCoords}
               placeholder="123 Main St, City"
             />
           </div>
