@@ -56,7 +56,18 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="w-[calc(100%-0.5rem)] max-w-[calc(100%-0.5rem)] sm:w-[92vw] sm:max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-0 rounded-xl">
+        <DialogContent
+          className="w-[calc(100%-0.5rem)] max-w-[calc(100%-0.5rem)] sm:w-[92vw] sm:max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-0 rounded-xl"
+          onInteractOutside={(e) => {
+            // While the lightbox is open, prevent Radix from closing the dialog
+            // when clicks land on the lightbox portal (which appears "outside" to Radix)
+            if (lightboxIndex !== null) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            // While the lightbox is open, let the lightbox handle Escape — not the dialog
+            if (lightboxIndex !== null) e.preventDefault();
+          }}
+        >
           {/* Photo strip */}
           {photos.length > 0 && (
             <div
