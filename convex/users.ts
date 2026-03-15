@@ -81,6 +81,44 @@ export const setSubscriptionTier = mutation({
   },
 });
 
+/**
+ * Recalculates storageUsedBytes by summing photo bytes across all of the
+ * user's logs. Fixes drift caused by deletions that happened before the
+ * R2 cleanup logic was in place.
+ */
+export const recalculateStorage = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    // Fetch all sites for the user
+    const sites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+
+    let totalBytes = 0;
+    for (const site of sites) {
+      const logs = await ctx.db
+        .query("logs")
+        .withIndex("by_site", (q) => q.eq("siteId", site._id))
+        .collect();
+      for (const log of logs) {
+        totalBytes += log.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
+      }
+    }
+
+    await ctx.db.patch(user._id, { storageUsedBytes: totalBytes });
+    return totalBytes;
+  },
+});
+
 // ── Internal helpers used by integrations backend ────────────────────────────
 
 export const _getByToken = internalQuery({

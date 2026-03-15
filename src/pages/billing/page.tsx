@@ -96,6 +96,7 @@ function BillingInner() {
   const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
+  const recalculateStorage = useMutation(api.users.recalculateStorage);
   const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
   const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
@@ -112,6 +113,12 @@ function BillingInner() {
   const hasActivePayPalSub =
     user?.paypalSubscriptionStatus === "ACTIVE" ||
     user?.paypalSubscriptionStatus === "APPROVED";
+
+  // Recalculate storage on mount to fix any drift from pre-cleanup deletions
+  useEffect(() => {
+    void recalculateStorage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle return from PayPal approval or cancellation (via /paypal/return)
   useEffect(() => {
