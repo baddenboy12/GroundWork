@@ -73,7 +73,7 @@ export const test = action({
     const payload = {
       event: "ping",
       timestamp: new Date().toISOString(),
-      data: { message: "Test delivery from SiteScribe", webhookId: webhook._id },
+      data: { message: "Test delivery from GroundWork", webhookId: webhook._id },
     };
 
     try {
@@ -86,9 +86,9 @@ export const test = action({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-SiteScribe-Signature": signature,
-          "X-SiteScribe-Event": "ping",
-          "User-Agent": "SiteScribe-Webhook/1.0",
+          "X-GroundWork-Signature": signature,
+          "X-GroundWork-Event": "ping",
+          "User-Agent": "GroundWork-Webhook/1.0",
         },
         body: payloadStr,
         signal: AbortSignal.timeout(10_000),
@@ -153,9 +153,9 @@ export const deliver = internalAction({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-SiteScribe-Signature": signature,
-            "X-SiteScribe-Event": args.event,
-            "User-Agent": "SiteScribe-Webhook/1.0",
+            "X-GroundWork-Signature": signature,
+            "X-GroundWork-Event": args.event,
+            "User-Agent": "GroundWork-Webhook/1.0",
           },
           body: payloadStr,
           signal: AbortSignal.timeout(15_000),

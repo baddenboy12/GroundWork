@@ -117,7 +117,7 @@ export default function Pricing() {
                       className="w-full"
                       variant="secondary"
                       onClick={() =>
-                        window.open("mailto:hello@sitescribe.app?subject=Business Plan", "_blank")
+                        window.open("mailto:hello@groundwork.app?subject=Business Plan", "_blank")
                       }
                     >
                       Contact sales

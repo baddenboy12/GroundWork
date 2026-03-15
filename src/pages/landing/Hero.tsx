@@ -67,7 +67,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            SiteScribe is the all-purpose field log management platform built for teams who need more than sticky notes — photo evidence, structured entries, multi-site tracking, and seamless exports.
+            GroundWork is the all-purpose field log management platform built for teams who need more than sticky notes — photo evidence, structured entries, multi-site tracking, and seamless exports.
           </motion.p>
 
           <motion.div

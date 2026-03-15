@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="flex items-center gap-3">
             <img
               src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
-              alt="SiteScribe"
+              alt="GroundWork"
               className="w-7 h-7 rounded-md"
             />
             <span className="font-bold text-foreground">
@@ -26,7 +26,7 @@ export default function Footer() {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            &copy; {year} SiteScribe. All rights reserved.
+            &copy; {year} GroundWork. All rights reserved.
           </p>
         </div>
       </div>

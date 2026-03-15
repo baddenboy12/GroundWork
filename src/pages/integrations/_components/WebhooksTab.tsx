@@ -269,9 +269,9 @@ export default function WebhooksTab() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Use this secret to verify that webhook payloads are sent by SiteScribe.
+              Use this secret to verify that webhook payloads are sent by GroundWork.
               Compute <code className="text-xs bg-muted px-1 rounded">HMAC-SHA256(secret, body)</code> and
-              compare it to the <code className="text-xs bg-muted px-1 rounded">X-SiteScribe-Signature</code> header.
+              compare it to the <code className="text-xs bg-muted px-1 rounded">X-GroundWork-Signature</code> header.
             </p>
             <div className="rounded-lg bg-muted/60 border border-border p-3">
               <p className="font-mono text-sm break-all text-foreground select-all">{newSecret}</p>

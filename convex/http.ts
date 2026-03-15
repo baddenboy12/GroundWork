@@ -65,7 +65,7 @@ async function verifyApiKey(
   const user = await ctx.runQuery(internal.users._getById, { userId: apiKey.userId });
   if (!user) return err("User not found", 401);
   if ((user.subscriptionTier ?? "free") !== "business") {
-    return err("A Business plan is required to use the SiteScribe REST API", 403);
+    return err("A Business plan is required to use the GroundWork REST API", 403);
   }
 
   // Track last usage (non-blocking)

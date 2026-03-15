@@ -1,6 +1,6 @@
 {
-  "name": "SiteScribe",
-  "short_name": "SiteScribe",
+  "name": "GroundWork",
+  "short_name": "GroundWork",
   "description": "Field log and site inspection tracker",
   "start_url": "/dashboard",
   "display": "standalone",

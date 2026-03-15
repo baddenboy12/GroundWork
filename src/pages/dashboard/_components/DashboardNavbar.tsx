@@ -53,7 +53,7 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
         >
           <img
             src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
-            alt="SiteScribe"
+            alt="GroundWork"
             className="w-7 h-7 rounded-md"
           />
           <span className="font-bold text-foreground hidden sm:block">

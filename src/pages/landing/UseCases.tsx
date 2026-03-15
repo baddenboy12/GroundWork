@@ -42,7 +42,7 @@ export default function UseCases() {
             Built for field teams
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Whether you manage 3 sites or 300, SiteScribe scales with your operations.
+            Whether you manage 3 sites or 300, GroundWork scales with your operations.
           </p>
         </motion.div>
 

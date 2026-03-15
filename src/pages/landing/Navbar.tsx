@@ -13,7 +13,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <img
             src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
-            alt="SiteScribe"
+            alt="GroundWork"
             className="w-8 h-8 rounded-lg"
           />
           <span className="text-xl font-bold tracking-tight text-foreground">
