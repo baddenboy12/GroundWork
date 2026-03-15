@@ -113,16 +113,14 @@ function BillingInner() {
     user?.paypalSubscriptionStatus === "ACTIVE" ||
     user?.paypalSubscriptionStatus === "APPROVED";
 
-  // Handle return from PayPal approval or cancellation
+  // Handle return from PayPal approval or cancellation (via /paypal/return)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const subscriptionId = params.get("subscription_id");
-    const paypalCancelled = params.get("paypal_cancelled");
+    const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
+    const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
 
-    if (subscriptionId || paypalCancelled) {
-      // Clean up URL immediately
-      window.history.replaceState({}, "", "/billing");
-    }
+    // Clear immediately so a page refresh doesn't re-trigger
+    sessionStorage.removeItem("paypal_pending_subscription_id");
+    sessionStorage.removeItem("paypal_cancelled");
 
     if (paypalCancelled === "1") {
       toast.info("PayPal subscription not completed — no changes made.");
@@ -152,8 +150,8 @@ function BillingInner() {
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
         tier: newTier as "starter" | "pro" | "business",
-        returnUrl: `${origin}/billing`,
-        cancelUrl: `${origin}/billing?paypal_cancelled=1`,
+        returnUrl: `${origin}/paypal/return`,
+        cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
       });
       window.location.href = approvalUrl;
     } catch (err) {

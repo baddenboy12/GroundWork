@@ -7,6 +7,7 @@ import NotFound from "./pages/NotFound.tsx";
 import DashboardPage from "./pages/dashboard/page.tsx";
 import BillingPage from "./pages/billing/page.tsx";
 import IntegrationsPage from "./pages/integrations/page.tsx";
+import PayPalReturn from "./pages/paypal/return.tsx";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/paypal/return" element={<PayPalReturn />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
