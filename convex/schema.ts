@@ -41,6 +41,8 @@ export default defineSchema({
     authorId: v.id("users"),
     // ISO 8601 UTC timestamp of when the event occurred
     loggedAt: v.string(),
+    // Optional GPS / manual location for this specific log entry
+    location: v.optional(v.string()),
     // Convex storage IDs for attached photos
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
   })

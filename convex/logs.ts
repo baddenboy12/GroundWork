@@ -116,6 +116,7 @@ export const create = mutation({
     category: categoryValidator,
     loggedAt: v.string(),
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    location: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -134,6 +135,7 @@ export const create = mutation({
       category: args.category,
       authorId: user._id,
       loggedAt: args.loggedAt,
+      location: args.location,
       photoStorageIds: args.photoStorageIds,
     });
   },
@@ -147,6 +149,7 @@ export const update = mutation({
     category: categoryValidator,
     loggedAt: v.string(),
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    location: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -164,6 +167,7 @@ export const update = mutation({
       content: args.content,
       category: args.category,
       loggedAt: args.loggedAt,
+      location: args.location,
       photoStorageIds: args.photoStorageIds,
     });
   },

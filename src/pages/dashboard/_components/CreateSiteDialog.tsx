@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
+import LocationPicker from "./LocationPicker.tsx";
 
 type Props = {
   open: boolean;
@@ -67,11 +68,11 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="site-location">Location</Label>
-            <Input
+            <LocationPicker
               id="site-location"
-              placeholder="123 Main St, City"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
+              placeholder="123 Main St, City"
             />
           </div>
           <div className="space-y-1.5">

@@ -25,6 +25,7 @@ import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import { findFuzzyMatches } from "../_lib/fuzzy-match.ts";
 import PhotoUploader from "./PhotoUploader.tsx";
+import LocationPicker from "./LocationPicker.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { AlertTriangle, Lock, MapPin, Plus } from "lucide-react";
@@ -63,6 +64,7 @@ export default function CreateLogDialog({
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<LogCategory>("general");
   const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [location, setLocation] = useState("");
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [photoUpgradeOpen, setPhotoUpgradeOpen] = useState(false);
@@ -100,6 +102,7 @@ export default function CreateLogDialog({
     setPhotos([]);
     setSiteName(initialSiteName ?? "");
     setShowSuggestions(false);
+    setLocation("");
     onClose();
   };
 
@@ -116,6 +119,7 @@ export default function CreateLogDialog({
         category,
         loggedAt: new Date(loggedAt).toISOString(),
         photoStorageIds: photos.length > 0 ? photos.map((p) => p.storageId) : undefined,
+        location: location.trim() || undefined,
       });
       toast.success("Log entry saved");
       onCreated?.(siteId as Id<"sites">);
@@ -310,6 +314,15 @@ export default function CreateLogDialog({
                 />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Location</Label>
+              <LocationPicker
+                value={location}
+                onChange={setLocation}
+                placeholder="e.g. Tower 12 – Roof East, 123 Main St"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="log-content">Notes *</Label>
               <Textarea

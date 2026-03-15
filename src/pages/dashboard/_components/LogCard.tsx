@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
-import { Trash2, User, Clock, ImageIcon } from "lucide-react";
+import { Trash2, User, Clock, ImageIcon, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import {
   AlertDialog,
@@ -121,7 +121,7 @@ export default function LogCard({ log }: Props) {
             {log.content}
           </p>
 
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3 h-3" />
               {format(new Date(log.loggedAt), "MMM d, yyyy 'at' h:mm a")}
@@ -130,6 +130,12 @@ export default function LogCard({ log }: Props) {
               <User className="w-3 h-3" />
               {log.authorName}
             </span>
+            {log.location && (
+              <span className="flex items-center gap-1.5 truncate max-w-[240px]" title={log.location}>
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{log.location}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>

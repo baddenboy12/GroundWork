@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import LocationPicker from "./LocationPicker.tsx";
 
 type Props = {
   open: boolean;
@@ -69,10 +70,11 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-site-location">Location</Label>
-            <Input
+            <LocationPicker
               id="edit-site-location"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
+              placeholder="123 Main St, City"
             />
           </div>
           <div className="space-y-1.5">
