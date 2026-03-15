@@ -44,7 +44,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: 15,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 2 * 1024 * 1024 * 1024, // 2 GB
+    storageLimitBytes: 100 * 1024 * 1024, // 100 MB
     export: false,
     integrations: false,
   },
@@ -56,7 +56,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 5 * 1024 * 1024 * 1024, // 5 GB
+    storageLimitBytes: 1 * 1024 * 1024 * 1024, // 1 GB
     export: true,
     integrations: false,
     highlight: true,
@@ -69,7 +69,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     maxSites: null,
     maxLogsPerSite: null,
     photoAttachments: true,
-    storageLimitBytes: 10 * 1024 * 1024 * 1024, // 10 GB
+    storageLimitBytes: 5 * 1024 * 1024 * 1024, // 5 GB
     export: true,
     integrations: true,
   },
