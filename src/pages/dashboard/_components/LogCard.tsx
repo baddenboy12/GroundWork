@@ -148,6 +148,11 @@ export default function LogCard({ log }: Props) {
                 <span className="truncate">{log.location}</span>
               </span>
             )}
+            {log.latitude != null && log.longitude != null && (
+              <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
+                {log.latitude.toFixed(5)}, {log.longitude.toFixed(5)}
+              </span>
+            )}
           </div>
         </div>
       </div>

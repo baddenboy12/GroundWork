@@ -43,6 +43,9 @@ export default defineSchema({
     loggedAt: v.string(),
     // Optional GPS / manual location for this specific log entry
     location: v.optional(v.string()),
+    // GPS coordinates (stored separately for map display)
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     // Convex storage IDs for attached photos
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
   })

@@ -92,9 +92,15 @@ function MapClickHandler({
   return null;
 }
 
+export type PickerCoords = { lat: number; lng: number };
+
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  /** Fired whenever GPS is acquired or pin is moved. null when map is dismissed. */
+  onCoordsChange?: (coords: PickerCoords | null) => void;
+  /** Pre-load the map at these coordinates (e.g. when editing an existing log) */
+  initialCoords?: PickerCoords | null;
   placeholder?: string;
   id?: string;
   required?: boolean;
@@ -105,18 +111,23 @@ type Props = {
  * - Manual text entry
  * - One-tap GPS auto-fill (browser Geolocation + OpenStreetMap Nominatim)
  * - Live map preview with draggable / clickable pin to fine-tune position
+ * - Fires onCoordsChange with lat/lng whenever the pin position changes
  */
 export default function LocationPicker({
   value,
   onChange,
+  onCoordsChange,
+  initialCoords,
   placeholder = "e.g. 123 Main St, City",
   id,
   required,
 }: Props) {
   const [gps, setGps] = useState<GpsState>({ status: "idle" });
-  const [coords, setCoords] = useState<Coords | null>(null);
+  const [coords, setCoords] = useState<Coords | null>(
+    initialCoords ? { lat: initialCoords.lat, lng: initialCoords.lng } : null
+  );
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(!!initialCoords);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGps = () => {
@@ -131,9 +142,11 @@ export default function LocationPicker({
       async (pos) => {
         const { latitude, longitude, accuracy: acc } = pos.coords;
         const address = await reverseGeocode(latitude, longitude);
-        setCoords({ lat: latitude, lng: longitude, accuracy: Math.round(acc) });
+        const newCoords = { lat: latitude, lng: longitude, accuracy: Math.round(acc) };
+        setCoords(newCoords);
         setAccuracy(Math.round(acc));
         onChange(address);
+        onCoordsChange?.({ lat: latitude, lng: longitude });
         setShowMap(true);
         setGps({ status: "idle" });
       },
@@ -151,15 +164,16 @@ export default function LocationPicker({
 
   const handlePinMove = (newCoords: Coords, address: string) => {
     setCoords(newCoords);
-    // Preserve accuracy from GPS, clear it for manual pin moves
     if (!newCoords.accuracy) setAccuracy(null);
     onChange(address);
+    onCoordsChange?.({ lat: newCoords.lat, lng: newCoords.lng });
   };
 
   const handleDismissMap = () => {
     setShowMap(false);
     setCoords(null);
     setAccuracy(null);
+    onCoordsChange?.(null);
   };
 
   return (
@@ -207,7 +221,7 @@ export default function LocationPicker({
           {/* Map header */}
           <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="bg-primary rounded-full p-0.5">
+              <div className="bg-primary rounded-full p-0.5 shrink-0">
                 <Navigation className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
               <span className="text-xs font-medium text-foreground">Location confirmed</span>
@@ -223,7 +237,7 @@ export default function LocationPicker({
             <button
               type="button"
               onClick={handleDismissMap}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-2"
             >
               <X className="w-3.5 h-3.5" />
             </button>

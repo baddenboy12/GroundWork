@@ -117,6 +117,8 @@ export const create = mutation({
     loggedAt: v.string(),
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -136,6 +138,8 @@ export const create = mutation({
       authorId: user._id,
       loggedAt: args.loggedAt,
       location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
       photoStorageIds: args.photoStorageIds,
     });
   },
@@ -150,6 +154,8 @@ export const update = mutation({
     loggedAt: v.string(),
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
     location: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -168,6 +174,8 @@ export const update = mutation({
       category: args.category,
       loggedAt: args.loggedAt,
       location: args.location,
+      latitude: args.latitude,
+      longitude: args.longitude,
       photoStorageIds: args.photoStorageIds,
     });
   },

@@ -65,6 +65,7 @@ export default function CreateLogDialog({
   const [category, setCategory] = useState<LogCategory>("general");
   const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [location, setLocation] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [photoUpgradeOpen, setPhotoUpgradeOpen] = useState(false);
@@ -103,6 +104,7 @@ export default function CreateLogDialog({
     setSiteName(initialSiteName ?? "");
     setShowSuggestions(false);
     setLocation("");
+    setCoords(null);
     onClose();
   };
 
@@ -120,6 +122,8 @@ export default function CreateLogDialog({
         loggedAt: new Date(loggedAt).toISOString(),
         photoStorageIds: photos.length > 0 ? photos.map((p) => p.storageId) : undefined,
         location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
       });
       toast.success("Log entry saved");
       onCreated?.(siteId as Id<"sites">);
@@ -319,6 +323,7 @@ export default function CreateLogDialog({
               <LocationPicker
                 value={location}
                 onChange={setLocation}
+                onCoordsChange={setCoords}
                 placeholder="e.g. Tower 12 – Roof East, 123 Main St"
               />
             </div>

@@ -42,6 +42,11 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     () => new Date(log.loggedAt).toISOString().slice(0, 16)
   );
   const [location, setLocation] = useState(log.location ?? "");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    log.latitude != null && log.longitude != null
+      ? { lat: log.latitude, lng: log.longitude }
+      : null
+  );
   const [loading, setLoading] = useState(false);
 
   const handleClose = () => {
@@ -51,6 +56,11 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     setCategory(log.category as LogCategory);
     setLoggedAt(new Date(log.loggedAt).toISOString().slice(0, 16));
     setLocation(log.location ?? "");
+    setCoords(
+      log.latitude != null && log.longitude != null
+        ? { lat: log.latitude, lng: log.longitude }
+        : null
+    );
     onClose();
   };
 
@@ -66,6 +76,8 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
         category,
         loggedAt: new Date(loggedAt).toISOString(),
         location: location.trim() || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
         // Preserve existing photo storage IDs
         photoStorageIds: log.photoStorageIds,
       });
@@ -128,6 +140,8 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <LocationPicker
               value={location}
               onChange={setLocation}
+              onCoordsChange={setCoords}
+              initialCoords={coords}
               placeholder="e.g. Tower 12 – Roof East, 123 Main St"
             />
           </div>
