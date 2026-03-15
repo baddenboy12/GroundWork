@@ -44,7 +44,7 @@ export default function Pricing() {
             Simple, transparent pricing
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Start free. Upgrade as your team grows. No hidden fees, cancel anytime.
+            Two simple plans. No hidden fees, cancel anytime.
           </p>
         </motion.div>
 
@@ -112,19 +112,7 @@ export default function Pricing() {
                   </Button>
                 </Authenticated>
                 <Unauthenticated>
-                  {tier === "business" ? (
-                    <Button
-                      className="w-full"
-                      variant="secondary"
-                      onClick={() =>
-                        window.open("mailto:hello@groundwork.app?subject=Business Plan", "_blank")
-                      }
-                    >
-                      Contact sales
-                    </Button>
-                  ) : (
-                    <SignInButton className="w-full" />
-                  )}
+                  <SignInButton className="w-full" />
                 </Unauthenticated>
               </motion.div>
             );
