@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
   FileText, FileDown, Calendar, Tag, Loader2,
-  Palette, ChevronDown,
+  Palette, ChevronDown, Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -95,6 +95,7 @@ function ThemeSwatch({ theme }: { theme: Theme }) {
 
 export default function ExportDialog({ open, onClose, siteId, siteName, siteLocation }: Props) {
   const [format, setFormat] = useState<ExportFormat>("full-pdf");
+  const [reportTitle, setReportTitle] = useState("Field Log Report");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [category, setCategory] = useState("all");
@@ -136,6 +137,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
         dateTo: dateTo || undefined,
         category: category !== "all" ? category : undefined,
         theme: selectedTheme,
+        reportTitle,
       };
       if (format === "full-pdf") {
         await exportFullReportPDF(opts);
@@ -186,39 +188,54 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
           {/* Theme picker trigger — only for Full Report PDF */}
           {format === "full-pdf" && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5" /> Report theme
-              </Label>
-              <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5" /> Report theme
+                </Label>
+                <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <ThemeSwatch theme={selectedTheme} />
+                      <span className="flex-1 text-left font-medium text-foreground">{selectedTheme.name}</span>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[380px] p-3"
+                    align="start"
+                    side="bottom"
+                    sideOffset={4}
                   >
-                    <ThemeSwatch theme={selectedTheme} />
-                    <span className="flex-1 text-left font-medium text-foreground">{selectedTheme.name}</span>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[380px] p-3"
-                  align="start"
-                  side="bottom"
-                  sideOffset={4}
-                >
-                  <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
-                    Choose a theme — {selectedTheme.name}
-                  </p>
-                  <div className="max-h-72 overflow-y-auto pr-0.5">
-                    <ThemePicker
-                      value={selectedTheme.id}
-                      onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                    <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
+                      Choose a theme — {selectedTheme.name}
+                    </p>
+                    <div className="max-h-72 overflow-y-auto pr-0.5">
+                      <ThemePicker
+                        value={selectedTheme.id}
+                        onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Report title */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5" /> Report title
+                </Label>
+                <Input
+                  value={reportTitle}
+                  onChange={(e) => setReportTitle(e.target.value)}
+                  placeholder="e.g. Field Log Report"
+                  maxLength={80}
+                />
+              </div>
+            </>
           )}
 
           {/* Date range */}

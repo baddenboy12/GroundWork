@@ -299,6 +299,7 @@ export type ExportOptions = {
   dateTo?: string;
   category?: string;
   theme: Theme;
+  reportTitle?: string;
 };
 
 export type GlobalExportOptions = {
@@ -308,6 +309,7 @@ export type GlobalExportOptions = {
   dateTo?: string;
   category?: string;
   theme: Theme;
+  reportTitle?: string;
 };
 
 // ─── Image helpers ────────────────────────────────────────────────────────────
@@ -1008,7 +1010,7 @@ async function renderReport(opts: RenderOpts): Promise<void> {
 // ─── Public export functions ──────────────────────────────────────────────────
 
 export async function exportFullReportPDF({
-  siteName, siteLocation, logs, dateFrom, dateTo, category, theme,
+  siteName, siteLocation, logs, dateFrom, dateTo, category, theme, reportTitle,
 }: ExportOptions): Promise<void> {
   const entries: EntryData[] = logs.map((l) => ({
     title: l.title,
@@ -1022,7 +1024,7 @@ export async function exportFullReportPDF({
 
   await renderReport({
     entries,
-    reportLabel: "Field Log Report",
+    reportLabel: reportTitle?.trim() || "Field Log Report",
     siteTitle: siteName,
     siteSubtitle: siteLocation,
     dateFrom, dateTo, category, theme,
@@ -1031,7 +1033,7 @@ export async function exportFullReportPDF({
 }
 
 export async function exportGlobalFullReportPDF({
-  logs, siteNames, dateFrom, dateTo, category, theme,
+  logs, siteNames, dateFrom, dateTo, category, theme, reportTitle,
 }: GlobalExportOptions): Promise<void> {
   const entries: EntryData[] = logs.map((l) => ({
     title: l.title,
@@ -1051,7 +1053,7 @@ export async function exportGlobalFullReportPDF({
 
   await renderReport({
     entries,
-    reportLabel: "Multi-Site Field Log Report",
+    reportLabel: reportTitle?.trim() || "Multi-Site Field Log Report",
     siteTitle,
     siteSubtitle,
     dateFrom, dateTo, category, theme,
