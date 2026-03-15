@@ -63,6 +63,9 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               onChange={(e) => setName(e.target.value)}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Renaming this site updates the label across all log entries under it.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-site-location">Location</Label>

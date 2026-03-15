@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/select.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
+import { findFuzzyMatches } from "../_lib/fuzzy-match.ts";
 import PhotoUploader from "./PhotoUploader.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
-import { Lock, MapPin, Plus } from "lucide-react";
+import { AlertTriangle, Lock, MapPin, Plus } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 type UploadedPhoto = {
@@ -78,12 +79,18 @@ export default function CreateLogDialog({
 
   const filteredSites =
     sites?.filter((s) =>
-      s.name.toLowerCase().includes(siteName.toLowerCase())
+      s.name.toLowerCase().includes(siteName.toLowerCase().trim())
     ) ?? [];
 
   const exactMatch = sites?.some(
     (s) => s.name.toLowerCase() === siteName.trim().toLowerCase()
   );
+
+  // Sites that are NOT caught by the substring filter but are fuzzy-similar
+  const fuzzyMatches =
+    siteName.trim().length >= 2
+      ? findFuzzyMatches(siteName, sites ?? [], (s) => s.name)
+      : [];
 
   const handleClose = () => {
     setTitle("");
@@ -159,7 +166,8 @@ export default function CreateLogDialog({
                   required
                 />
                 {showSuggestions && (siteName.length > 0 || filteredSites.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                    {/* Exact / substring matches */}
                     {filteredSites.length > 0 && (
                       <>
                         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40">
@@ -181,6 +189,34 @@ export default function CreateLogDialog({
                         ))}
                       </>
                     )}
+
+                    {/* Fuzzy-only matches (possible typos / similar names) */}
+                    {fuzzyMatches.length > 0 && (
+                      <>
+                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/20 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3 h-3" /> Did you mean?
+                        </p>
+                        {fuzzyMatches.map((s) => (
+                          <button
+                            key={s._id}
+                            type="button"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 text-left transition-colors"
+                            onMouseDown={() => {
+                              setSiteName(s.name);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span>{s.name}</span>
+                            <span className="ml-auto text-[10px] text-amber-600 dark:text-amber-400 font-medium shrink-0">
+                              Similar
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Create new option */}
                     {siteName.trim() && !exactMatch && (
                       <button
                         type="button"
@@ -192,14 +228,15 @@ export default function CreateLogDialog({
                       >
                         <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
                         <span>
-                          Create{" "}
+                          Create new{" "}
                           <span className="font-semibold text-foreground">
                             &quot;{siteName.trim()}&quot;
                           </span>
                         </span>
                       </button>
                     )}
-                    {filteredSites.length === 0 && !siteName.trim() && (
+
+                    {filteredSites.length === 0 && fuzzyMatches.length === 0 && !siteName.trim() && (
                       <p className="px-3 py-3 text-sm text-muted-foreground">
                         Start typing a site name…
                       </p>
@@ -207,7 +244,28 @@ export default function CreateLogDialog({
                   </div>
                 )}
               </div>
-              {siteName.trim() && !exactMatch && (
+
+              {/* Inline hint below input */}
+              {siteName.trim() && !exactMatch && fuzzyMatches.length > 0 && filteredSites.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  Similar to{" "}
+                  {fuzzyMatches.slice(0, 2).map((s, i) => (
+                    <span key={s._id}>
+                      <button
+                        type="button"
+                        className="font-semibold underline underline-offset-2 hover:no-underline"
+                        onClick={() => setSiteName(s.name)}
+                      >
+                        {s.name}
+                      </button>
+                      {i < Math.min(fuzzyMatches.length, 2) - 1 && ", "}
+                    </span>
+                  ))}
+                  {" "}&mdash; did you mean one of these?
+                </p>
+              )}
+              {siteName.trim() && !exactMatch && fuzzyMatches.length === 0 && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Plus className="w-3 h-3 text-primary" />
                   A new site named &quot;{siteName.trim()}&quot; will be created
