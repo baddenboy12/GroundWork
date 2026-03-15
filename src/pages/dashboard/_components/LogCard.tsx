@@ -47,26 +47,59 @@ export default function LogCard({ log }: Props) {
   return (
     <>
       <div className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-colors">
-        {/* Photo strip */}
+        {/* Photo grid — consistent 4:3 tiles, fully visible, all clickable */}
         {photos.length > 0 && (
-          <div className="flex gap-1 p-3 pb-0">
-            {photos.slice(0, 4).map((url, i) => (
+          <div
+            className={cn(
+              "grid gap-1 p-3 pb-0",
+              photos.length === 1 && "grid-cols-1",
+              photos.length === 2 && "grid-cols-2",
+              photos.length >= 3 && "grid-cols-2"
+            )}
+          >
+            {/* When 3 photos, first spans full width */}
+            {photos.length === 3 && (
               <button
-                key={url}
                 type="button"
-                className="relative rounded-lg overflow-hidden bg-muted shrink-0 hover:opacity-90 transition-opacity"
-                style={{ width: photos.length === 1 ? "100%" : "80px", height: "80px" }}
-                onClick={() => setLightboxIndex(i)}
+                className="col-span-2 relative rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-video"
+                onClick={() => setLightboxIndex(0)}
               >
-                <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                {/* "+N more" overlay on 4th photo if there are more */}
-                {i === 3 && photos.length > 4 && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">+{photos.length - 4}</span>
-                  </div>
-                )}
+                <img
+                  src={photos[0]}
+                  alt="Photo 1"
+                  className="w-full h-full object-contain"
+                />
               </button>
-            ))}
+            )}
+
+            {/* For 3 photos show [1,2]; for others show first 4 */}
+            {(photos.length === 3 ? photos.slice(1, 3) : photos.slice(0, 4)).map(
+              (url, i) => {
+                const realIndex = photos.length === 3 ? i + 1 : i;
+                const isLastVisible = realIndex === 3 && photos.length > 4;
+                return (
+                  <button
+                    key={url}
+                    type="button"
+                    className="relative rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-video"
+                    onClick={() => setLightboxIndex(realIndex)}
+                  >
+                    <img
+                      src={url}
+                      alt={`Photo ${realIndex + 1}`}
+                      className="w-full h-full object-contain"
+                    />
+                    {isLastVisible && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
+                        <span className="text-white text-lg font-bold">
+                          +{photos.length - 4}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+                );
+              }
+            )}
           </div>
         )}
 
