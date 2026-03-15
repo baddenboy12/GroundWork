@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   FileText, FileDown, TableProperties, Calendar, Tag, Loader2,
   MapPin, CheckSquare, Square, ChevronDown, ChevronUp, Search,
-  ListChecks, Filter, X,
+  ListChecks, Filter, X, Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -29,10 +29,14 @@ import {
   exportGlobalCSV,
   exportGlobalPDF,
   exportGlobalFullReportPDF,
+  THEMES,
+  DEFAULT_THEME_ID,
+  type Theme,
 } from "../_lib/export.ts";
 import { CATEGORY_LABELS } from "../_lib/constants.ts";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { format } from "date-fns";
+import ThemePicker from "./ThemePicker.tsx";
 
 type ExportFormat = "full-pdf" | "table-pdf" | "csv";
 type SelectionMode = "filter" | "individual";
@@ -103,6 +107,9 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   const [entrySearch, setEntrySearch] = useState("");
   const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<Theme>(
+    THEMES.find((t) => t.id === DEFAULT_THEME_ID) ?? THEMES[0]
+  );
 
   // When sites load, default to all selected
   useEffect(() => {
@@ -231,6 +238,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         category: category !== "all" ? category : undefined,
+        theme: selectedTheme,
       };
 
       if (format_ === "full-pdf") {
@@ -312,6 +320,19 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Theme picker — only for Full Report PDF */}
+          {format_ === "full-pdf" && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5" /> Report theme
+                <span className="ml-auto font-normal normal-case text-muted-foreground">
+                  {selectedTheme.name}
+                </span>
+              </Label>
+              <ThemePicker value={selectedTheme.id} onChange={setSelectedTheme} />
+            </div>
+          )}
 
           {/* Sites filter — shown in both modes */}
           <div className="space-y-2">

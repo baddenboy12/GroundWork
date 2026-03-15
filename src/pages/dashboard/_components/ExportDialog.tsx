@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
-import { FileText, FileDown, TableProperties, Calendar, Tag, Loader2 } from "lucide-react";
+import { FileText, FileDown, TableProperties, Calendar, Tag, Loader2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -21,9 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { cn } from "@/lib/utils.ts";
-import { exportCSV, exportPDF, exportFullReportPDF } from "../_lib/export.ts";
+import { exportCSV, exportPDF, exportFullReportPDF, THEMES, DEFAULT_THEME_ID, type Theme } from "../_lib/export.ts";
 import { CATEGORY_LABELS } from "../_lib/constants.ts";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
+import ThemePicker from "./ThemePicker.tsx";
 
 type ExportFormat = "full-pdf" | "table-pdf" | "csv";
 
@@ -80,6 +81,9 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
   const [dateTo, setDateTo] = useState("");
   const [category, setCategory] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<Theme>(
+    THEMES.find((t) => t.id === DEFAULT_THEME_ID) ?? THEMES[0]
+  );
 
   const exportLogs = useQuery(
     api.logs.listBySiteForExport,
@@ -110,6 +114,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         category: category !== "all" ? category : undefined,
+        theme: selectedTheme,
       };
       if (format === "full-pdf") {
         await exportFullReportPDF(opts);
@@ -133,7 +138,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Export logs</DialogTitle>
         </DialogHeader>
@@ -168,6 +173,19 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               ))}
             </div>
           </div>
+
+          {/* Theme picker — only for Full Report PDF */}
+          {format === "full-pdf" && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5" /> Report theme
+                <span className="ml-auto font-normal normal-case text-muted-foreground">
+                  {selectedTheme.name}
+                </span>
+              </Label>
+              <ThemePicker value={selectedTheme.id} onChange={setSelectedTheme} />
+            </div>
+          )}
 
           {/* Date range */}
           <div className="space-y-2">
