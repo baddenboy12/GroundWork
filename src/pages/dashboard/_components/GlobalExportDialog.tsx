@@ -4,8 +4,8 @@ import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
   FileText, FileDown, TableProperties, Calendar, Tag, Loader2,
-  MapPin, CheckSquare, Square, ChevronDown, ChevronUp, Search,
-  ListChecks, Filter, X, Palette,
+  MapPin, CheckSquare, Square, Search, ListChecks, Filter,
+  X, Palette, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -24,6 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   exportGlobalCSV,
@@ -88,6 +93,20 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   general: "bg-slate-500/15 text-slate-400",
 };
 
+// Small color swatch preview for theme trigger button
+function ThemeSwatch({ theme }: { theme: Theme }) {
+  const [cr, cg, cb] = theme.coverBg;
+  const [ar, ag, ab] = theme.coverAccent;
+  const [er, eg, eb] = theme.entryBg;
+  return (
+    <span className="inline-flex rounded overflow-hidden border border-border w-8 h-5 shrink-0">
+      <span className="flex-1" style={{ background: `rgb(${cr},${cg},${cb})` }} />
+      <span className="w-1" style={{ background: `rgb(${ar},${ag},${ab})` }} />
+      <span className="flex-1" style={{ background: `rgb(${er},${eg},${eb})` }} />
+    </span>
+  );
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -100,7 +119,6 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   const [format_, setFormat_] = useState<ExportFormat>("full-pdf");
   const [selectedSiteIds, setSelectedSiteIds] = useState<Set<Id<"sites">>>(new Set());
   const [allSitesSelected, setAllSitesSelected] = useState(true);
-  const [sitesExpanded, setSitesExpanded] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [category, setCategory] = useState("all");
@@ -110,6 +128,11 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   const [selectedTheme, setSelectedTheme] = useState<Theme>(
     THEMES.find((t) => t.id === DEFAULT_THEME_ID) ?? THEMES[0]
   );
+
+  // Popover open states
+  const [themePopoverOpen, setThemePopoverOpen] = useState(false);
+  const [sitesPopoverOpen, setSitesPopoverOpen] = useState(false);
+  const [entriesPopoverOpen, setEntriesPopoverOpen] = useState(false);
 
   // When sites load, default to all selected
   useEffect(() => {
@@ -138,11 +161,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   const toggleSite = (id: Id<"sites">) => {
     const next = new Set(selectedSiteIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelectedSiteIds(next);
     setAllSitesSelected(next.size === (sites?.length ?? 0));
   };
@@ -186,11 +206,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   const toggleEntry = (id: string) => {
     const next = new Set(selectedEntryIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelectedEntryIds(next);
   };
 
@@ -198,17 +215,13 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
     const filteredIds = new Set(filteredEntries.map((l) => l._id));
     const allSelected = filteredEntries.every((l) => selectedEntryIds.has(l._id));
     const next = new Set(selectedEntryIds);
-    if (allSelected) {
-      filteredIds.forEach((id) => next.delete(id));
-    } else {
-      filteredIds.forEach((id) => next.add(id));
-    }
+    if (allSelected) filteredIds.forEach((id) => next.delete(id));
+    else filteredIds.forEach((id) => next.add(id));
     setSelectedEntryIds(next);
   };
 
   const isLoading = exportLogs === undefined;
 
-  // Logs to export depending on mode
   const logsToExport = useMemo(() => {
     if (!exportLogs) return [];
     if (selectionMode === "filter") return exportLogs;
@@ -217,8 +230,22 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   const count = logsToExport.length;
 
-  const allFilteredSelected = filteredEntries.length > 0 &&
-    filteredEntries.every((l) => selectedEntryIds.has(l._id));
+  const allFilteredSelected =
+    filteredEntries.length > 0 && filteredEntries.every((l) => selectedEntryIds.has(l._id));
+
+  // Sites summary label
+  const sitesSummary = allSitesSelected
+    ? `All sites (${sites?.length ?? 0})`
+    : selectedSiteIds.size === 0
+    ? "No sites selected"
+    : `${selectedSiteIds.size} of ${sites?.length ?? 0} sites`;
+
+  // Entries summary label
+  const entriesSummary = isLoading
+    ? "Loading…"
+    : selectionMode === "individual"
+    ? `${selectedEntryIds.size} of ${exportLogs?.length ?? 0} selected`
+    : `${count} entries`;
 
   const handleExport = async () => {
     if (logsToExport.length === 0) {
@@ -227,10 +254,9 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
     }
     setIsExporting(true);
     try {
-      const siteNames =
-        allSitesSelected
-          ? (sites?.map((s) => s.name) ?? [])
-          : (sites?.filter((s) => selectedSiteIds.has(s._id)).map((s) => s.name) ?? []);
+      const siteNames = allSitesSelected
+        ? (sites?.map((s) => s.name) ?? [])
+        : (sites?.filter((s) => selectedSiteIds.has(s._id)).map((s) => s.name) ?? []);
 
       const opts = {
         logs: logsToExport,
@@ -259,7 +285,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Export logs</DialogTitle>
         </DialogHeader>
@@ -321,213 +347,242 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
             </div>
           </div>
 
-          {/* Theme picker — only for Full Report PDF */}
-          {format_ === "full-pdf" && (
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5" /> Report theme
-                <span className="ml-auto font-normal normal-case text-muted-foreground">
-                  {selectedTheme.name}
-                </span>
-              </Label>
-              <ThemePicker value={selectedTheme.id} onChange={setSelectedTheme} />
-            </div>
-          )}
-
-          {/* Sites filter — shown in both modes */}
+          {/* ── Compact row of selectors ── */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" /> Sites
-            </Label>
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Options</Label>
+            <div className="space-y-2">
 
-            <div className="rounded-xl border border-border overflow-hidden">
-              <button
-                type="button"
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-                onClick={toggleAllSites}
-              >
-                {allSitesSelected
-                  ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-                  : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
-                <span className="text-sm font-medium text-foreground flex-1">All sites</span>
-                <span className="text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
-                <button
-                  type="button"
-                  className="p-0.5 hover:bg-accent rounded"
-                  onClick={(e) => { e.stopPropagation(); setSitesExpanded((v) => !v); }}
-                >
-                  {sitesExpanded
-                    ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                    : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-                </button>
-              </button>
-
-              {sitesExpanded && sites && sites.length > 0 && (
-                <div className="border-t border-border divide-y divide-border/50 max-h-36 overflow-y-auto">
-                  {sites.map((site) => (
+              {/* Theme — only for Full Report */}
+              {format_ === "full-pdf" && (
+                <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
+                  <PopoverTrigger asChild>
                     <button
-                      key={site._id}
                       type="button"
-                      className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-accent transition-colors text-left"
-                      onClick={() => toggleSite(site._id)}
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
                     >
-                      {selectedSiteIds.has(site._id)
-                        ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
-                        : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                      <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
-                      <span className="text-sm text-foreground truncate">{site.name}</span>
+                      <Palette className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Theme</span>
+                      <ThemeSwatch theme={selectedTheme} />
+                      <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {!allSitesSelected && selectedSiteIds.size === 0 && (
-              <p className="text-xs text-destructive">Select at least one site</p>
-            )}
-          </div>
-
-          {/* Date range */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Date range
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">From</Label>
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">To</Label>
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} />
-              </div>
-            </div>
-            {!dateFrom && !dateTo && (
-              <p className="text-xs text-muted-foreground">Leave blank to include all dates</p>
-            )}
-          </div>
-
-          {/* Category — only in filter mode */}
-          {selectionMode === "filter" && (
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5" /> Category
-              </Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Individual entry selector */}
-          {selectionMode === "individual" && (
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <ListChecks className="w-3.5 h-3.5" /> Entries
-              </Label>
-
-              {/* Search bar */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Search by title, site, author…"
-                  value={entrySearch}
-                  onChange={(e) => setEntrySearch(e.target.value)}
-                  className="pl-8 pr-8 text-sm"
-                />
-                {entrySearch && (
-                  <button
-                    type="button"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setEntrySearch("")}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Select all / count row */}
-              {!isLoading && filteredEntries.length > 0 && (
-                <div className="flex items-center justify-between px-1">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={toggleAllFilteredEntries}
-                  >
-                    {allFilteredSelected
-                      ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                      : <Square className="w-3.5 h-3.5" />}
-                    {allFilteredSelected ? "Deselect all" : "Select all"}
-                    {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
-                  </button>
-                  <span className="text-xs text-muted-foreground">
-                    {selectedEntryIds.size} / {exportLogs?.length ?? 0} selected
-                  </span>
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[380px] p-3" align="start" sideOffset={4}>
+                    <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
+                      Choose a theme — {selectedTheme.name}
+                    </p>
+                    <div className="max-h-72 overflow-y-auto">
+                      <ThemePicker
+                        value={selectedTheme.id}
+                        onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
 
-              {/* Entry list */}
-              <div className="rounded-xl border border-border overflow-hidden">
-                {isLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading entries…
+              {/* Sites */}
+              <Popover open={sitesPopoverOpen} onOpenChange={setSitesPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors",
+                      !allSitesSelected && selectedSiteIds.size === 0
+                        ? "border-destructive"
+                        : "border-border"
+                    )}
+                  >
+                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Sites</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start" sideOffset={4}>
+                  <div className="p-2 border-b border-border">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                      onClick={toggleAllSites}
+                    >
+                      {allSitesSelected
+                        ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                        : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <span className="text-sm font-medium">All sites</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
+                    </button>
                   </div>
-                ) : filteredEntries.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    {entrySearch ? "No entries match your search" : "No entries found for selected filters"}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border/50 max-h-56 overflow-y-auto">
-                    {filteredEntries.map((log) => {
-                      const isSelected = selectedEntryIds.has(log._id);
-                      return (
+                  <div className="max-h-52 overflow-y-auto p-2 space-y-0.5">
+                    {!sites ? (
+                      <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
+                      </div>
+                    ) : sites.length === 0 ? (
+                      <p className="py-4 text-center text-sm text-muted-foreground">No sites found</p>
+                    ) : (
+                      sites.map((site) => (
                         <button
-                          key={log._id}
+                          key={site._id}
                           type="button"
-                          className={cn(
-                            "w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent",
-                            isSelected && "bg-primary/5"
-                          )}
-                          onClick={() => toggleEntry(log._id)}
+                          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                          onClick={() => toggleSite(site._id)}
                         >
-                          {isSelected
-                            ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                            : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-                          <div className="min-w-0 flex-1 space-y-0.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
-                              <span className={cn(
-                                "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                                CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
-                              )}>
-                                {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{log.siteName}</span>
-                              <span className="shrink-0">·</span>
-                              <span className="shrink-0">
-                                {format(new Date(log.loggedAt), "MMM d, yyyy")}
-                              </span>
-                            </div>
-                          </div>
+                          {selectedSiteIds.has(site._id)
+                            ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
+                            : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                          <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
+                          <span className="text-sm text-foreground truncate">{site.name}</span>
                         </button>
-                      );
-                    })}
+                      ))
+                    )}
                   </div>
-                )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Date range */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> From
+                  </Label>
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined} className="text-xs h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> To
+                  </Label>
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} className="text-xs h-9" />
+                </div>
               </div>
+
+              {/* Category — only in filter mode */}
+              {selectionMode === "filter" && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-0">
+                  <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground w-14 shrink-0">Category</span>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="border-0 shadow-none h-9 px-0 flex-1 text-sm font-medium focus:ring-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Entries selector — individual mode */}
+              {selectionMode === "individual" && (
+                <Popover open={entriesPopoverOpen} onOpenChange={setEntriesPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <ListChecks className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Entries</span>
+                      <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96 p-0" align="start" sideOffset={4}>
+                    {/* Search */}
+                    <div className="p-2 border-b border-border space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                        <Input
+                          placeholder="Search entries…"
+                          value={entrySearch}
+                          onChange={(e) => setEntrySearch(e.target.value)}
+                          className="pl-8 pr-8 text-sm h-8"
+                        />
+                        {entrySearch && (
+                          <button
+                            type="button"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEntrySearch("")}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {!isLoading && filteredEntries.length > 0 && (
+                        <div className="flex items-center justify-between px-0.5">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={toggleAllFilteredEntries}
+                          >
+                            {allFilteredSelected
+                              ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                              : <Square className="w-3.5 h-3.5" />}
+                            {allFilteredSelected ? "Deselect all" : "Select all"}
+                            {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
+                          </button>
+                          <span className="text-xs text-muted-foreground">
+                            {selectedEntryIds.size} / {exportLogs?.length ?? 0}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Entry list */}
+                    <div className="max-h-64 overflow-y-auto">
+                      {isLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
+                        </div>
+                      ) : filteredEntries.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          {entrySearch ? "No entries match your search" : "No entries found"}
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-border/50 p-1">
+                          {filteredEntries.map((log) => {
+                            const isSelected = selectedEntryIds.has(log._id);
+                            return (
+                              <button
+                                key={log._id}
+                                type="button"
+                                className={cn(
+                                  "w-full flex items-start gap-2.5 px-2 py-2 text-left rounded-md transition-colors hover:bg-accent",
+                                  isSelected && "bg-primary/5"
+                                )}
+                                onClick={() => toggleEntry(log._id)}
+                              >
+                                {isSelected
+                                  ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                                  : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+                                <div className="min-w-0 flex-1 space-y-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
+                                    <span className={cn(
+                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                                      CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
+                                    )}>
+                                      {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                    <MapPin className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{log.siteName}</span>
+                                    <span className="shrink-0">·</span>
+                                    <span className="shrink-0">{format(new Date(log.loggedAt), "MMM d, yyyy")}</span>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Live count */}
           <div className={cn(
