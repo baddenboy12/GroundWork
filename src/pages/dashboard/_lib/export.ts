@@ -348,8 +348,10 @@ function imgFormat(d: string): string {
 
 // ─── Photo strip layout (aspect-ratio preserving) ────────────────────────────
 
-const PHOTO_MAX_H = 48; // mm
-const PHOTO_GAP = 3;    // mm between photos
+const PHOTO_MAX_H = 44; // mm — max height per photo row
+const PHOTO_GAP = 3;    // mm between photos horizontally
+const PHOTO_ROW_GAP = 4; // mm between rows
+const PHOTOS_PER_ROW = 4; // max photos per row
 
 type PhotoStrip = { photos: PhotoInfo[]; widths: number[]; actualH: number; stripH: number };
 
@@ -359,7 +361,25 @@ function calcStrip(photos: PhotoInfo[], areaW: number): PhotoStrip | null {
   const totalRaw = rawW.reduce((s, w) => s + w, 0) + PHOTO_GAP * (photos.length - 1);
   const scale = Math.min(1, areaW / totalRaw);
   const actualH = PHOTO_MAX_H * scale;
-  return { photos, widths: rawW.map((w) => w * scale), actualH, stripH: actualH + 10 };
+  return { photos, widths: rawW.map((w) => w * scale), actualH, stripH: actualH + 8 };
+}
+
+// Split photos into multiple rows of up to PHOTOS_PER_ROW each
+function calcPhotoRows(photos: PhotoInfo[], areaW: number): PhotoStrip[] {
+  if (!photos.length) return [];
+  const rows: PhotoStrip[] = [];
+  for (let i = 0; i < photos.length; i += PHOTOS_PER_ROW) {
+    const chunk = photos.slice(i, i + PHOTOS_PER_ROW);
+    const row = calcStrip(chunk, areaW);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+// Total height consumed by all photo rows (including gaps between rows)
+function totalPhotoRowsHeight(rows: PhotoStrip[]): number {
+  if (!rows.length) return 0;
+  return rows.reduce((sum, r) => sum + r.stripH, 0) + PHOTO_ROW_GAP * (rows.length - 1);
 }
 
 function renderStrip(doc: jsPDF, strip: PhotoStrip, startX: number, y: number): void {
@@ -373,6 +393,14 @@ function renderStrip(doc: jsPDF, strip: PhotoStrip, startX: number, y: number): 
       doc.roundedRect(px, y, pw, strip.actualH, 2, 2, "F");
     }
     px += pw + PHOTO_GAP;
+  }
+}
+
+function renderPhotoRows(doc: jsPDF, rows: PhotoStrip[], startX: number, y: number): void {
+  let py = y;
+  for (const row of rows) {
+    renderStrip(doc, row, startX, py);
+    py += row.stripH + PHOTO_ROW_GAP;
   }
 }
 
@@ -681,7 +709,7 @@ const TITLE_H = 5.5;
 function measureEntry(
   doc: jsPDF,
   entry: EntryData,
-  strip: PhotoStrip | null,
+  photoRows: PhotoStrip[],
   theme: Theme,
   contentW: number
 ): number {
@@ -693,7 +721,7 @@ function measureEntry(
   const bodyTxt = entry.content.trim() || "(no notes)";
   const bodyLines = doc.splitTextToSize(bodyTxt, contentW - 16);
 
-  const photoH = strip ? strip.stripH : 0;
+  const photoH = totalPhotoRowsHeight(photoRows);
   const locationH = entry.location ? 5 : 0;
 
   if (theme.entry === "plain") {
@@ -726,7 +754,7 @@ function drawEntry(
   doc: jsPDF,
   entry: EntryData,
   y: number,
-  strip: PhotoStrip | null,
+  photoRows: PhotoStrip[],
   theme: Theme,
   config: { margin: number; pageW: number; contentW: number }
 ): void {
@@ -742,7 +770,7 @@ function drawEntry(
   doc.setFontSize(9);
   const bodyTxt = entry.content.trim() || "(no notes)";
   const bodyLines = doc.splitTextToSize(bodyTxt, contentW - 16);
-  const blockH = measureEntry(doc, entry, strip, theme, contentW);
+  const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
 
   if (theme.entry === "card" || theme.entry === "dark") {
     // ── Card / dark card ──────────────────────────────────────────────────────
@@ -816,8 +844,8 @@ function drawEntry(
       ey += 5;
     }
 
-    // Photos
-    if (strip) renderStrip(doc, strip, margin + 8, ey);
+    // Photos (multi-row)
+    if (photoRows.length) renderPhotoRows(doc, photoRows, margin + 8, ey);
 
   } else {
     // ── Plain / editorial ─────────────────────────────────────────────────────
@@ -879,8 +907,8 @@ function drawEntry(
       ey += 5;
     }
 
-    // Photos
-    if (strip) renderStrip(doc, strip, margin, ey);
+    // Photos (multi-row)
+    if (photoRows.length) renderPhotoRows(doc, photoRows, margin, ey);
   }
 }
 
@@ -929,21 +957,20 @@ async function renderReport(opts: RenderOpts): Promise<void> {
   let y = CONTENT_Y;
 
   for (const entry of entries) {
-    const photos = (entry.photoUrls ?? []).slice(0, 5)
+    const photos = (entry.photoUrls ?? [])
       .map((u) => photoMap.get(u) ?? null)
       .filter((p): p is PhotoInfo => p !== null);
 
     const photoAreaW = theme.entry === "plain" ? contentW : contentW - 16;
-    const photoStartX = theme.entry === "plain" ? margin : margin + 8;
-    const strip = calcStrip(photos, photoAreaW);
-    const blockH = measureEntry(doc, entry, strip, theme, contentW);
+    const photoRows = calcPhotoRows(photos, photoAreaW);
+    const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
 
     if (y + blockH > pageH - 14) {
       doc.addPage();
       y = CONTENT_Y;
     }
 
-    drawEntry(doc, entry, y, strip, theme, { margin, pageW, contentW });
+    drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW });
     y += blockH + (theme.entry === "plain" ? 6 : 4);
 
     // For plain style: draw a light bottom rule between entries
@@ -953,9 +980,6 @@ async function renderReport(opts: RenderOpts): Promise<void> {
       doc.line(margin, y - 4, pageW - margin, y - 4);
       doc.setLineWidth(0.2);
     }
-
-    // Suppress unused variable
-    void photoStartX;
   }
 
   // ── Running headers + footers on content pages ───────────────────────────────
