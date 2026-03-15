@@ -67,7 +67,7 @@ export default function LogCard({ log }: Props) {
                 <img
                   src={photos[0]}
                   alt="Photo 1"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               </button>
             )}
@@ -87,7 +87,7 @@ export default function LogCard({ log }: Props) {
                     <img
                       src={url}
                       alt={`Photo ${realIndex + 1}`}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover"
                     />
                     {isLastVisible && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
