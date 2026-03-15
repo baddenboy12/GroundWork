@@ -107,6 +107,9 @@ function BillingInner() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [initPending, setInitPending] = useState(false);
+  // "Switch plan" flow: cancel current sub then start new PayPal subscription
+  const [switchTarget, setSwitchTarget] = useState<SubscriptionTier | null>(null);
+  const [switchPending, setSwitchPending] = useState(false);
   const navigate = useNavigate();
 
   const isPayPalConfigured = paypalStatus?.isInitialized ?? false;
@@ -187,6 +190,26 @@ function BillingInner() {
       toast.error(extractErrorMessage(err));
     } finally {
       setCancelPending(false);
+    }
+  };
+
+  // Cancel current subscription then immediately redirect to PayPal for the new plan
+  const handleSwitchPlan = async () => {
+    if (!switchTarget) return;
+    setSwitchPending(true);
+    try {
+      await cancelSubscriptionAction();
+      const origin = window.location.origin;
+      const { approvalUrl } = await createSubscriptionAction({
+        tier: switchTarget as "starter" | "pro" | "business",
+        returnUrl: `${origin}/paypal/return`,
+        cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+      });
+      window.location.href = approvalUrl;
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+      setSwitchPending(false);
+      setSwitchTarget(null);
     }
   };
 
@@ -475,7 +498,7 @@ function BillingInner() {
                     <Button
                       size="sm"
                       className="w-full"
-                      variant={isCurrent ? "secondary" : "secondary"}
+                      variant="secondary"
                       disabled={isCurrent || hasActivePayPalSub}
                       onClick={() => handleManualSelect("free")}
                     >
@@ -492,12 +515,12 @@ function BillingInner() {
                           ? "default"
                           : "secondary"
                       }
-                      disabled={
-                        isCurrent ||
-                        paypalPending !== null ||
-                        (hasActivePayPalSub && !isCurrent)
+                      disabled={isCurrent || paypalPending !== null || switchPending}
+                      onClick={() =>
+                        hasActivePayPalSub && !isCurrent
+                          ? setSwitchTarget(t)
+                          : handlePayPalSubscribe(t)
                       }
-                      onClick={() => handlePayPalSubscribe(t)}
                     >
                       {isPendingThis ? (
                         <>
@@ -506,6 +529,11 @@ function BillingInner() {
                         </>
                       ) : isCurrent ? (
                         "Current plan"
+                      ) : hasActivePayPalSub ? (
+                        <>
+                          <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                          Switch to this plan
+                        </>
                       ) : isUpgrade ? (
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
@@ -535,7 +563,7 @@ function BillingInner() {
 
           {hasActivePayPalSub && (
             <p className="text-xs text-muted-foreground mt-4 text-center">
-              To switch plans, cancel your current subscription first then subscribe to the new plan.
+              Switching plans will cancel your current subscription and start a new one via PayPal.
             </p>
           )}
         </div>
@@ -601,6 +629,42 @@ function BillingInner() {
           </a>
         </p>
       </div>
+
+      {/* Switch plan confirmation dialog */}
+      <Dialog open={!!switchTarget} onOpenChange={(v) => !v && setSwitchTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-primary" />
+              Switch to {switchTarget ? TIER_CONFIG[switchTarget].name : ""} plan?
+            </DialogTitle>
+            <DialogDescription>
+              Your current <strong>{TIER_CONFIG[tier].name}</strong> subscription will be
+              cancelled and you will be redirected to PayPal to start a new{" "}
+              <strong>{switchTarget ? TIER_CONFIG[switchTarget].name : ""}</strong> subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setSwitchTarget(null)}
+              disabled={switchPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSwitchPlan} disabled={switchPending}>
+              {switchPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                "Continue to PayPal"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel subscription confirmation dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
