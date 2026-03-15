@@ -4,7 +4,8 @@ import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
-import { enqueueOfflineEntry } from "@/hooks/use-offline-queue.ts";
+import { enqueueOfflineEntry, type OfflinePhoto } from "@/hooks/use-offline-queue.ts";
+import OfflinePhotoUploader from "./OfflinePhotoUploader.tsx";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,7 @@ export default function CreateLogDialog({
   const [location, setLocation] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [photos, setPhotos] = useState<R2Photo[]>([]);
+  const [offlinePhotos, setOfflinePhotos] = useState<OfflinePhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [photoUpgradeOpen, setPhotoUpgradeOpen] = useState(false);
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
@@ -99,6 +101,7 @@ export default function CreateLogDialog({
     setCategory("general");
     setLoggedAt(new Date().toISOString().slice(0, 16));
     setPhotos([]);
+    setOfflinePhotos([]);
     setSiteName(initialSiteName ?? "");
     setShowSuggestions(false);
     setLocation("");
@@ -125,6 +128,7 @@ export default function CreateLogDialog({
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,
+        photos: offlinePhotos.length > 0 ? offlinePhotos : undefined,
       });
       toast.success("Entry saved offline — will sync when reconnected");
       handleClose();
@@ -186,8 +190,7 @@ export default function CreateLogDialog({
               <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
                 <WifiOff className="w-3.5 h-3.5 shrink-0" />
                 <span>
-                  You&apos;re offline. Entry will be saved locally and synced when you reconnect.
-                  Photos cannot be attached while offline.
+                  You&apos;re offline. This entry and any photos will be saved locally and synced automatically when you reconnect.
                 </span>
               </div>
             )}
@@ -379,7 +382,7 @@ export default function CreateLogDialog({
               />
             </div>
 
-            {/* Photos — gated behind Pro plan and requires online */}
+            {/* Photos — gated behind Pro plan; offline uploader shown when offline */}
             <div className="space-y-1.5">
               <Label className={cn("flex items-center gap-2")}>
                 Photos
@@ -390,17 +393,14 @@ export default function CreateLogDialog({
                 )}
                 {canAttachPhotos && !isOnline && (
                   <span className="text-[10px] font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-1.5 py-0.5 flex items-center gap-1">
-                    <WifiOff className="w-2.5 h-2.5" /> Offline
+                    <WifiOff className="w-2.5 h-2.5" /> Storing locally
                   </span>
                 )}
               </Label>
               {canAttachPhotos && isOnline ? (
                 <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={maxPhotosPerEntry} />
               ) : canAttachPhotos && !isOnline ? (
-                <div className="w-full border-2 border-dashed border-amber-500/20 rounded-xl p-5 flex flex-col items-center gap-1.5 text-muted-foreground/60">
-                  <WifiOff className="w-4 h-4" />
-                  <span className="text-xs">Photos unavailable while offline</span>
-                </div>
+                <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} />
               ) : (
                 <button
                   type="button"

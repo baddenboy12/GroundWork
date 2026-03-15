@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
@@ -7,6 +7,13 @@ import { useOnlineStatus } from "./use-online-status.ts";
 
 const QUEUE_KEY = "logvault_offline_queue_v1";
 const QUEUE_CHANGED = "logvault_queue_changed";
+
+/** A photo stored locally as a compressed base64 JPEG, waiting to be uploaded */
+export type OfflinePhoto = {
+  dataUrl: string;   // base64 data URL (compressed JPEG)
+  fileName: string;
+  bytes: number;     // approximate binary size
+};
 
 export type OfflineEntry = {
   id: string;
@@ -21,8 +28,24 @@ export type OfflineEntry = {
   location?: string;
   latitude?: number;
   longitude?: number;
+  photos?: OfflinePhoto[];
   queuedAt: number;
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Convert a base64 data URL to a Blob for uploading */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, data] = dataUrl.split(",");
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const binary = atob(data);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return new Blob([array], { type: mime });
+}
 
 // ─── Pure queue utilities (safe outside React) ────────────────────────────────
 
@@ -67,8 +90,7 @@ export function useOfflineQueueState(): OfflineEntry[] {
 
 /**
  * Syncs all queued offline entries to Convex when the device comes back online.
- * Call this once from a component that is always mounted while authenticated
- * (e.g. DashboardInner).
+ * Photos stored as base64 are uploaded to R2 before the log entry is created.
  */
 export function useOfflineSync() {
   const isOnline = useOnlineStatus();
@@ -76,6 +98,7 @@ export function useOfflineSync() {
 
   const createLog = useMutation(api.logs.create);
   const findOrCreateSite = useMutation(api.sites.findOrCreate);
+  const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
 
   const syncQueue = useCallback(async () => {
     const pending = getOfflineQueue();
@@ -93,6 +116,32 @@ export function useOfflineSync() {
           latitude: entry.siteLat,
           longitude: entry.siteLng,
         });
+
+        // Upload any locally-stored photos to R2 before creating the log
+        const uploadedPhotos: { url: string; key: string; bytes: number }[] = [];
+        if (entry.photos && entry.photos.length > 0) {
+          for (const photo of entry.photos) {
+            try {
+              const blob = dataUrlToBlob(photo.dataUrl);
+              const { uploadUrl, key, publicUrl } = await getUploadUrl({
+                fileName: photo.fileName,
+                contentType: "image/jpeg",
+                bytes: blob.size,
+              });
+              const res = await fetch(uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": "image/jpeg" },
+                body: blob,
+              });
+              if (res.ok) {
+                uploadedPhotos.push({ url: publicUrl, key, bytes: blob.size });
+              }
+            } catch {
+              // Best-effort: skip failed individual photos, still save the log
+            }
+          }
+        }
+
         await createLog({
           siteId: siteId as Id<"sites">,
           title: entry.title,
@@ -104,6 +153,7 @@ export function useOfflineSync() {
             | "audit"
             | "general",
           loggedAt: entry.loggedAt,
+          photos: uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
           location: entry.location,
           latitude: entry.latitude,
           longitude: entry.longitude,
@@ -127,7 +177,7 @@ export function useOfflineSync() {
         `${failed.length} ${failed.length === 1 ? "entry" : "entries"} failed to sync — will retry when online`
       );
     }
-  }, [createLog, findOrCreateSite]);
+  }, [createLog, findOrCreateSite, getUploadUrl]);
 
   // Auto-sync whenever we come back online
   useEffect(() => {
