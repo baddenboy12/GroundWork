@@ -1,17 +1,96 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { LocateFixed, MapPin, X, Navigation } from "lucide-react";
+import L from "leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
+
+// Fix Leaflet's default marker icons when bundled
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+type Coords = { lat: number; lng: number };
 
 type GpsState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; address: string; accuracy: number }
   | { status: "error"; message: string };
 
 type NominatimResult = {
   display_name: string;
 };
+
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    const data: NominatimResult = await res.json();
+    return data.display_name;
+  } catch {
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+}
+
+/** Re-centers the map when coords change */
+function MapRecenter({ coords }: { coords: Coords }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([coords.lat, coords.lng], 17, { animate: true });
+  }, [coords, map]);
+  return null;
+}
+
+/** Draggable marker — updates address on drag end */
+function DraggableMarker({
+  coords,
+  onMove,
+}: {
+  coords: Coords;
+  onMove: (c: Coords, address: string) => void;
+}) {
+  const markerRef = useRef<L.Marker>(null);
+
+  const eventHandlers = {
+    dragend: async () => {
+      const marker = markerRef.current;
+      if (!marker) return;
+      const { lat, lng } = marker.getLatLng();
+      const address = await reverseGeocode(lat, lng);
+      onMove({ lat, lng }, address);
+    },
+  };
+
+  return (
+    <Marker
+      draggable
+      eventHandlers={eventHandlers}
+      position={[coords.lat, coords.lng]}
+      ref={markerRef}
+    />
+  );
+}
+
+/** Click anywhere on the map to move the pin */
+function MapClickHandler({
+  onMove,
+}: {
+  onMove: (c: Coords, address: string) => void;
+}) {
+  useMapEvents({
+    click: async (e) => {
+      const { lat, lng } = e.latlng;
+      const address = await reverseGeocode(lat, lng);
+      onMove({ lat, lng }, address);
+    },
+  });
+  return null;
+}
 
 type Props = {
   value: string;
@@ -23,8 +102,9 @@ type Props = {
 
 /**
  * WhatsApp-style location input.
- * Supports manual text entry AND one-tap GPS auto-fill via the browser
- * Geolocation API + OpenStreetMap Nominatim reverse-geocoding (free, no key).
+ * - Manual text entry
+ * - One-tap GPS auto-fill (browser Geolocation + OpenStreetMap Nominatim)
+ * - Live map preview with draggable / clickable pin to fine-tune position
  */
 export default function LocationPicker({
   value,
@@ -34,7 +114,9 @@ export default function LocationPicker({
   required,
 }: Props) {
   const [gps, setGps] = useState<GpsState>({ status: "idle" });
-  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGps = () => {
@@ -43,31 +125,23 @@ export default function LocationPicker({
       return;
     }
     setGps({ status: "loading" });
-    setShowSuggestion(false);
+    setShowMap(false);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data: NominatimResult = await res.json();
-          setGps({ status: "ready", address: data.display_name, accuracy: Math.round(accuracy) });
-          setShowSuggestion(true);
-        } catch {
-          // If reverse geocode fails fall back to raw coordinates
-          const fallback = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-          setGps({ status: "ready", address: fallback, accuracy: Math.round(accuracy) });
-          setShowSuggestion(true);
-        }
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        const address = await reverseGeocode(latitude, longitude);
+        setCoords({ lat: latitude, lng: longitude });
+        setAccuracy(Math.round(acc));
+        onChange(address);
+        setShowMap(true);
+        setGps({ status: "idle" });
       },
       (err) => {
         const messages: Record<number, string> = {
-          1: "Location permission denied. Please allow location access in your browser settings.",
+          1: "Permission denied. Allow location access in your browser settings.",
           2: "Location unavailable. Please try again or enter manually.",
-          3: "Location request timed out. Please try again.",
+          3: "Request timed out. Please try again.",
         };
         setGps({ status: "error", message: messages[err.code] ?? "Could not get location." });
       },
@@ -75,46 +149,35 @@ export default function LocationPicker({
     );
   };
 
-  const handleUseLocation = () => {
-    if (gps.status !== "ready") return;
-    onChange(gps.address);
-    setShowSuggestion(false);
-    inputRef.current?.focus();
+  const handlePinMove = (newCoords: Coords, address: string) => {
+    setCoords(newCoords);
+    onChange(address);
   };
 
-  const handleDismiss = () => {
-    setShowSuggestion(false);
-    setGps({ status: "idle" });
+  const handleDismissMap = () => {
+    setShowMap(false);
+    setCoords(null);
+    setAccuracy(null);
   };
 
   return (
     <div className="space-y-2">
       {/* Input row */}
-      <div className="relative flex items-center gap-2">
-        {/* MapPin prefix */}
+      <div className="relative flex items-center">
         <MapPin className="absolute left-3 w-4 h-4 text-muted-foreground pointer-events-none shrink-0" />
         <Input
           ref={inputRef}
           id={id}
           value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            // User is typing manually – dismiss GPS suggestion
-            if (showSuggestion) setShowSuggestion(false);
-          }}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
           className="pl-9 pr-10"
           autoComplete="off"
         />
-        {/* GPS trigger button */}
         <button
           type="button"
-          title={
-            gps.status === "loading"
-              ? "Getting location…"
-              : "Use my current location"
-          }
+          title={gps.status === "loading" ? "Getting location…" : "Use my current location"}
           disabled={gps.status === "loading"}
           onClick={handleGps}
           className={cn(
@@ -136,39 +199,54 @@ export default function LocationPicker({
         </p>
       )}
 
-      {/* Location suggestion card */}
-      {showSuggestion && gps.status === "ready" && (
-        <div className="border border-primary/30 bg-primary/5 rounded-lg p-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-2 flex-1 min-w-0">
-              <div className="mt-0.5 bg-primary rounded-full p-1 shrink-0">
+      {/* Map preview */}
+      {showMap && coords && (
+        <div className="rounded-xl overflow-hidden border border-border shadow-sm">
+          {/* Map header */}
+          <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
+            <div className="flex items-center gap-2">
+              <div className="bg-primary rounded-full p-0.5">
                 <Navigation className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
-              <div className="flex-1 min-w-0 space-y-0.5">
-                <p className="text-xs font-semibold text-foreground">Current location</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  {gps.address}
-                </p>
-                <p className="text-[10px] text-primary font-medium">
-                  Accurate to ±{gps.accuracy}m
-                </p>
-              </div>
+              <span className="text-xs font-medium text-foreground">Location confirmed</span>
+              {accuracy !== null && (
+                <span className="text-[10px] text-primary bg-primary/10 rounded-full px-2 py-0.5 font-medium">
+                  ±{accuracy}m
+                </span>
+              )}
             </div>
             <button
               type="button"
-              onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              onClick={handleDismissMap}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <button
-            type="button"
-            onClick={handleUseLocation}
-            className="w-full text-xs font-medium text-primary border border-primary/30 rounded-md py-1.5 hover:bg-primary/10 transition-colors"
+
+          {/* Leaflet map */}
+          <MapContainer
+            center={[coords.lat, coords.lng]}
+            zoom={17}
+            className="h-52 w-full"
+            zoomControl={true}
+            scrollWheelZoom={false}
           >
-            Use this location
-          </button>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            />
+            <MapRecenter coords={coords} />
+            <DraggableMarker coords={coords} onMove={handlePinMove} />
+            <MapClickHandler onMove={handlePinMove} />
+          </MapContainer>
+
+          {/* Hint */}
+          <div className="px-3 py-2 bg-muted/30 border-t border-border">
+            <p className="text-[11px] text-muted-foreground">
+              Drag the pin or click anywhere on the map to fine-tune the location.
+            </p>
+          </div>
         </div>
       )}
     </div>
