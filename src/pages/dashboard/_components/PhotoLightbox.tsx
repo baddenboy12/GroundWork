@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -15,7 +14,6 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // Stop propagation so Escape doesn't also close the parent dialog
       if (e.key === "Escape") {
         e.stopPropagation();
         e.preventDefault();
@@ -25,7 +23,6 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
       if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
       if (e.key === "ArrowRight") setCurrent((c) => Math.min(photos.length - 1, c + 1));
     };
-    // Use capture phase so we intercept before Radix Dialog
     window.addEventListener("keydown", handleKey, true);
     return () => window.removeEventListener("keydown", handleKey, true);
   }, [photos.length, onClose]);
@@ -42,7 +39,6 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
     if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    // Only register horizontal swipes that are more horizontal than vertical
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
       if (dx < 0) next();
       else prev();
@@ -51,29 +47,31 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
     touchStartY.current = null;
   };
 
-  return createPortal(
+  // Rendered inline inside DialogContent — position:fixed escapes overflow and
+  // stays within Radix's focus trap so buttons remain interactive.
+  return (
     <div
       className="fixed inset-0 z-[200] bg-black/92 flex items-center justify-center select-none"
       onClick={onClose}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Close button */}
+      {/* Close */}
       <button
-        className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/25 active:bg-white/30 transition-colors"
+        className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/25 active:bg-white/30 transition-colors"
         onClick={(e) => { e.stopPropagation(); onClose(); }}
       >
-        <X className="w-5 h-5" />
+        <X className="w-6 h-6" />
       </button>
 
       {/* Counter */}
       {photos.length > 1 && (
-        <span className="absolute top-5 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full">
+        <span className="absolute top-5 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full pointer-events-none">
           {current + 1} / {photos.length}
         </span>
       )}
 
-      {/* Prev arrow */}
+      {/* Prev */}
       {current > 0 && (
         <button
           className="absolute left-3 sm:left-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
@@ -83,7 +81,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
         </button>
       )}
 
-      {/* Image — stop clicks propagating so backdrop click only closes */}
+      {/* Image */}
       <img
         src={photos[current]}
         alt={`Photo ${current + 1}`}
@@ -92,7 +90,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
         draggable={false}
       />
 
-      {/* Next arrow */}
+      {/* Next */}
       {current < photos.length - 1 && (
         <button
           className="absolute right-3 sm:right-5 w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-white/25 active:scale-95 transition-all shadow-lg"
@@ -108,13 +106,12 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
           {photos.map((_, i) => (
             <button
               key={i}
-              className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-white scale-125" : "bg-white/40"}`}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${i === current ? "bg-white scale-125" : "bg-white/40"}`}
               onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
             />
           ))}
         </div>
       )}
-    </div>,
-    document.body
+    </div>
   );
 }

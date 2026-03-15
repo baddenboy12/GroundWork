@@ -68,6 +68,15 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             if (lightboxIndex !== null) e.preventDefault();
           }}
         >
+          {/* Lightbox — rendered inside DialogContent so Radix focus trap allows interaction */}
+          {lightboxIndex !== null && (
+            <PhotoLightbox
+              photos={photos}
+              initialIndex={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+            />
+          )}
+
           {/* Photo strip */}
           {photos.length > 0 && (
             <div
@@ -195,14 +204,6 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
           </div>
         </DialogContent>
       </Dialog>
-
-      {lightboxIndex !== null && (
-        <PhotoLightbox
-          photos={photos}
-          initialIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-        />
-      )}
 
       <EditLogDialog
         open={editOpen}
