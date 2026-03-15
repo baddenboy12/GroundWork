@@ -1,17 +1,20 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
 /**
  * Dedicated PayPal return handler.
  *
  * PayPal appends params like `subscription_id` and `token` to the return URL.
- * If those params land on /billing, the Hercules Auth OIDC library can mistake
- * them for auth-related tokens and get stuck in a loading loop.
+ * Using window.location.replace caused a full page reload which re-initialized
+ * the OIDC auth provider and caused it to hang.
  *
- * This page intercepts the return, saves what we need to sessionStorage,
- * then hard-redirects to /billing with a clean URL.
+ * Instead we use React Router's navigate() for a client-side transition —
+ * no page reload, auth state preserved, sessionStorage readable immediately.
  */
 export default function PayPalReturn() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const subscriptionId = params.get("subscription_id");
@@ -24,9 +27,9 @@ export default function PayPalReturn() {
       sessionStorage.setItem("paypal_cancelled", "1");
     }
 
-    // Replace current history entry so the back button works correctly
-    window.location.replace("/billing");
-  }, []);
+    // Client-side navigation — preserves auth state, no full page reload
+    navigate("/billing", { replace: true });
+  }, [navigate]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-background">
