@@ -78,7 +78,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
       "border-border bg-card flex flex-col",
       fullscreen
         ? "w-full h-full border-r-0"
-        : "w-64 shrink-0 border-r h-full"
+        : "w-44 sm:w-56 lg:w-64 shrink-0 border-r h-full"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
