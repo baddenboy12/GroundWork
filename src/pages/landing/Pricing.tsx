@@ -15,8 +15,8 @@ const DISPLAYED_TIERS: SubscriptionTier[] = ["pro", "business"];
 type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean };
 
 const FEATURE_ROWS: FeatureRow[] = [
-  { label: "Up to 15 sites", starter: true, pro: false, business: false },
-  { label: "Unlimited sites", starter: false, pro: true, business: true },
+  { label: "Up to 15 sites", starter: true, pro: true, business: false },
+  { label: "Unlimited sites", starter: false, pro: false, business: true },
   { label: "Unlimited logs/site", starter: true, pro: true, business: true },
   { label: "Photo attachments", starter: true, pro: true, business: true },
   { label: "PDF, Excel & CSV export", starter: false, pro: false, business: true },
