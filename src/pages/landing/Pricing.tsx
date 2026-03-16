@@ -19,7 +19,7 @@ const FEATURE_ROWS: FeatureRow[] = [
   { label: "Unlimited sites", starter: false, pro: true, business: true },
   { label: "Unlimited logs/site", starter: true, pro: true, business: true },
   { label: "Photo attachments", starter: true, pro: true, business: true },
-  { label: "PDF, Excel & CSV export", starter: false, pro: true, business: true },
+  { label: "PDF, Excel & CSV export", starter: false, pro: false, business: true },
   { label: "Integrations & API", starter: false, pro: false, business: true },
   { label: "Priority support", starter: false, pro: false, business: true },
 ];
