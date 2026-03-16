@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
-  exportCSV, exportFullReportPDF,
+  exportCSV, exportXLSX, exportFullReportPDF,
   THEMES, DEFAULT_THEME_ID, type Theme,
 } from "../_lib/export.ts";
 import { CATEGORY_LABELS } from "../_lib/constants.ts";
@@ -39,7 +39,7 @@ import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { format } from "date-fns";
 import ThemePicker from "./ThemePicker.tsx";
 
-type ExportFormat = "full-pdf" | "csv";
+type ExportFormat = "full-pdf" | "xlsx" | "csv";
 type SelectionMode = "filter" | "individual";
 
 const FORMAT_OPTIONS: {
@@ -57,9 +57,16 @@ const FORMAT_OPTIONS: {
     accent: "text-red-400 bg-red-500/10 border-red-500/30",
   },
   {
+    id: "xlsx",
+    label: "Excel (XLSX)",
+    description: "Auto-sized columns, opens in Excel",
+    icon: <FileDown className="w-5 h-5" />,
+    accent: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+  },
+  {
     id: "csv",
-    label: "CSV Spreadsheet",
-    description: "Raw data for Excel, Sheets, etc.",
+    label: "CSV",
+    description: "Plain text for any spreadsheet app",
     icon: <FileDown className="w-5 h-5" />,
     accent: "text-green-400 bg-green-500/10 border-green-500/30",
   },
@@ -220,6 +227,9 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
       if (format_ === "full-pdf") {
         await exportFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
+      } else if (format_ === "xlsx") {
+        exportXLSX(opts);
+        toast.success(`Excel exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else {
         exportCSV(opts);
         toast.success(`CSV exported — ${count} ${count === 1 ? "entry" : "entries"}`);
@@ -271,7 +281,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
           {/* Format selector */}
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground uppercase tracking-wide">Format</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {FORMAT_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}

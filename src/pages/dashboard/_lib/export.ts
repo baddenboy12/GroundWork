@@ -1061,7 +1061,7 @@ export async function exportGlobalFullReportPDF({
   });
 }
 
-// ─── XLSX exports ─────────────────────────────────────────────────────────────
+// ─── XLSX & CSV exports ───────────────────────────────────────────────────────
 import * as XLSX from "xlsx";
 
 /** Calculate the max character width for each column across all rows */
@@ -1084,6 +1084,43 @@ function downloadXlsx(rows: string[][], filename: string): void {
   XLSX.writeFile(wb, filename);
 }
 
+function escCsv(v: string): string {
+  return v.includes(",") || v.includes('"') || v.includes("\n")
+    ? `"${v.replace(/"/g, '""')}"`
+    : v;
+}
+
+function downloadCsv(rows: string[][], filename: string): void {
+  const csv = rows.map((r) => r.map(escCsv).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  a.download = filename;
+  a.click();
+}
+
+export function exportXLSX({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
+  const headers = ["Date & Time", "Title", "Category", "Author", "Notes", "Location", "Photos"];
+  const rows = logs.map((l) => [
+    format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
+    l.title,
+    CATEGORY_LABELS[l.category as LogCategory] ?? l.category,
+    l.authorName,
+    l.content.replace(/\n/g, " "),
+    l.location ?? "",
+    String(l.photoUrls?.length ?? 0),
+  ]);
+  const meta: string[][] = [
+    ["Field Log Export"],
+    [`Site: ${siteName}`],
+    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
+    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
+    [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
+    [`Total entries: ${logs.length}`],
+    [],
+  ];
+  downloadXlsx([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+}
+
 export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
   const headers = ["Date & Time", "Title", "Category", "Author", "Notes", "Location", "Photos"];
   const rows = logs.map((l) => [
@@ -1104,8 +1141,31 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     [`Total entries: ${logs.length}`],
     [],
   ];
-  const filename = `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
-  downloadXlsx([...meta, headers, ...rows], filename);
+  downloadCsv([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+}
+
+export function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
+  const headers = ["Date & Time", "Site", "Title", "Category", "Author", "Notes", "Location", "Photos"];
+  const rows = logs.map((l) => [
+    format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
+    l.siteName,
+    l.title,
+    CATEGORY_LABELS[l.category as LogCategory] ?? l.category,
+    l.authorName,
+    l.content.replace(/\n/g, " "),
+    l.location ?? "",
+    String(l.photoUrls?.length ?? 0),
+  ]);
+  const meta: string[][] = [
+    ["Multi-Site Export"],
+    [`Sites: ${siteNames.join(", ")}`],
+    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
+    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
+    [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
+    [`Total entries: ${logs.length}`],
+    [],
+  ];
+  downloadXlsx([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
 }
 
 export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
@@ -1129,6 +1189,5 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
     [`Total entries: ${logs.length}`],
     [],
   ];
-  const filename = `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
-  downloadXlsx([...meta, headers, ...rows], filename);
+  downloadCsv([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`);
 }
