@@ -1061,12 +1061,27 @@ export async function exportGlobalFullReportPDF({
   });
 }
 
-// ─── CSV exports ──────────────────────────────────────────────────────────────
+// ─── XLSX exports ─────────────────────────────────────────────────────────────
+import * as XLSX from "xlsx";
 
-function escCsv(v: string): string {
-  return v.includes(",") || v.includes('"') || v.includes("\n")
-    ? `"${v.replace(/"/g, '""')}"`
-    : v;
+/** Calculate the max character width for each column across all rows */
+function calcColWidths(data: string[][]): { wch: number }[] {
+  if (data.length === 0) return [];
+  const cols = data[0].length;
+  return Array.from({ length: cols }, (_, c) => ({
+    wch: Math.min(
+      60,
+      Math.max(10, ...data.map((r) => String(r[c] ?? "").length)),
+    ),
+  }));
+}
+
+function downloadXlsx(rows: string[][], filename: string): void {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = calcColWidths(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Log Export");
+  XLSX.writeFile(wb, filename);
 }
 
 export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
@@ -1080,7 +1095,7 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     l.location ?? "",
     String(l.photoUrls?.length ?? 0),
   ]);
-  const meta = [
+  const meta: string[][] = [
     ["Field Log Export"],
     [`Site: ${siteName}`],
     ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
@@ -1089,11 +1104,8 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     [`Total entries: ${logs.length}`],
     [],
   ];
-  const csv = [...meta, headers, ...rows].map((r) => r.map(escCsv).join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`;
-  a.click();
+  const filename = `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+  downloadXlsx([...meta, headers, ...rows], filename);
 }
 
 export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
@@ -1108,7 +1120,7 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
     l.location ?? "",
     String(l.photoUrls?.length ?? 0),
   ]);
-  const meta = [
+  const meta: string[][] = [
     ["Multi-Site Export"],
     [`Sites: ${siteNames.join(", ")}`],
     ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
@@ -1117,9 +1129,6 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
     [`Total entries: ${logs.length}`],
     [],
   ];
-  const csv = [...meta, headers, ...rows].map((r) => r.map(escCsv).join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
-  a.click();
+  const filename = `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+  downloadXlsx([...meta, headers, ...rows], filename);
 }
