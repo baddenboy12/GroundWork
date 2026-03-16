@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -42,6 +42,11 @@ type Props = {
   fullscreen?: boolean;
 };
 
+const MIN_WIDTH = 140;
+const MAX_WIDTH = 420;
+const DEFAULT_WIDTH = 176;
+const STORAGE_KEY = "groundwork_sidebar_width";
+
 export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDeleted, fullscreen }: Props) {
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
@@ -50,6 +55,61 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  // Resizable sidebar width
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? parseInt(stored, 10) : DEFAULT_WIDTH;
+    } catch {
+      return DEFAULT_WIDTH;
+    }
+  });
+  const currentWidthRef = useRef(sidebarWidth);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Keep ref in sync
+  useEffect(() => { currentWidthRef.current = sidebarWidth; }, [sidebarWidth]);
+
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    isDragging.current = true;
+    setIsResizing(true);
+    startX.current = "touches" in e ? e.touches[0].clientX : e.clientX;
+    startWidth.current = currentWidthRef.current;
+    // Prevent text selection while dragging
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const handleMove = (ev: MouseEvent | TouchEvent) => {
+      if (!isDragging.current) return;
+      const clientX = "touches" in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX;
+      const delta = clientX - startX.current;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleEnd = () => {
+      isDragging.current = false;
+      setIsResizing(false);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      try {
+        localStorage.setItem(STORAGE_KEY, String(currentWidthRef.current));
+      } catch { /* ignore */ }
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleEnd);
+    };
+
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleMove, { passive: false });
+    document.addEventListener("touchend", handleEnd);
+  }, []);
 
   const siteCount = sites?.length ?? 0;
   const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
@@ -75,12 +135,13 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   };
 
   return (
-    <aside className={cn(
-      "border-border bg-card flex flex-col",
-      fullscreen
-        ? "w-full h-full border-r-0"
-        : "w-44 sm:w-56 lg:w-64 shrink-0 border-r h-full"
-    )}>
+    <aside
+      className={cn(
+        "border-border bg-card flex flex-col relative",
+        fullscreen ? "w-full h-full border-r-0" : "shrink-0 border-r h-full"
+      )}
+      style={fullscreen ? undefined : { width: sidebarWidth }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <div className="flex items-center gap-1.5">
@@ -226,6 +287,25 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
             </button>{" "}
             for more.
           </p>
+        </div>
+      )}
+
+      {/* Drag-to-resize handle — only shown on desktop (non-fullscreen) */}
+      {!fullscreen && (
+        <div
+          className={cn(
+            "absolute top-0 right-0 h-full w-1.5 group flex items-center justify-center cursor-col-resize z-10 select-none",
+            "hover:bg-primary/20 transition-colors duration-150",
+            isResizing && "bg-primary/30"
+          )}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          title="Drag to resize sidebar"
+        >
+          <div className={cn(
+            "w-0.5 h-8 rounded-full bg-border group-hover:bg-primary/60 transition-colors duration-150",
+            isResizing && "bg-primary"
+          )} />
         </div>
       )}
 

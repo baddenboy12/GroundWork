@@ -123,9 +123,9 @@ function DashboardInner() {
         </div>
       )}
 
-      {/* Mobile site drawer */}
+      {/* Mobile site drawer — width follows stored sidebar width */}
       <Sheet open={siteDrawerOpen} onOpenChange={setSiteDrawerOpen}>
-        <SheetContent side="left" className="p-0 w-80 flex flex-col [&>button]:hidden">
+        <SheetContent side="left" className="p-0 flex flex-col [&>button]:hidden" style={{ width: (() => { try { const w = localStorage.getItem("groundwork_sidebar_width"); return w ? `${Math.max(220, parseInt(w, 10))}px` : "320px"; } catch { return "320px"; } })() }}>
           <SheetHeader className="sr-only">
             <SheetTitle>Sites</SheetTitle>
           </SheetHeader>
