@@ -53,7 +53,7 @@ export const getCurrentUser = query({
   },
 });
 
-// Allows setting a user's subscription tier (manual/admin for now — payments coming soon)
+// Admin-only: directly set the subscription tier without going through PayPal.
 export const setSubscriptionTier = mutation({
   args: {
     tier: v.union(
@@ -67,6 +67,11 @@ export const setSubscriptionTier = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "User not logged in" });
+    }
+    // Only the admin may bypass PayPal
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
     }
     const user = await ctx.db
       .query("users")

@@ -156,18 +156,20 @@ function BillingInner() {
     }
   };
 
-  const handleManualSelect = async (newTier: SubscriptionTier) => {
+  const [adminSwitchPending, setAdminSwitchPending] = useState<SubscriptionTier | null>(null);
+
+  const handleAdminSelect = async (newTier: SubscriptionTier) => {
     if (newTier === tier) return;
+    setAdminSwitchPending(newTier);
     try {
       await setTierManual({ tier: newTier });
       toast.success(`Switched to ${TIER_CONFIG[newTier].name} plan`);
     } catch {
       toast.error("Failed to update plan");
+    } finally {
+      setAdminSwitchPending(null);
     }
   };
-
-  // Unused but kept for potential admin use
-  void handleManualSelect;
 
   const handleCancelSubscription = async () => {
     setCancelPending(true);
@@ -425,8 +427,28 @@ function BillingInner() {
                     </li>
                   </ul>
 
-                  {/* Free tier: no PayPal needed */}
-                  {isFree ? (
+                  {/* Admin override: instant plan switch without PayPal */}
+                  {isAdmin ? (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={isCurrent ? "secondary" : cfg.highlight ? "default" : "secondary"}
+                      disabled={isCurrent || adminSwitchPending !== null}
+                      onClick={() => handleAdminSelect(t)}
+                    >
+                      {adminSwitchPending === t ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Switching…
+                        </>
+                      ) : isCurrent ? (
+                        "Current plan"
+                      ) : (
+                        "Switch to this plan"
+                      )}
+                    </Button>
+                  ) : /* Free tier: no PayPal needed */
+                  isFree ? (
                     <Button
                       size="sm"
                       className="w-full"
