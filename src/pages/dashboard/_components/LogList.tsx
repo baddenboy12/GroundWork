@@ -131,14 +131,14 @@ export default function LogList({ siteId, onBack }: Props) {
 
           {/* Site name */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-              <h2 className="font-semibold text-foreground truncate">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary shrink-0" />
+              <h2 className="text-lg font-bold text-foreground truncate">
                 {site?.name ?? "Loading..."}
               </h2>
             </div>
             {site?.location && (
-              <p className="text-xs text-muted-foreground mt-0.5 ml-5 truncate">
+              <p className="text-sm text-muted-foreground mt-0.5 ml-6 truncate">
                 {site.location}
               </p>
             )}
