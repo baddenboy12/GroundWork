@@ -41,7 +41,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   // Kept for backward compat only — treated as "pro" by toTier()
   starter: {
     name: "Pro",
-    tagline: "Photo-enabled for growing teams",
+    tagline: "Up to 15 sites with unlimited logging",
     price: "$8.99",
     period: "per month",
     maxSites: 15,
@@ -54,7 +54,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
   pro: {
     name: "Pro",
-    tagline: "Photo-enabled for growing teams",
+    tagline: "Up to 15 sites with unlimited logging",
     price: "$8.99",
     period: "per month",
     maxSites: 15,
