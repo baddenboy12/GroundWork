@@ -21,7 +21,7 @@ const FEATURE_ROWS: FeatureRow[] = [
   { label: "Photo attachments", starter: true, pro: true, business: true },
   { label: "PDF, Excel & CSV export", starter: false, pro: false, business: true },
   { label: "Integrations & API", starter: false, pro: false, business: true },
-  { label: "Priority support", starter: false, pro: false, business: true },
+
 ];
 
 export default function Pricing() {
