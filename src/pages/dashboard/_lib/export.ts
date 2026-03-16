@@ -1092,6 +1092,23 @@ type XlsxEntry = {
   photoUrls?: string[];
 };
 
+// ── Photo grid constants ──────────────────────────────────────────────────────
+const XLSX_PHOTOS_PER_ROW = 4;          // max photos side-by-side in Excel
+const XLSX_PHOTO_COL_UNITS = 22;        // Excel column width units per photo col (≈160px)
+const XLSX_PHOTO_MAX_H = 185;           // max photo height in pixels (slightly bigger)
+const XLSX_PHOTO_MAX_W = 155;           // max photo width in pixels (fits within column)
+const XLSX_TOTAL_COLS = 1 + XLSX_PHOTOS_PER_ROW; // cols A–E
+
+/** Scale a photo to fit within XLSX_PHOTO_MAX_W × XLSX_PHOTO_MAX_H */
+function calcXlsxPhotoDims(photo: PhotoData): { imgW: number; imgH: number } {
+  if (XLSX_PHOTO_MAX_H * photo.ar <= XLSX_PHOTO_MAX_W) {
+    // Height-constrained (portrait or moderate landscape)
+    return { imgH: XLSX_PHOTO_MAX_H, imgW: Math.round(XLSX_PHOTO_MAX_H * photo.ar) };
+  }
+  // Width-constrained (wide landscape)
+  return { imgW: XLSX_PHOTO_MAX_W, imgH: Math.round(XLSX_PHOTO_MAX_W / photo.ar) };
+}
+
 /** Build a single-sheet ExcelJS workbook with one section per entry */
 async function buildEntryWorkbook(
   entries: XlsxEntry[],
@@ -1103,16 +1120,24 @@ async function buildEntryWorkbook(
   workbook.created = new Date();
   const ws = workbook.addWorksheet(sheetName);
 
+  // Column A = labels; Columns B–E = photo grid (merged for text rows)
   ws.getColumn(1).width = 18;
-  ws.getColumn(2).width = 58;
+  for (let c = 2; c <= XLSX_TOTAL_COLS; c++) {
+    ws.getColumn(c).width = XLSX_PHOTO_COL_UNITS;
+  }
 
   // ── Meta header ──────────────────────────────────────────────────────────
   const [titleLabel] = metaRows[0];
-  const titleMetaRow = ws.addRow([titleLabel]);
+  const titleMetaRowNum = ws.rowCount + 1;
+  const titleMetaRow = ws.addRow([titleLabel, "", "", "", ""]);
+  ws.mergeCells(titleMetaRowNum, 1, titleMetaRowNum, XLSX_TOTAL_COLS);
   titleMetaRow.getCell(1).font = { bold: true, size: 11 };
+
   ws.addRow([]);
   for (const [label, value] of metaRows.slice(1)) {
-    const r = ws.addRow([label, value]);
+    const rowNum = ws.rowCount + 1;
+    const r = ws.addRow([label, value, "", "", ""]);
+    ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
     r.getCell(1).font = { bold: true, size: 9, color: { argb: "FF9CA3AF" } };
     r.getCell(2).font = { size: 9 };
   }
@@ -1123,14 +1148,12 @@ async function buildEntryWorkbook(
   const allUrls = entries.flatMap((e) => e.photoUrls ?? []);
   const photoCache = await buildPhotoCache(allUrls);
 
-  const IMG_H_PX = 160;
-
   // ── Entry sections ────────────────────────────────────────────────────────
   for (const entry of entries) {
-    // Title row (merged across both columns)
+    // Title row — merged across all columns
     const titleRowNum = ws.rowCount + 1;
-    const titleRow = ws.addRow([entry.title, ""]);
-    ws.mergeCells(titleRowNum, 1, titleRowNum, 2);
+    const titleRow = ws.addRow([entry.title, "", "", "", ""]);
+    ws.mergeCells(titleRowNum, 1, titleRowNum, XLSX_TOTAL_COLS);
     titleRow.height = 24;
     titleRow.getCell(1).font = { bold: true, size: 12, color: { argb: "FF111827" } };
     titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
@@ -1140,7 +1163,7 @@ async function buildEntryWorkbook(
       bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
     };
 
-    // Data field rows
+    // Data field rows — value merged across B–E
     const fields: [string, string][] = [
       ["Date & Time", format(new Date(entry.loggedAt), "EEEE, MMMM d yyyy  h:mm a")],
       ["Category", CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category],
@@ -1152,7 +1175,9 @@ async function buildEntryWorkbook(
 
     for (const [label, value] of fields) {
       const isNotes = label === "Notes";
-      const row = ws.addRow([label, value]);
+      const rowNum = ws.rowCount + 1;
+      const row = ws.addRow([label, value, "", "", ""]);
+      ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
       row.height = isNotes
         ? Math.max(20, Math.min(120, Math.ceil(value.length / 70) * 15))
         : 18;
@@ -1164,29 +1189,40 @@ async function buildEntryWorkbook(
       row.getCell(2).border = { bottom: { style: "hair", color: { argb: "FFF0F0F0" } } };
     }
 
-    // Photos — one embedded image per row, stacked below entry data
+    // Photos — grid layout: up to XLSX_PHOTOS_PER_ROW side-by-side per row
     const photos = (entry.photoUrls ?? [])
       .map((u) => photoCache.get(u) ?? null)
       .filter((p): p is PhotoData => p !== null);
 
     if (photos.length > 0) {
-      const photoLabelRow = ws.addRow(["Photos", `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`]);
+      const photoLabelRowNum = ws.rowCount + 1;
+      const photoLabelRow = ws.addRow(["Photos", `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`, "", "", ""]);
+      ws.mergeCells(photoLabelRowNum, 2, photoLabelRowNum, XLSX_TOTAL_COLS);
       photoLabelRow.height = 18;
       photoLabelRow.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
       photoLabelRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
+      photoLabelRow.getCell(2).font = { size: 9, color: { argb: "FF6B7280" } };
 
-      for (const photo of photos) {
-        const imgW = Math.round(IMG_H_PX * photo.ar);
-        // Row height in points (1pt ≈ 1.333px)
-        const rowHeightPts = IMG_H_PX / 1.333;
-        const imgRow = ws.addRow([]);
-        imgRow.height = rowHeightPts;
-        // ExcelJS uses 0-indexed row for addImage
-        const rowIdx = imgRow.number - 1;
-        const imageId = workbook.addImage({ base64: photo.base64, extension: photo.ext });
-        ws.addImage(imageId, {
-          tl: { col: 1, row: rowIdx } as { col: number; row: number },
-          ext: { width: imgW, height: IMG_H_PX },
+      // Group into rows of XLSX_PHOTOS_PER_ROW, each photo in its own column (B–E)
+      for (let i = 0; i < photos.length; i += XLSX_PHOTOS_PER_ROW) {
+        const rowPhotos = photos.slice(i, i + XLSX_PHOTOS_PER_ROW);
+        const photoDims = rowPhotos.map(calcXlsxPhotoDims);
+        const rowMaxH = Math.max(...photoDims.map((d) => d.imgH));
+
+        const imgRow = ws.addRow(["", "", "", "", ""]);
+        // Row height in Excel points (1pt ≈ 1.333px)
+        imgRow.height = rowMaxH / 1.333;
+        const rowIdx = imgRow.number - 1; // ExcelJS uses 0-indexed rows for addImage
+
+        rowPhotos.forEach((photo, j) => {
+          const { imgW, imgH } = photoDims[j];
+          // Column B = index 1, C = 2, D = 3, E = 4 (0-indexed)
+          const colIdx = 1 + j;
+          const imageId = workbook.addImage({ base64: photo.base64, extension: photo.ext });
+          ws.addImage(imageId, {
+            tl: { col: colIdx, row: rowIdx } as { col: number; row: number },
+            ext: { width: imgW, height: imgH },
+          });
         });
       }
     }
