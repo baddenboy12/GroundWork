@@ -11,6 +11,32 @@ import BillingPage from "./pages/billing/page.tsx";
 import IntegrationsPage from "./pages/integrations/page.tsx";
 import PayPalReturn from "./pages/paypal/return.tsx";
 
+// In standalone PWA mode, intercept Android back-button / swipe-back gestures
+// to prevent the user from leaving the app and hitting the auth provider's
+// history entry. Only active when installed to the home screen.
+function PwaBackGuard() {
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+
+    if (!isStandalone) return;
+
+    // Seed a history entry so the first back press has something to consume
+    window.history.pushState(null, "", window.location.href);
+
+    const handler = () => {
+      // Re-push the current URL every time back is pressed, keeping the user in place
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+
+  return null;
+}
+
 // Intercept unhandled OIDC state-mismatch errors that occur when the user
 // navigates back through browser history after a successful login.
 // This prevents the auth library from looping back to the auth provider.
@@ -42,6 +68,7 @@ export default function App() {
   useServiceWorker();
   return (
     <DefaultProviders>
+      <PwaBackGuard />
       <OidcErrorGuard />
       <BrowserRouter>
         <Routes>
