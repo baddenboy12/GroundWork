@@ -113,7 +113,7 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-base py-3 gap-3 text-destructive focus:text-destructive"
-              onClick={() => removeUser()}
+              onClick={async () => { await removeUser(); navigate("/"); }}
             >
               <LogOut className="w-5 h-5" /> Sign out
             </DropdownMenuItem>
