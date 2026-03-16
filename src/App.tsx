@@ -42,9 +42,12 @@ function PwaBackGuard() {
 // Intercept unhandled OIDC state-mismatch errors that occur when the user
 // navigates back through browser history after a successful login.
 // This prevents the auth library from looping back to the auth provider.
+// Also detects when the user is stuck on /auth/callback (error state shown)
+// and forces a hard restart after a short timeout.
 function OidcErrorGuard() {
   useEffect(() => {
-    const handler = (event: PromiseRejectionEvent) => {
+    // Unhandled-rejection handler (catches most OIDC errors)
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
       const message = String(
         (event.reason as { message?: string } | null)?.message ?? event.reason ?? ""
       );
@@ -59,8 +62,24 @@ function OidcErrorGuard() {
       }
     };
 
-    window.addEventListener("unhandledrejection", handler);
-    return () => window.removeEventListener("unhandledrejection", handler);
+    window.addEventListener("unhandledrejection", rejectionHandler);
+
+    // Fallback: if the user is still on /auth/callback after 6 seconds
+    // (normal auth completes in ~1-2 s), the error UI must be showing.
+    // Force a hard redirect to restart the app cleanly.
+    let callbackTimer: ReturnType<typeof setTimeout> | null = null;
+    if (window.location.pathname === "/auth/callback") {
+      callbackTimer = setTimeout(() => {
+        if (window.location.pathname === "/auth/callback") {
+          window.location.replace("/");
+        }
+      }, 6000);
+    }
+
+    return () => {
+      window.removeEventListener("unhandledrejection", rejectionHandler);
+      if (callbackTimer !== null) clearTimeout(callbackTimer);
+    };
   }, []);
 
   return null;
