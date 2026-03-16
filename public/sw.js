@@ -32,12 +32,13 @@ self.addEventListener("fetch", (event) => {
   // Only handle GET requests
   if (event.request.method !== "GET") return;
 
-  // Skip Convex WebSocket / API, R2 storage, and external CDNs
+  // Skip Convex WebSocket / API, R2 storage (both upload API and public CDN), and external CDNs
   const url = new URL(event.request.url);
   if (
     url.hostname.includes("convex.cloud") ||
     url.hostname.includes("convex.site") ||
     url.hostname.includes("r2.cloudflarestorage.com") ||
+    url.hostname.includes("r2.dev") ||
     url.hostname.includes("cdn.hercules.app") ||
     url.hostname.includes("fonts.googleapis.com") ||
     url.hostname.includes("fonts.gstatic.com")

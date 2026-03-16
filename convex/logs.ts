@@ -27,9 +27,14 @@ async function resolvePhotoUrls(
   },
   storageGetUrl: (id: Id<"_storage">) => Promise<string | null>
 ): Promise<string[]> {
-  // R2 photos take priority
+  // R2 photos take priority.
+  // Always rebuild the URL from the key + the current R2_PUBLIC_URL env var so that
+  // stale URLs (e.g. after a bucket migration) are automatically corrected.
   if (log.photos?.length) {
-    return log.photos.map((p) => p.url);
+    const base = process.env.CLOUDFLARE_R2_PUBLIC_URL?.replace(/\/$/, "");
+    return log.photos
+      .filter((p) => p.key)
+      .map((p) => (base ? `${base}/${p.key}` : p.url));
   }
   // Legacy Convex storage fallback
   if (log.photoStorageIds?.length) {
