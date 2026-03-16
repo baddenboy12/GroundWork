@@ -12,11 +12,11 @@ import {
 // Show the 2 paid tiers on the marketing page
 const DISPLAYED_TIERS: SubscriptionTier[] = ["pro", "business"];
 
-type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean };
+type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean; skipFor?: SubscriptionTier[] };
 
 const FEATURE_ROWS: FeatureRow[] = [
-  { label: "Up to 15 sites", starter: true, pro: true, business: false },
-  { label: "Unlimited sites", starter: false, pro: false, business: true },
+  { label: "Up to 15 sites", starter: true, pro: true, business: false, skipFor: ["business"] },
+  { label: "Unlimited sites", starter: false, pro: false, business: true, skipFor: ["pro", "starter"] },
   { label: "Unlimited logs/site", starter: true, pro: true, business: true },
   { label: "Photo attachments", starter: true, pro: true, business: true },
   { label: "PDF, Excel & CSV export", starter: false, pro: false, business: true },
@@ -82,7 +82,7 @@ export default function Pricing() {
                 </div>
 
                 <ul className="space-y-2.5 mb-8">
-                  {FEATURE_ROWS.map((row) => {
+                  {FEATURE_ROWS.filter((row) => !row.skipFor?.includes(tier)).map((row) => {
                     const included = row[tier as "starter" | "pro" | "business"];
                     return (
                       <li
