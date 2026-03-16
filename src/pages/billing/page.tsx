@@ -278,38 +278,46 @@ function BillingInner() {
           </div>
         )}
 
-        {/* PayPal not yet configured — admin setup */}
-        {!isPayPalConfigured && (
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <Settings2 className="w-5 h-5 text-amber-500 shrink-0" />
-              <div>
-                <p className="font-semibold text-foreground text-sm">PayPal not yet configured</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
-                  <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
-                  Secrets tab, then click Initialize.
-                </p>
-              </div>
+        {/* PayPal setup panel — always visible for admin use */}
+        <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
+          isPayPalConfigured
+            ? "border-border bg-card"
+            : "border-amber-500/30 bg-amber-500/5"
+        }`}>
+          <div className="flex items-center gap-3">
+            <Settings2 className={`w-5 h-5 shrink-0 ${isPayPalConfigured ? "text-muted-foreground" : "text-amber-500"}`} />
+            <div>
+              <p className="font-semibold text-foreground text-sm">
+                {isPayPalConfigured ? "PayPal plans configured" : "PayPal not yet configured"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isPayPalConfigured
+                  ? "Re-initialize if you have switched to new PayPal credentials (e.g. sandbox → live)."
+                  : <>Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
+                    <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
+                    Secrets tab, then click Initialize.</>}
+              </p>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={initPending}
-              onClick={handleInitializePlans}
-              className="shrink-0"
-            >
-              {initPending ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Initializing…
-                </>
-              ) : (
-                "Initialize PayPal"
-              )}
-            </Button>
           </div>
-        )}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={initPending}
+            onClick={handleInitializePlans}
+            className="shrink-0"
+          >
+            {initPending ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                Initializing…
+              </>
+            ) : isPayPalConfigured ? (
+              "Re-initialize PayPal"
+            ) : (
+              "Initialize PayPal"
+            )}
+          </Button>
+        </div>
 
         {/* Plans grid */}
         <div>
