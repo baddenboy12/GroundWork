@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
@@ -100,15 +101,25 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
             Your latest log entries across all sites
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 shrink-0"
-          onClick={() => canExport ? setExportOpen(true) : setExportUpgradeOpen(true)}
-        >
-          {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-          <span className="hidden sm:inline">Export</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={onNewLog}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New log</span>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => canExport ? setExportOpen(true) : setExportUpgradeOpen(true)}
+          >
+            {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -158,13 +169,19 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {logs.map((log) => (
-            <RecentLogCard
+          {logs.map((log, i) => (
+            <motion.div
               key={log._id}
-              log={log}
-              onClick={() => setOpenLog(log)}
-              onSiteClick={() => onSelectSite(log.siteId)}
-            />
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.25, ease: "easeOut" }}
+            >
+              <RecentLogCard
+                log={log}
+                onClick={() => setOpenLog(log)}
+                onSiteClick={() => onSelectSite(log.siteId)}
+              />
+            </motion.div>
           ))}
         </div>
       )}

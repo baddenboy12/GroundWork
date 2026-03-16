@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileDown, Lock, ChevronLeft, MoreHorizontal, FileText } from "lucide-react";
+import { Plus, MapPin, FileDown, Lock, ChevronLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -13,12 +13,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.tsx";
 import LogCard from "./LogCard.tsx";
 import CreateLogDialog from "./CreateLogDialog.tsx";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
@@ -27,7 +21,6 @@ import ExportDialog from "./ExportDialog.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
-import { useIsMobile } from "@/hooks/use-mobile.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -50,7 +43,6 @@ export default function LogList({ siteId, onBack }: Props) {
   const site = sites?.find((s) => s._id === siteId);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
-  const isMobile = useIsMobile();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
@@ -154,30 +146,14 @@ export default function LogList({ siteId, onBack }: Props) {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {isMobile ? (
-              /* Mobile: overflow menu only */
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleOpenExport}>
-                    {canExport
-                      ? <FileDown className="w-3.5 h-3.5 mr-2 text-primary" />
-                      : <Lock className="w-3.5 h-3.5 mr-2 text-primary" />}
-                    {canExport ? "Export logs…" : "Upgrade to export"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              /* Desktop: export button only */
-              <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
-                {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                Export
-              </Button>
-            )}
+            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New log</span>
+            </Button>
+            <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
+              {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span className="hidden sm:inline">Export</span>
+            </Button>
           </div>
         </div>
 

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { LogOut, User, CreditCard, Zap, Plus, Menu, Plug } from "lucide-react";
+import { LogOut, User, CreditCard, Zap, Menu, Plug } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 const TIER_BADGE_STYLE: Record<string, string> = {
@@ -63,12 +63,6 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* New log — icon only on mobile, label on desktop */}
-        <Button size="default" className="gap-1.5 h-10" onClick={onNewLog}>
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">New log</span>
-        </Button>
-
         {/* Plan badge — desktop only */}
         <button
           onClick={() => navigate("/billing")}
@@ -93,16 +87,16 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium text-foreground truncate">
+          <DropdownMenuContent align="end" className="w-64">
+            <div className="px-4 py-3">
+              <p className="text-base font-semibold text-foreground truncate">
                 {user?.profile.name ?? "User"}
               </p>
-              <p className="text-xs text-muted-foreground truncate">{user?.profile.email}</p>
+              <p className="text-sm text-muted-foreground truncate">{user?.profile.email}</p>
               <Badge
                 variant="secondary"
                 className={cn(
-                  "mt-1.5 text-[10px] px-2 py-0.5",
+                  "mt-2 text-xs px-2.5 py-1",
                   TIER_BADGE_STYLE[tier]
                 )}
               >
@@ -110,18 +104,18 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
               </Badge>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/billing")}>
-              <CreditCard className="w-4 h-4 mr-2" /> Subscription
+            <DropdownMenuItem className="text-base py-3 gap-3" onClick={() => navigate("/billing")}>
+              <CreditCard className="w-5 h-5" /> Subscription
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/integrations")}>
-              <Plug className="w-4 h-4 mr-2" /> Integrations & API
+            <DropdownMenuItem className="text-base py-3 gap-3" onClick={() => navigate("/integrations")}>
+              <Plug className="w-5 h-5" /> Integrations & API
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              className="text-base py-3 gap-3 text-destructive focus:text-destructive"
               onClick={() => removeUser()}
             >
-              <LogOut className="w-4 h-4 mr-2" /> Sign out
+              <LogOut className="w-5 h-5" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
