@@ -93,7 +93,7 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
       )}
 
       {/* Animated image */}
-      <div className="overflow-hidden flex items-center justify-center w-full h-full" onClick={(e) => e.stopPropagation()}>
+      <div className="overflow-hidden flex items-center justify-center w-full h-full pointer-events-none">
         <AnimatePresence mode="popLayout" custom={direction}>
           <motion.img
             key={current}
@@ -105,8 +105,9 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
             src={photos[current]}
             alt={`Photo ${current + 1}`}
-            className="max-w-[92vw] max-h-[86vh] object-contain rounded-lg shadow-2xl"
+            className="max-w-[92vw] max-h-[86vh] object-contain rounded-lg shadow-2xl pointer-events-auto"
             draggable={false}
+            onClick={(e) => e.stopPropagation()}
           />
         </AnimatePresence>
       </div>
