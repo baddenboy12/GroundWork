@@ -80,13 +80,13 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   // Scroll to selected site when panel opens
   useEffect(() => {
     if (!open || !selectedSiteId) return;
-    // Wait for panel + items to animate in (~200 ms)
+    // Wait for panel to animate in (~120 ms)
     const id = setTimeout(() => {
       const el = itemRefs.current.get(selectedSiteId);
       if (el && listRef.current) {
         el.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
-    }, 200);
+    }, 120);
     return () => clearTimeout(id);
   }, [open, selectedSiteId]);
 
@@ -183,14 +183,14 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
             initial={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
             animate={{ clipPath: "inset(0 0% 0 0 round 16px)", opacity: 1 }}
             exit={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Panel header */}
             <motion.div
               className="flex items-center justify-between px-4 py-3 border-b border-border"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.08 }}
+              transition={{ delay: 0.03 }}
             >
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 All Sites
@@ -242,7 +242,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                       /* Fast stagger — base 80ms + 20ms per item */
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 + i * 0.02, duration: 0.18, ease: "easeOut" }}
+                      transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
                       /* Press animation */
                       whileTap={{ scale: 0.96, transition: { duration: 0.08 } }}
                       className={cn(
