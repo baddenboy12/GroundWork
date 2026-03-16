@@ -2,7 +2,7 @@
   "name": "GroundWork",
   "short_name": "GroundWork",
   "description": "Field log and site inspection tracker",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f1117",
   "theme_color": "#0f1117",
