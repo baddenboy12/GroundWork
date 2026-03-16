@@ -1,18 +1,17 @@
 import { useRef, useState } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { ImagePlus, X, Loader2, Camera } from "lucide-react";
+import { ImagePlus, X, Camera } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
-import { ConvexError } from "convex/values";
 import { compressImage } from "../_lib/compress-image.ts";
 
 export type R2Photo = {
-  url: string;       // R2 public URL (persisted to DB)
-  key: string;       // R2 object key
+  url: string;       // R2 public URL — empty string while pending upload
+  key: string;       // R2 object key — empty string while pending upload
   bytes: number;     // file size in bytes
   previewUrl: string; // local blob URL for immediate preview
   fileName: string;
+  /** Present when the photo has NOT been uploaded to R2 yet (staged locally). */
+  file?: File;
 };
 
 type Props = {
@@ -22,13 +21,15 @@ type Props = {
 };
 
 export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Props) {
-  const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
-  const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const uploadFiles = async (files: FileList | File[]) => {
+  /**
+   * Stage files locally — no R2 upload yet.
+   * The actual upload happens in CreateLogDialog on form submit.
+   */
+  const stageFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (fileArray.length === 0) {
       toast.error("Only image files are supported");
@@ -39,47 +40,25 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
       toast.error(`Maximum ${maxPhotos} photos allowed`);
       return;
     }
-    const toUpload = fileArray.slice(0, remaining);
-    setUploading(true);
-    try {
-      const uploaded: R2Photo[] = [];
-      for (const file of toUpload) {
-        const compressed = await compressImage(file);
-        const { uploadUrl, key, publicUrl } = await getUploadUrl({
-          fileName: compressed.name,
-          contentType: compressed.type,
-          bytes: compressed.size,
-        });
-        const res = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": compressed.type },
-          body: compressed,
-        });
-        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-        uploaded.push({
-          url: publicUrl,
-          key,
-          bytes: compressed.size,
-          previewUrl: URL.createObjectURL(compressed),
-          fileName: compressed.name,
-        });
-      }
-      onChange([...photos, ...uploaded]);
-    } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string };
-        toast.error(d.message ?? "Upload failed");
-      } else {
-        toast.error("Failed to upload photo(s). Check your R2 configuration.");
-      }
-    } finally {
-      setUploading(false);
+    const toStage = fileArray.slice(0, remaining);
+    const staged: R2Photo[] = [];
+    for (const file of toStage) {
+      const compressed = await compressImage(file);
+      staged.push({
+        url: "",            // not uploaded yet
+        key: "",            // not uploaded yet
+        bytes: compressed.size,
+        previewUrl: URL.createObjectURL(compressed),
+        fileName: compressed.name,
+        file: compressed,   // kept for deferred upload
+      });
     }
+    onChange([...photos, ...staged]);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      void uploadFiles(e.target.files);
+      void stageFiles(e.target.files);
       e.target.value = "";
     }
   };
@@ -87,10 +66,15 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files) void uploadFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files) void stageFiles(e.dataTransfer.files);
   };
 
   const removePhoto = (index: number) => {
+    const photo = photos[index];
+    // Revoke the local blob URL to free memory
+    if (photo.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(photo.previewUrl);
+    }
     onChange(photos.filter((_, i) => i !== index));
   };
 
@@ -118,41 +102,34 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
       />
 
       {!atLimit && (
-        uploading ? (
-          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground border-2 border-dashed border-border rounded-xl">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <span className="text-sm">Uploading to cloud storage…</span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {/* Take Photo button */}
-            <button
-              type="button"
-              onClick={() => cameraRef.current?.click()}
-              className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/70 transition-colors text-primary"
-            >
-              <Camera className="w-7 h-7" />
-              <span className="text-sm font-semibold">Take Photo</span>
-            </button>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Take Photo button */}
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/70 transition-colors text-primary"
+          >
+            <Camera className="w-7 h-7" />
+            <span className="text-sm font-semibold">Take Photo</span>
+          </button>
 
-            {/* Browse / drop zone */}
-            <div
-              className={cn(
-                "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
-                dragOver
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-primary/50 hover:bg-accent/30 text-muted-foreground"
-              )}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => inputRef.current?.click()}
-            >
-              <ImagePlus className="w-7 h-7" />
-              <span className="text-sm font-semibold">Browse Files</span>
-            </div>
+          {/* Browse / drop zone */}
+          <div
+            className={cn(
+              "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+              dragOver
+                ? "border-primary bg-primary/10"
+                : "border-border hover:border-primary/50 hover:bg-accent/30 text-muted-foreground"
+            )}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+          >
+            <ImagePlus className="w-7 h-7" />
+            <span className="text-sm font-semibold">Browse Files</span>
           </div>
-        )
+        </div>
       )}
 
       <p className="text-xs text-muted-foreground/60 text-center">
@@ -164,7 +141,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
         <div className="grid grid-cols-3 gap-2">
           {photos.map((photo, i) => (
             <div
-              key={photo.key}
+              key={photo.previewUrl}
               className="relative group rounded-lg overflow-hidden aspect-square bg-muted"
             >
               <img
@@ -172,6 +149,12 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                 alt={photo.fileName}
                 className="w-full h-full object-cover"
               />
+              {/* Pending badge */}
+              {photo.file && (
+                <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-muted-foreground">
+                  Pending
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => removePhoto(i)}

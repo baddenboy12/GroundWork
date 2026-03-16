@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
@@ -51,6 +51,7 @@ export default function CreateLogDialog({
 }: Props) {
   const createLog = useMutation(api.logs.create);
   const findOrCreateSite = useMutation(api.sites.findOrCreate);
+  const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
   const sites = useQuery(api.sites.list, {});
   const { isAtLeast, config } = useSubscription();
   const canAttachPhotos = isAtLeast("pro");
@@ -140,6 +141,25 @@ export default function CreateLogDialog({
 
     // ── Online path: save to Convex ────────────────────────────────────────
     try {
+      // Upload any staged (pending) photos to R2 now that the user confirmed saving
+      const resolvedPhotos = await Promise.all(
+        photos.map(async (p) => {
+          if (!p.file) return p; // already uploaded, pass through
+          const { uploadUrl, key, publicUrl } = await getUploadUrl({
+            fileName: p.fileName,
+            contentType: p.file.type,
+            bytes: p.bytes,
+          });
+          const res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": p.file.type },
+            body: p.file,
+          });
+          if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+          return { ...p, url: publicUrl, key };
+        })
+      );
+
       const siteId = await findOrCreateSite({
         name: siteName.trim(),
         location: location.trim() || undefined,
@@ -152,8 +172,8 @@ export default function CreateLogDialog({
         content: content.trim(),
         category,
         loggedAt: new Date(loggedAt).toISOString(),
-        photos: photos.length > 0
-          ? photos.map((p) => ({ url: p.url, key: p.key, bytes: p.bytes }))
+        photos: resolvedPhotos.length > 0
+          ? resolvedPhotos.map((p) => ({ url: p.url, key: p.key, bytes: p.bytes }))
           : undefined,
         location: location.trim() || undefined,
         latitude: coords?.lat,
@@ -455,7 +475,7 @@ export default function CreateLogDialog({
                 type="submit"
                 disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
               >
-                {loading ? "Saving..." : "Save entry"}
+                {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
               </Button>
             </DialogFooter>
           </form>
