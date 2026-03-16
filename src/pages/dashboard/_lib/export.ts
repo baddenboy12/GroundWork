@@ -1094,9 +1094,9 @@ type XlsxEntry = {
 
 // ── Photo grid constants ──────────────────────────────────────────────────────
 const XLSX_PHOTOS_PER_ROW = 4;          // max photos side-by-side in Excel
-const XLSX_PHOTO_COL_UNITS = 30;        // Excel column width units per photo col (≈215px)
-const XLSX_PHOTO_MAX_H = 210;           // max photo height in pixels
-const XLSX_PHOTO_MAX_W = 200;           // max photo width in pixels (fits within column)
+const XLSX_PHOTO_COL_UNITS = 42;        // Excel column width units per photo col (≈300px)
+const XLSX_PHOTO_MAX_H = 300;           // max photo height in pixels
+const XLSX_PHOTO_MAX_W = 285;           // max photo width in pixels (fits within column)
 const XLSX_TOTAL_COLS = 1 + XLSX_PHOTOS_PER_ROW; // cols A–E
 
 /** Scale a photo to fit within XLSX_PHOTO_MAX_W × XLSX_PHOTO_MAX_H */
