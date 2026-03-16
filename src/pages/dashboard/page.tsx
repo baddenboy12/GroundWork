@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useBlocker } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -20,22 +19,28 @@ import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
 
 // Blocks the Android back button / swipe-back gesture in standalone PWA mode.
-// Uses React Router's blocker to intercept POP (back/forward) navigation
-// and immediately cancel it, keeping the user on the dashboard.
+// Uses the popstate event to detect back navigation and push a new history
+// entry, keeping the user on the dashboard.
 function BackBlocker() {
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as { standalone?: boolean }).standalone === true;
-
-  const blocker = useBlocker(
-    ({ historyAction }) => isStandalone && historyAction === "POP"
-  );
-
   useEffect(() => {
-    if (blocker.state === "blocked") {
-      blocker.reset();
-    }
-  }, [blocker]);
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+
+    if (!isStandalone) return;
+
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    // Push a sentinel entry so the first back press is absorbed
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   return null;
 }
