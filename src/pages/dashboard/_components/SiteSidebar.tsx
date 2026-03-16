@@ -148,9 +148,9 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-semibold text-foreground">Sites</span>
-          {config.maxSites !== null && (
-            <span className="text-xs text-muted-foreground">
-              {siteCount}/{config.maxSites}
+          {sites !== undefined && sites.length > 0 && (
+            <span className="text-xs font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+              {siteCount}{config.maxSites !== null ? `/${config.maxSites}` : ""}
             </span>
           )}
           <Popover>
@@ -238,6 +238,14 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
               )}
               onClick={() => onSelectSite(site._id)}
             >
+              <span className={cn(
+                "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
+                selectedSiteId === site._id
+                  ? "text-primary/70"
+                  : "text-muted-foreground/40 group-hover:text-muted-foreground/60"
+              )}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
               <span className="flex-1 text-sm font-semibold truncate">{site.name}</span>
               {selectedSiteId === site._id && (
                 <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
