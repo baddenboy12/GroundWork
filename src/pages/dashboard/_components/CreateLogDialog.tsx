@@ -64,6 +64,7 @@ export default function CreateLogDialog({
   const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [location, setLocation] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationFromSite, setLocationFromSite] = useState(false);
   const [photos, setPhotos] = useState<R2Photo[]>([]);
   const [offlinePhotos, setOfflinePhotos] = useState<OfflinePhoto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,6 +107,7 @@ export default function CreateLogDialog({
     setShowSuggestions(false);
     setLocation("");
     setCoords(null);
+    setLocationFromSite(false);
     onClose();
   };
 
@@ -210,6 +212,12 @@ export default function CreateLogDialog({
                   onChange={(e) => {
                     setSiteName(e.target.value);
                     setShowSuggestions(true);
+                    // Clear autofilled location if user changes the site name manually
+                    if (locationFromSite) {
+                      setLocation("");
+                      setCoords(null);
+                      setLocationFromSite(false);
+                    }
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -231,6 +239,13 @@ export default function CreateLogDialog({
                             onMouseDown={() => {
                               setSiteName(s.name);
                               setShowSuggestions(false);
+                              if (s.location) {
+                                setLocation(s.location);
+                                setLocationFromSite(true);
+                              }
+                              if (s.latitude != null && s.longitude != null) {
+                                setCoords({ lat: s.latitude, lng: s.longitude });
+                              }
                             }}
                           >
                             <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -254,6 +269,13 @@ export default function CreateLogDialog({
                             onMouseDown={() => {
                               setSiteName(s.name);
                               setShowSuggestions(false);
+                              if (s.location) {
+                                setLocation(s.location);
+                                setLocationFromSite(true);
+                              }
+                              if (s.latitude != null && s.longitude != null) {
+                                setCoords({ lat: s.latitude, lng: s.longitude });
+                              }
                             }}
                           >
                             <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -361,11 +383,18 @@ export default function CreateLogDialog({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Location</Label>
+              <Label className="flex items-center gap-2">
+                Location
+                {locationFromSite && (
+                  <span className="text-[10px] font-normal text-primary border border-primary/30 rounded-full px-1.5 py-0.5">
+                    Autofilled from site
+                  </span>
+                )}
+              </Label>
               <LocationPicker
                 value={location}
-                onChange={setLocation}
-                onCoordsChange={setCoords}
+                onChange={(v) => { setLocation(v); setLocationFromSite(false); }}
+                onCoordsChange={(c) => { setCoords(c); setLocationFromSite(false); }}
                 placeholder="e.g. Tower 12 – Roof East, 123 Main St"
               />
             </div>
