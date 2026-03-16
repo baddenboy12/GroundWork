@@ -25,18 +25,20 @@ type Props = {
   onNewLog: () => void;
   /** Mobile only: opens the site list sheet */
   onMenuClick?: () => void;
+  /** Optional site selector popout to render between logo and right controls */
+  sitePopout?: React.ReactNode;
 };
 
-export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
+export default function DashboardNavbar({ onNewLog, onMenuClick, sitePopout }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0">
+    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
       {/* Left: hamburger (mobile) + logo */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {isMobile && onMenuClick && (
           <Button
             variant="ghost"
@@ -61,6 +63,13 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
           </span>
         </button>
       </div>
+
+      {/* Centre: site selector popout */}
+      {sitePopout && (
+        <div className="flex-1 flex items-center">
+          {sitePopout}
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         {/* Plan badge — desktop only */}

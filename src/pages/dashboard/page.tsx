@@ -2,21 +2,14 @@ import { useState, useEffect } from "react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
-import SiteSidebar from "./_components/SiteSidebar.tsx";
+import SitePopout from "./_components/SitePopout.tsx";
 import LogList from "./_components/LogList.tsx";
 import DashboardHome from "./_components/DashboardHome.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
-import { useIsMobile } from "@/hooks/use-mobile.ts";
 
 // Blocks the Android back button / swipe-back gesture in standalone PWA mode.
 // Uses the popstate event to detect back navigation and push a new history
@@ -46,10 +39,8 @@ function BackBlocker() {
 }
 
 function DashboardInner() {
-  const isMobile = useIsMobile();
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
-  const [siteDrawerOpen, setSiteDrawerOpen] = useState(false);
 
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
@@ -61,12 +52,6 @@ function DashboardInner() {
 
   const handleLogCreated = (siteId: Id<"sites">) => {
     setSelectedSiteId(siteId);
-    setSiteDrawerOpen(false);
-  };
-
-  const handleSelectSite = (id: Id<"sites">) => {
-    setSelectedSiteId(id);
-    setSiteDrawerOpen(false);
   };
 
   return (
@@ -74,7 +59,13 @@ function DashboardInner() {
       <BackBlocker />
       <DashboardNavbar
         onNewLog={() => setGlobalCreateOpen(true)}
-        onMenuClick={isMobile ? () => setSiteDrawerOpen(true) : undefined}
+        sitePopout={
+          <SitePopout
+            selectedSiteId={selectedSiteId}
+            onSelectSite={setSelectedSiteId}
+            onSiteDeleted={handleSiteDeleted}
+          />
+        }
       />
       <OfflineBanner
         isOnline={isOnline}
@@ -83,62 +74,16 @@ function DashboardInner() {
         onSync={syncQueue}
       />
 
-      {isMobile ? (
-        /* ── Mobile layout ─────────────────────────────────────────────
-           No inline sidebar. Tap the hamburger to open the site drawer.
-           When a site is selected: full-screen log list with back button.
-           When no site is selected: full-screen "start" state.           */
-        <main className="flex-1 overflow-hidden flex flex-col">
-          {selectedSiteId ? (
-            <LogList
-              siteId={selectedSiteId}
-              onBack={() => setSelectedSiteId(null)}
-            />
-          ) : (
-            <DashboardHome
-              onNewLog={() => setGlobalCreateOpen(true)}
-              onSelectSite={handleSelectSite}
-            />
-          )}
-        </main>
-      ) : (
-        /* ── Desktop layout ────────────────────────────────────────────
-           Classic sidebar + main content                                */
-        <div className="flex flex-1 overflow-hidden">
-          <SiteSidebar
-            selectedSiteId={selectedSiteId}
+      <main className="flex-1 overflow-hidden flex flex-col">
+        {selectedSiteId ? (
+          <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
+        ) : (
+          <DashboardHome
+            onNewLog={() => setGlobalCreateOpen(true)}
             onSelectSite={setSelectedSiteId}
-            onSiteDeleted={handleSiteDeleted}
           />
-          <main className="flex-1 overflow-hidden flex flex-col">
-            {selectedSiteId ? (
-              <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
-            ) : (
-              <DashboardHome
-                onNewLog={() => setGlobalCreateOpen(true)}
-                onSelectSite={setSelectedSiteId}
-              />
-            )}
-          </main>
-        </div>
-      )}
-
-      {/* Mobile site drawer — width follows stored sidebar width */}
-      <Sheet open={siteDrawerOpen} onOpenChange={setSiteDrawerOpen}>
-        <SheetContent side="left" className="p-0 flex flex-col [&>button]:hidden" style={{ width: (() => { try { const w = localStorage.getItem("groundwork_sidebar_width"); return w ? `${Math.max(220, parseInt(w, 10))}px` : "320px"; } catch { return "320px"; } })() }}>
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sites</SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 overflow-hidden">
-            <SiteSidebar
-              selectedSiteId={selectedSiteId}
-              onSelectSite={handleSelectSite}
-              onSiteDeleted={handleSiteDeleted}
-              fullscreen
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+        )}
+      </main>
 
       {/* Global create dialog */}
       <CreateLogDialog
