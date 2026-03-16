@@ -1,25 +1,17 @@
 import { useRef, useState } from "react";
-import { ImagePlus, CloudUpload, X, Loader2 } from "lucide-react";
+import { ImagePlus, CloudUpload, X, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils.ts";
 import { compressImage } from "../_lib/compress-image.ts";
 import type { OfflinePhoto } from "@/hooks/use-offline-queue.ts";
 
-/**
- * Compress a File using the shared compression pipeline, then convert the
- * result to a base64 data URL so it can be persisted in localStorage.
- */
 async function compressToDataUrl(file: File): Promise<OfflinePhoto> {
   const compressed = await compressImage(file);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      resolve({
-        dataUrl,
-        fileName: compressed.name,
-        bytes: compressed.size,
-      });
+      resolve({ dataUrl, fileName: compressed.name, bytes: compressed.size });
     };
     reader.onerror = () => reject(new Error("FileReader failed"));
     reader.readAsDataURL(compressed);
@@ -29,7 +21,6 @@ async function compressToDataUrl(file: File): Promise<OfflinePhoto> {
 type Props = {
   photos: OfflinePhoto[];
   onChange: (photos: OfflinePhoto[]) => void;
-  /** Maximum photos allowed — comes from the user's plan, same as online uploader */
   maxPhotos?: number;
 };
 
@@ -37,23 +28,16 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
   const [processing, setProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (!fileArray.length) {
-      toast.error("Only image files are supported");
-      return;
-    }
+    if (!fileArray.length) { toast.error("Only image files are supported"); return; }
     const remaining = maxPhotos - photos.length;
-    if (remaining <= 0) {
-      toast.error(`Maximum ${maxPhotos} photos allowed`);
-      return;
-    }
+    if (remaining <= 0) { toast.error(`Maximum ${maxPhotos} photos allowed`); return; }
     setProcessing(true);
     try {
-      const compressed = await Promise.all(
-        fileArray.slice(0, remaining).map(compressToDataUrl)
-      );
+      const compressed = await Promise.all(fileArray.slice(0, remaining).map(compressToDataUrl));
       onChange([...photos, ...compressed]);
     } catch {
       toast.error("Failed to process photo(s)");
@@ -62,11 +46,16 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
     }
   };
 
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) { void handleFiles(e.target.files); e.target.value = ""; }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
+    e.preventDefault(); setDragOver(false);
     if (e.dataTransfer.files) void handleFiles(e.dataTransfer.files);
   };
+
+  const atLimit = photos.length >= maxPhotos;
 
   return (
     <div className="space-y-2.5">
@@ -76,75 +65,68 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
         <span>Saved locally · uploaded to cloud automatically when you reconnect</span>
       </div>
 
-      {/* Drop zone */}
-      {photos.length < maxPhotos && (
-        <div
-          className={cn(
-            "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors",
-            dragOver
-              ? "border-amber-500 bg-amber-500/10"
-              : "border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-50/10 dark:hover:bg-amber-900/10"
-          )}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) {
-                void handleFiles(e.target.files);
-                e.target.value = "";
-              }
-            }}
-          />
-          {processing ? (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
-              <span className="text-sm">Compressing for offline storage…</span>
+      {/* Hidden file inputs */}
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleInput} />
+      {/* Camera capture — opens native camera app directly */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleInput} />
+
+      {!atLimit && (
+        processing ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground border-2 border-dashed border-amber-500/30 rounded-xl">
+            <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+            <span className="text-sm">Compressing for offline storage…</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {/* Take Photo */}
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/70 transition-colors text-amber-600 dark:text-amber-400"
+            >
+              <Camera className="w-7 h-7" />
+              <span className="text-sm font-semibold">Take Photo</span>
+            </button>
+
+            {/* Browse files / drop zone */}
+            <div
+              className={cn(
+                "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+                dragOver
+                  ? "border-amber-500 bg-amber-500/10"
+                  : "border-amber-500/30 hover:border-amber-500/60 text-amber-600/80 dark:text-amber-400/80"
+              )}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+            >
+              <ImagePlus className="w-7 h-7" />
+              <span className="text-sm font-semibold">Browse Files</span>
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-amber-600/80 dark:text-amber-400/80">
-              <ImagePlus className="w-6 h-6" />
-              <p className="text-sm font-medium">
-                Drop photos here or <span className="underline">browse</span>
-              </p>
-              <p className="text-xs text-muted-foreground/60">
-                JPG, PNG, WEBP — auto-compressed · up to {maxPhotos} photos
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )
       )}
+
+      <p className="text-xs text-muted-foreground/60 text-center">
+        Auto-compressed · {photos.length}/{maxPhotos} photos
+      </p>
 
       {/* Thumbnails */}
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {photos.map((photo, i) => (
-            <div
-              key={i}
-              className="relative group rounded-lg overflow-hidden aspect-square bg-muted"
-            >
-              <img
-                src={photo.dataUrl}
-                alt={photo.fileName}
-                className="w-full h-full object-cover"
-              />
-              {/* Pending-sync badge */}
+            <div key={i} className="relative group rounded-lg overflow-hidden aspect-square bg-muted">
+              <img src={photo.dataUrl} alt={photo.fileName} className="w-full h-full object-cover" />
               <div className="absolute bottom-1 left-1 bg-amber-500/80 text-white rounded px-1 py-0.5 text-[9px] font-medium leading-none">
                 pending
               </div>
               <button
                 type="button"
                 onClick={() => onChange(photos.filter((_, idx) => idx !== i))}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}

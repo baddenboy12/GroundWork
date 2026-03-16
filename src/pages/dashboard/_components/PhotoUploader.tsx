@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { ImagePlus, X, Loader2 } from "lucide-react";
+import { ImagePlus, X, Loader2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -26,6 +26,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const uploadFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -43,25 +44,18 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     try {
       const uploaded: R2Photo[] = [];
       for (const file of toUpload) {
-        // 1. Compress image before uploading
         const compressed = await compressImage(file);
-
-        // 2. Get presigned PUT URL from backend (use compressed size)
         const { uploadUrl, key, publicUrl } = await getUploadUrl({
           fileName: compressed.name,
           contentType: compressed.type,
           bytes: compressed.size,
         });
-
-        // 3. Upload compressed file directly to R2
         const res = await fetch(uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": compressed.type },
           body: compressed,
         });
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-
-        // 4. Build photo object with local preview of original for speed
         uploaded.push({
           url: publicUrl,
           key,
@@ -100,49 +94,70 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     onChange(photos.filter((_, i) => i !== index));
   };
 
+  const atLimit = photos.length >= maxPhotos;
+
   return (
     <div className="space-y-3">
-      {/* Drop zone */}
-      {photos.length < maxPhotos && (
-        <div
-          className={cn(
-            "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors",
-            dragOver
-              ? "border-primary bg-primary/10"
-              : "border-border hover:border-primary/50 hover:bg-accent/30"
-          )}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileInput}
-          />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm">Uploading to cloud storage…</span>
+      {/* Hidden inputs */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileInput}
+      />
+      {/* Camera capture — opens native camera app directly */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileInput}
+      />
+
+      {!atLimit && (
+        uploading ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground border-2 border-dashed border-border rounded-xl">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="text-sm">Uploading to cloud storage…</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {/* Take Photo button */}
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/70 transition-colors text-primary"
+            >
+              <Camera className="w-7 h-7" />
+              <span className="text-sm font-semibold">Take Photo</span>
+            </button>
+
+            {/* Browse / drop zone */}
+            <div
+              className={cn(
+                "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+                dragOver
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50 hover:bg-accent/30 text-muted-foreground"
+              )}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+            >
+              <ImagePlus className="w-7 h-7" />
+              <span className="text-sm font-semibold">Browse Files</span>
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ImagePlus className="w-6 h-6 text-primary/60" />
-              <p className="text-sm">
-                Drop photos here or{" "}
-                <span className="text-primary font-medium">browse</span>
-              </p>
-              <p className="text-xs text-muted-foreground/60">
-                JPG, PNG, WEBP — auto-compressed · up to {maxPhotos} photos
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )
       )}
+
+      <p className="text-xs text-muted-foreground/60 text-center">
+        Auto-compressed · {photos.length}/{maxPhotos} photos
+      </p>
 
       {/* Photo previews */}
       {photos.length > 0 && (
@@ -160,9 +175,9 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
               <button
                 type="button"
                 onClick={() => removePhoto(i)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
