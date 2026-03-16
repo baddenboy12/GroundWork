@@ -42,7 +42,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   starter: {
     name: "Pro",
     tagline: "Photo-enabled for growing teams",
-    price: "$7.99",
+    price: "$8.99",
     period: "per month",
     maxSites: 15,
     maxLogsPerSite: null,
@@ -55,7 +55,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   pro: {
     name: "Pro",
     tagline: "Photo-enabled for growing teams",
-    price: "$7.99",
+    price: "$8.99",
     period: "per month",
     maxSites: 15,
     maxLogsPerSite: null,
@@ -68,7 +68,7 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   business: {
     name: "Business",
     tagline: "Full power with exports & integrations",
-    price: "$12.99",
+    price: "$19.99",
     period: "per month",
     maxSites: null,
     maxLogsPerSite: null,
