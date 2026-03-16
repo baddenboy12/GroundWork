@@ -57,16 +57,17 @@ function DashboardInner() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <BackBlocker />
-      <DashboardNavbar
-        onNewLog={() => setGlobalCreateOpen(true)}
-        sitePopout={
-          <SitePopout
-            selectedSiteId={selectedSiteId}
-            onSelectSite={setSelectedSiteId}
-            onSiteDeleted={handleSiteDeleted}
-          />
-        }
-      />
+      <DashboardNavbar onNewLog={() => setGlobalCreateOpen(true)} />
+
+      {/* Site selector sub-bar — sits directly under the top bar, left-anchored */}
+      <div className="flex items-center px-4 py-2 border-b border-border bg-card/80 shrink-0">
+        <SitePopout
+          selectedSiteId={selectedSiteId}
+          onSelectSite={setSelectedSiteId}
+          onSiteDeleted={handleSiteDeleted}
+        />
+      </div>
+
       <OfflineBanner
         isOnline={isOnline}
         pendingCount={offlineQueue.length}

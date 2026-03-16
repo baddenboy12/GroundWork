@@ -117,22 +117,22 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2 h-9 px-3 rounded-xl text-sm font-semibold transition-all duration-200",
+          "flex items-center gap-2.5 h-11 px-4 rounded-xl text-base font-semibold transition-all duration-200",
           "bg-muted/70 hover:bg-muted border border-transparent",
           open && "bg-muted border-border shadow-inner"
         )}
       >
-        <LayoutList className="w-4 h-4 text-primary shrink-0" />
-        <span className="max-w-36 truncate">
+        <LayoutList className="w-5 h-5 text-primary shrink-0" />
+        <span className="max-w-44 truncate">
           {selectedSite?.name ?? "Sites"}
         </span>
         {siteCount > 0 && (
-          <span className="text-[10px] font-mono bg-background/60 px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
+          <span className="text-[11px] font-mono bg-background/60 px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
             {siteCount}
           </span>
         )}
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         </motion.div>
       </button>
 
@@ -140,10 +140,10 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors"
             aria-label="How sites work"
           >
-            <Info className="w-3.5 h-3.5" />
+            <Info className="w-5 h-5" />
           </button>
         </PopoverTrigger>
         <PopoverContent side="bottom" align="start" className="w-72 p-4 space-y-3 text-sm">
@@ -178,11 +178,11 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute left-0 top-[calc(100%+6px)] bg-card border border-border rounded-2xl shadow-2xl"
-            style={{ width: PANEL_WIDTH, overflow: "hidden" }}
-            initial={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
-            animate={{ clipPath: "inset(0 0% 0 0 round 16px)", opacity: 1 }}
-            exit={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
+            className="absolute left-0 top-[calc(100%+4px)] bg-card border border-border rounded-2xl shadow-2xl"
+            style={{ width: PANEL_WIDTH, overflow: "hidden", zIndex: 100 }}
+            initial={{ clipPath: "inset(0 0 100% 0 round 16px)", opacity: 0 }}
+            animate={{ clipPath: "inset(0 0 0% 0 round 16px)", opacity: 1 }}
+            exit={{ clipPath: "inset(0 0 100% 0 round 16px)", opacity: 0 }}
             transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Panel header */}
