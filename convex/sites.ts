@@ -36,6 +36,25 @@ export const create = mutation({
       .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .unique();
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+
+    // Enforce per-tier site limit
+    const tier = user.subscriptionTier ?? "free";
+    const siteLimits: Record<string, number | null> = { free: 1, starter: 15, pro: 15, business: null };
+    const siteLimit = siteLimits[tier] ?? 1;
+    if (siteLimit !== null) {
+      const existingCount = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect()
+        .then((s) => s.length);
+      if (existingCount >= siteLimit) {
+        throw new ConvexError({
+          message: `Site limit reached for your plan. Upgrade to add more sites.`,
+          code: "FORBIDDEN",
+        });
+      }
+    }
+
     return await ctx.db.insert("sites", {
       name: args.name,
       description: args.description,
@@ -117,9 +136,9 @@ export const findOrCreate = mutation({
     // Check tier limit before creating a new site
     const tier = user.subscriptionTier ?? "free";
     const limits: Record<string, number | null> = {
-      free: 2,
+      free: 1,
       starter: 15,
-      pro: null,
+      pro: 15,
       business: null,
     };
     const limit = limits[tier] ?? 2;

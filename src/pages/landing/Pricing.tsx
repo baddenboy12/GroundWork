@@ -9,19 +9,22 @@ import {
   type SubscriptionTier,
 } from "@/pages/dashboard/_lib/subscription.ts";
 
-// Show the 2 paid tiers on the marketing page
-const DISPLAYED_TIERS: SubscriptionTier[] = ["pro", "business"];
+// Show all 3 tiers on the marketing page
+const DISPLAYED_TIERS: SubscriptionTier[] = ["free", "pro", "business"];
 
-type FeatureRow = { label: string; starter: boolean; pro: boolean; business: boolean; skipFor?: SubscriptionTier[] };
+type FeatureRow = { label: string; free: boolean; starter: boolean; pro: boolean; business: boolean; skipFor?: SubscriptionTier[] };
 
 const FEATURE_ROWS: FeatureRow[] = [
-  { label: "Up to 15 sites", starter: true, pro: true, business: false, skipFor: ["business"] },
-  { label: "Unlimited sites", starter: false, pro: false, business: true, skipFor: ["pro", "starter"] },
-  { label: "Unlimited logs/site", starter: true, pro: true, business: true },
-  { label: "Photo attachments", starter: true, pro: true, business: true },
-  { label: "PDF, Excel & CSV export", starter: false, pro: false, business: true },
-  { label: "Integrations & API", starter: false, pro: false, business: true },
-
+  { label: "1 site", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
+  { label: "Up to 15 sites", free: false, starter: true, pro: true, business: false, skipFor: ["free", "business"] },
+  { label: "Unlimited sites", free: false, starter: false, pro: false, business: true, skipFor: ["free", "pro", "starter"] },
+  { label: "1 log per site", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
+  { label: "Unlimited logs/site", free: false, starter: true, pro: true, business: true, skipFor: ["free"] },
+  { label: "Up to 5 photos/entry", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
+  { label: "Up to 5 photos/entry", free: false, starter: true, pro: true, business: false, skipFor: ["free", "business"] },
+  { label: "Up to 20 photos/entry", free: false, starter: false, pro: false, business: true, skipFor: ["free", "pro", "starter"] },
+  { label: "PDF, Excel & CSV export", free: false, starter: false, pro: false, business: true },
+  { label: "Integrations & API", free: false, starter: false, pro: false, business: true },
 ];
 
 export default function Pricing() {
@@ -44,11 +47,11 @@ export default function Pricing() {
             Simple, transparent pricing
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Two simple plans. No hidden fees, cancel anytime.
+            Start free, upgrade when you need more. No hidden fees, cancel anytime.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-3xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-4xl mx-auto w-full">
           {DISPLAYED_TIERS.map((tier, i) => {
             const cfg = TIER_CONFIG[tier];
             return (
@@ -83,7 +86,7 @@ export default function Pricing() {
 
                 <ul className="space-y-2.5 mb-8">
                   {FEATURE_ROWS.filter((row) => !row.skipFor?.includes(tier)).map((row) => {
-                    const included = row[tier as "starter" | "pro" | "business"];
+                    const included = row[tier as "free" | "starter" | "pro" | "business"];
                     return (
                       <li
                         key={row.label}
@@ -106,9 +109,9 @@ export default function Pricing() {
                   <Button
                     className="w-full"
                     variant={cfg.highlight ? "default" : "secondary"}
-                    onClick={() => navigate("/billing")}
+                    onClick={() => navigate(tier === "free" ? "/dashboard" : "/billing")}
                   >
-                    {cfg.highlight ? "Upgrade to Pro" : `Get ${cfg.name}`}
+                    {tier === "free" ? "Get started free" : cfg.highlight ? "Upgrade to Pro" : `Get ${cfg.name}`}
                   </Button>
                 </Authenticated>
                 <Unauthenticated>

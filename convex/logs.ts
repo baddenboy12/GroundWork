@@ -264,17 +264,39 @@ export const create = mutation({
 
     // Enforce per-tier photo limit per entry
     const photoLimits: Record<string, number> = {
-      free: 0,
+      free: 5,
       starter: 5,
       pro: 5,
       business: 20,
     };
-    const maxPhotos = photoLimits[user.subscriptionTier ?? "free"] ?? 0;
+    const maxPhotos = photoLimits[user.subscriptionTier ?? "free"] ?? 5;
     if ((args.photos?.length ?? 0) > maxPhotos) {
       throw new ConvexError({
         code: "BAD_REQUEST",
         message: `Maximum ${maxPhotos} photos per entry on your plan.`,
       });
+    }
+
+    // Enforce per-tier log limit per site
+    const logLimits: Record<string, number | null> = {
+      free: 1,
+      starter: null,
+      pro: null,
+      business: null,
+    };
+    const maxLogs = logLimits[user.subscriptionTier ?? "free"] ?? null;
+    if (maxLogs !== null) {
+      const existingCount = await ctx.db
+        .query("logs")
+        .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+        .collect()
+        .then((l) => l.length);
+      if (existingCount >= maxLogs) {
+        throw new ConvexError({
+          code: "FORBIDDEN",
+          message: `Entry limit reached for your plan. Upgrade to add more entries.`,
+        });
+      }
     }
 
     const logId = await ctx.db.insert("logs", {

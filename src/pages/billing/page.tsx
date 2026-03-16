@@ -331,13 +331,14 @@ function BillingInner() {
               : "Initialize PayPal above to enable real payment processing."}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
             {TIER_ORDER.map((t) => {
               const cfg = TIER_CONFIG[t];
               const isCurrent = t === tier;
               const isUpgrade =
                 tierOrder.indexOf(t) > tierOrder.indexOf(tier);
               const isPendingThis = paypalPending === t;
+              const isFree = t === "free";
 
               return (
                 <div
@@ -382,11 +383,13 @@ function BillingInner() {
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
                       {cfg.maxSites === null
                         ? "Unlimited sites"
-                        : `Up to ${cfg.maxSites} sites`}
+                        : `${cfg.maxSites} site${cfg.maxSites > 1 ? "s" : ""}`}
                     </li>
                     <li className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                      Unlimited logs per site
+                      {cfg.maxLogsPerSite === null
+                        ? "Unlimited logs per site"
+                        : `${cfg.maxLogsPerSite} log${cfg.maxLogsPerSite > 1 ? "s" : ""} per site`}
                     </li>
                     <li className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Check className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -422,7 +425,18 @@ function BillingInner() {
                     </li>
                   </ul>
 
-                  {isPayPalConfigured ? (
+                  {/* Free tier: no PayPal needed */}
+                  {isFree ? (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant="secondary"
+                      disabled={isCurrent || !hasActivePayPalSub}
+                      onClick={() => setCancelDialogOpen(true)}
+                    >
+                      {isCurrent ? "Current plan" : "Downgrade to Free"}
+                    </Button>
+                  ) : isPayPalConfigured ? (
                     <Button
                       size="sm"
                       className="w-full"

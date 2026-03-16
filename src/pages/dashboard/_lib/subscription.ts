@@ -25,16 +25,16 @@ export type TierConfig = {
 };
 
 export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
-  // Internal fallback — not shown as a selectable plan
+  // Free tier — shown as a selectable plan
   free: {
     name: "Free",
-    tagline: "No active subscription",
+    tagline: "Try it out at no cost",
     price: "$0",
     period: "forever",
-    maxSites: 2,
-    maxLogsPerSite: 10,
-    photoAttachments: false,
-    maxPhotosPerEntry: null,
+    maxSites: 1,
+    maxLogsPerSite: 1,
+    photoAttachments: true,
+    maxPhotosPerEntry: 5,
     export: false,
     integrations: false,
   },
@@ -79,8 +79,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
 };
 
-// Only paid plans shown in the billing UI (starter is hidden – treated as pro)
-export const TIER_ORDER: SubscriptionTier[] = ["pro", "business"];
+// All tiers shown in billing UI (starter is hidden – treated as pro)
+export const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "business"];
 
 /** Returns true if `tier` is at least as high as `minimum` */
 export function isAtLeast(
