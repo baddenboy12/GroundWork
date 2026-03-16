@@ -31,7 +31,7 @@ const features = [
     icon: FileDown,
     title: "Export Reports",
     description:
-      "Generate clean PDF or CSV reports from any filtered view. Share with clients or archive for compliance.",
+      "Generate clean PDF, Excel, or CSV reports from any filtered view. Share with clients or archive for compliance.",
   },
   {
     icon: Search,

@@ -41,7 +41,7 @@ const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.pro }[] = [
   { label: "Logs per site", key: "maxLogsPerSite" },
   { label: "Photo attachments", key: "photoAttachments" },
   { label: "Photos per entry", key: "maxPhotosPerEntry" },
-  { label: "PDF & CSV export", key: "export" },
+  { label: "PDF, Excel & CSV export", key: "export" },
   { label: "Integrations & API", key: "integrations" },
 ];
 
@@ -392,7 +392,7 @@ function BillingInner() {
                       ) : (
                         <X className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      PDF & CSV export
+                      PDF, Excel & CSV export
                     </li>
                     <li
                       className={cn(
