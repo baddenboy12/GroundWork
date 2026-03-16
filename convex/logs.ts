@@ -532,6 +532,23 @@ export const listForGlobalExport = query({
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/** Returns every R2 photo key currently referenced by a log in the DB. */
+export const _getAllPhotoKeys = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const logs = await ctx.db.query("logs").collect();
+    const keys: string[] = [];
+    for (const log of logs) {
+      if (log.photos?.length) {
+        for (const photo of log.photos) {
+          if (photo.key) keys.push(photo.key);
+        }
+      }
+    }
+    return keys;
+  },
+});
+
 export const _getForWebhook = internalQuery({
   args: { logId: v.id("logs") },
   handler: async (ctx, args) => {

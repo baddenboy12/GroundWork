@@ -8,6 +8,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -115,6 +116,56 @@ export const deleteOrphanedPhotos = action({
         console.error(`R2 orphan cleanup failed for key "${key}":`, e);
       }
     }
+  },
+});
+
+// ── Admin action: scan R2 and delete any keys not in the DB ───────────────────
+
+export const adminCleanupOrphanedPhotos = action({
+  args: {},
+  handler: async (ctx): Promise<{ deleted: number; checked: number }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
+    }
+
+    // Collect all R2 keys that are actively referenced in the DB
+    const dbKeys = new Set<string>(
+      await ctx.runQuery(internal.logs._getAllPhotoKeys, {})
+    );
+
+    // Paginate through every object in the R2 bucket
+    const s3 = getS3();
+    const bucket = requireEnv("CLOUDFLARE_R2_BUCKET_NAME");
+    const orphanKeys: string[] = [];
+    let checked = 0;
+    let continuationToken: string | undefined;
+
+    do {
+      const response = await s3.send(
+        new ListObjectsV2Command({ Bucket: bucket, ContinuationToken: continuationToken })
+      );
+      for (const obj of response.Contents ?? []) {
+        if (!obj.Key) continue;
+        checked++;
+        if (!dbKeys.has(obj.Key)) orphanKeys.push(obj.Key);
+      }
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    // Delete every orphan
+    for (const key of orphanKeys) {
+      try {
+        await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      } catch (e) {
+        console.error(`Orphan cleanup: failed to delete "${key}":`, e);
+      }
+    }
+
+    return { deleted: orphanKeys.length, checked };
   },
 });
 

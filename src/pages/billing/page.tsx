@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Settings2,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -94,12 +95,15 @@ function BillingInner() {
   const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
   const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
+  const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [initPending, setInitPending] = useState(false);
+  const [cleanupPending, setCleanupPending] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ deleted: number; checked: number } | null>(null);
   // "Switch plan" flow: cancel current sub then start new PayPal subscription
   const [switchTarget, setSwitchTarget] = useState<SubscriptionTier | null>(null);
   const [switchPending, setSwitchPending] = useState(false);
@@ -217,6 +221,24 @@ function BillingInner() {
     }
   };
 
+  const handleCleanupOrphanedPhotos = async () => {
+    setCleanupPending(true);
+    setCleanupResult(null);
+    try {
+      const result = await cleanupOrphanedPhotosAction();
+      setCleanupResult(result);
+      if (result.deleted === 0) {
+        toast.success(`All ${result.checked} R2 objects are referenced — nothing to clean up.`);
+      } else {
+        toast.success(`Deleted ${result.deleted} orphaned photo${result.deleted !== 1 ? "s" : ""} from R2.`);
+      }
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setCleanupPending(false);
+    }
+  };
+
   // Tier order for comparison (use index from full order)
   const tierOrder: SubscriptionTier[] = ["free", "pro", "business"];
 
@@ -319,6 +341,42 @@ function BillingInner() {
                 "Re-initialize PayPal"
               ) : (
                 "Initialize PayPal"
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* R2 orphan cleanup — admin only */}
+        {isAdmin && (
+          <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Trash2 className="w-5 h-5 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">R2 orphan cleanup</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Scans the R2 bucket and removes any photos not attached to a log entry.
+                  {cleanupResult && (
+                    <span className="ml-1 text-primary font-medium">
+                      Last run: checked {cleanupResult.checked}, deleted {cleanupResult.deleted}.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={cleanupPending}
+              onClick={handleCleanupOrphanedPhotos}
+              className="shrink-0"
+            >
+              {cleanupPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Scanning…
+                </>
+              ) : (
+                "Run cleanup"
               )}
             </Button>
           </div>
