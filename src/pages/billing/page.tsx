@@ -87,6 +87,7 @@ function BillingInner() {
   const { tier, isLoading } = useSubscription();
   const user = useQuery(api.users.getCurrentUser, {});
   const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
+  const isAdmin = useQuery(api.users.getIsAdmin, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
   const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
@@ -278,46 +279,48 @@ function BillingInner() {
           </div>
         )}
 
-        {/* PayPal setup panel — always visible for admin use */}
-        <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
-          isPayPalConfigured
-            ? "border-border bg-card"
-            : "border-amber-500/30 bg-amber-500/5"
-        }`}>
-          <div className="flex items-center gap-3">
-            <Settings2 className={`w-5 h-5 shrink-0 ${isPayPalConfigured ? "text-muted-foreground" : "text-amber-500"}`} />
-            <div>
-              <p className="font-semibold text-foreground text-sm">
-                {isPayPalConfigured ? "PayPal plans configured" : "PayPal not yet configured"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isPayPalConfigured
-                  ? "Re-initialize if you have switched to new PayPal credentials (e.g. sandbox → live)."
-                  : <>Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
-                    <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
-                    Secrets tab, then click Initialize.</>}
-              </p>
+        {/* PayPal setup panel — admin only */}
+        {isAdmin && (
+          <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
+            isPayPalConfigured
+              ? "border-border bg-card"
+              : "border-amber-500/30 bg-amber-500/5"
+          }`}>
+            <div className="flex items-center gap-3">
+              <Settings2 className={`w-5 h-5 shrink-0 ${isPayPalConfigured ? "text-muted-foreground" : "text-amber-500"}`} />
+              <div>
+                <p className="font-semibold text-foreground text-sm">
+                  {isPayPalConfigured ? "PayPal plans configured" : "PayPal not yet configured"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isPayPalConfigured
+                    ? "Re-initialize if you have switched to new PayPal credentials (e.g. sandbox → live)."
+                    : <>Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
+                      <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
+                      Secrets tab, then click Initialize.</>}
+                </p>
+              </div>
             </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={initPending}
+              onClick={handleInitializePlans}
+              className="shrink-0"
+            >
+              {initPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Initializing…
+                </>
+              ) : isPayPalConfigured ? (
+                "Re-initialize PayPal"
+              ) : (
+                "Initialize PayPal"
+              )}
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={initPending}
-            onClick={handleInitializePlans}
-            className="shrink-0"
-          >
-            {initPending ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Initializing…
-              </>
-            ) : isPayPalConfigured ? (
-              "Re-initialize PayPal"
-            ) : (
-              "Initialize PayPal"
-            )}
-          </Button>
-        </div>
+        )}
 
         {/* Plans grid */}
         <div>

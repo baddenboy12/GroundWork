@@ -119,6 +119,18 @@ export const recalculateStorage = mutation({
   },
 });
 
+/** Returns true only if the signed-in user's email matches the ADMIN_EMAIL secret. */
+export const getIsAdmin = query({
+  args: {},
+  handler: async (ctx): Promise<boolean> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) return false;
+    return (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
+  },
+});
+
 // ── Internal helpers used by integrations backend ────────────────────────────
 
 export const _getByToken = internalQuery({
