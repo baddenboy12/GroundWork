@@ -273,7 +273,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
         await exportGlobalFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else if (format_ === "xlsx") {
-        exportGlobalXLSX(opts);
+        await exportGlobalXLSX(opts);
         toast.success(`Excel exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else {
         exportGlobalCSV(opts);

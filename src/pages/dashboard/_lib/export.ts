@@ -1062,26 +1062,154 @@ export async function exportGlobalFullReportPDF({
 }
 
 // ─── XLSX & CSV exports ───────────────────────────────────────────────────────
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
-/** Calculate the max character width for each column across all rows */
-function calcColWidths(data: string[][]): { wch: number }[] {
-  if (data.length === 0) return [];
-  const cols = data[0].length;
-  return Array.from({ length: cols }, (_, c) => ({
-    wch: Math.min(
-      60,
-      Math.max(10, ...data.map((r) => String(r[c] ?? "").length)),
-    ),
-  }));
+type PhotoData = { base64: string; ext: "jpeg" | "png"; ar: number };
+
+/** Pre-fetch all unique photo URLs through the proxy and return a cache map */
+async function buildPhotoCache(urls: string[]): Promise<Map<string, PhotoData | null>> {
+  const cache = new Map<string, PhotoData | null>();
+  await Promise.all(
+    Array.from(new Set(urls)).map(async (url) => {
+      const info = await fetchPhotoInfo(url);
+      if (!info) { cache.set(url, null); return; }
+      const base64 = info.dataUrl.split(",")[1];
+      const ext = (info.dataUrl.startsWith("data:image/png") ? "png" : "jpeg") as "jpeg" | "png";
+      cache.set(url, { base64, ext, ar: info.ar });
+    })
+  );
+  return cache;
 }
 
-function downloadXlsx(rows: string[][], filename: string): void {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = calcColWidths(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Log Export");
-  XLSX.writeFile(wb, filename);
+type XlsxEntry = {
+  title: string;
+  content: string;
+  category: string;
+  authorName: string;
+  loggedAt: string;
+  location?: string;
+  siteName?: string;
+  photoUrls?: string[];
+};
+
+/** Build a single-sheet ExcelJS workbook with one section per entry */
+async function buildEntryWorkbook(
+  entries: XlsxEntry[],
+  metaRows: [string, string][],
+  sheetName: string
+): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "GroundWork";
+  workbook.created = new Date();
+  const ws = workbook.addWorksheet(sheetName);
+
+  ws.getColumn(1).width = 18;
+  ws.getColumn(2).width = 58;
+
+  // ── Meta header ──────────────────────────────────────────────────────────
+  const [titleLabel] = metaRows[0];
+  const titleMetaRow = ws.addRow([titleLabel]);
+  titleMetaRow.getCell(1).font = { bold: true, size: 11 };
+  ws.addRow([]);
+  for (const [label, value] of metaRows.slice(1)) {
+    const r = ws.addRow([label, value]);
+    r.getCell(1).font = { bold: true, size: 9, color: { argb: "FF9CA3AF" } };
+    r.getCell(2).font = { size: 9 };
+  }
+  ws.addRow([]);
+  ws.addRow([]);
+
+  // ── Pre-fetch photos ──────────────────────────────────────────────────────
+  const allUrls = entries.flatMap((e) => e.photoUrls ?? []);
+  const photoCache = await buildPhotoCache(allUrls);
+
+  const IMG_H_PX = 160;
+
+  // ── Entry sections ────────────────────────────────────────────────────────
+  for (const entry of entries) {
+    // Title row (merged across both columns)
+    const titleRowNum = ws.rowCount + 1;
+    const titleRow = ws.addRow([entry.title, ""]);
+    ws.mergeCells(titleRowNum, 1, titleRowNum, 2);
+    titleRow.height = 24;
+    titleRow.getCell(1).font = { bold: true, size: 12, color: { argb: "FF111827" } };
+    titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+    titleRow.getCell(1).alignment = { vertical: "middle" };
+    titleRow.getCell(1).border = {
+      top: { style: "medium", color: { argb: "FFE2E8F0" } },
+      bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+    };
+
+    // Data field rows
+    const fields: [string, string][] = [
+      ["Date & Time", format(new Date(entry.loggedAt), "EEEE, MMMM d yyyy  h:mm a")],
+      ["Category", CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category],
+      ["Author", entry.authorName],
+      ...(entry.siteName ? [["Site", entry.siteName] as [string, string]] : []),
+      ...(entry.location ? [["Location", entry.location] as [string, string]] : []),
+      ["Notes", entry.content || "(no notes)"],
+    ];
+
+    for (const [label, value] of fields) {
+      const isNotes = label === "Notes";
+      const row = ws.addRow([label, value]);
+      row.height = isNotes
+        ? Math.max(20, Math.min(120, Math.ceil(value.length / 70) * 15))
+        : 18;
+      row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
+      row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
+      row.getCell(2).font = { size: 10 };
+      row.getCell(2).alignment = { wrapText: true, vertical: "top" };
+      row.getCell(1).border = { bottom: { style: "hair", color: { argb: "FFF0F0F0" } } };
+      row.getCell(2).border = { bottom: { style: "hair", color: { argb: "FFF0F0F0" } } };
+    }
+
+    // Photos — one embedded image per row, stacked below entry data
+    const photos = (entry.photoUrls ?? [])
+      .map((u) => photoCache.get(u) ?? null)
+      .filter((p): p is PhotoData => p !== null);
+
+    if (photos.length > 0) {
+      const photoLabelRow = ws.addRow(["Photos", `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`]);
+      photoLabelRow.height = 18;
+      photoLabelRow.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
+      photoLabelRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
+
+      for (const photo of photos) {
+        const imgW = Math.round(IMG_H_PX * photo.ar);
+        // Row height in points (1pt ≈ 1.333px)
+        const rowHeightPts = IMG_H_PX / 1.333;
+        const imgRow = ws.addRow([]);
+        imgRow.height = rowHeightPts;
+        // ExcelJS uses 0-indexed row for addImage
+        const rowIdx = imgRow.number - 1;
+        const imageId = workbook.addImage({ base64: photo.base64, extension: photo.ext });
+        ws.addImage(imageId, {
+          tl: { col: 1, row: rowIdx } as { col: number; row: number },
+          ext: { width: imgW, height: IMG_H_PX },
+        });
+      }
+    }
+
+    // Spacer between entries
+    ws.addRow([]);
+    ws.addRow([]);
+  }
+
+  return workbook;
+}
+
+async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer as ArrayBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function escCsv(v: string): string {
@@ -1098,27 +1226,32 @@ function downloadCsv(rows: string[][], filename: string): void {
   a.click();
 }
 
-export function exportXLSX({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
-  const headers = ["Date & Time", "Title", "Category", "Author", "Notes", "Location", "Photos"];
-  const rows = logs.map((l) => [
-    format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
-    l.title,
-    CATEGORY_LABELS[l.category as LogCategory] ?? l.category,
-    l.authorName,
-    l.content.replace(/\n/g, " "),
-    l.location ?? "",
-    String(l.photoUrls?.length ?? 0),
-  ]);
-  const meta: string[][] = [
-    ["Field Log Export"],
-    [`Site: ${siteName}`],
-    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
-    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
-    [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
-    [`Total entries: ${logs.length}`],
-    [],
+export async function exportXLSX({ siteName, siteLocation, logs, dateFrom, dateTo, category }: ExportOptions): Promise<void> {
+  const metaRows: [string, string][] = [
+    ["GroundWork — Field Log Export", ""],
+    ["Site:", siteName],
+    ...(siteLocation ? [["Location:", siteLocation] as [string, string]] : []),
+    ...(dateFrom || dateTo ? [["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [string, string]] : []),
+    ...(category && category !== "all" ? [["Category:", CATEGORY_LABELS[category as LogCategory] ?? category] as [string, string]] : []),
+    ["Exported:", format(new Date(), "yyyy-MM-dd HH:mm")],
+    ["Total entries:", String(logs.length)],
   ];
-  downloadXlsx([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+
+  const entries: XlsxEntry[] = logs.map((l) => ({
+    title: l.title,
+    content: l.content,
+    category: l.category,
+    authorName: l.authorName,
+    loggedAt: l.loggedAt,
+    location: l.location,
+    photoUrls: l.photoUrls,
+  }));
+
+  const workbook = await buildEntryWorkbook(entries, metaRows, "Log Export");
+  await downloadWorkbook(
+    workbook,
+    `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`
+  );
 }
 
 export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
@@ -1144,28 +1277,29 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
   downloadCsv([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
 }
 
-export function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
-  const headers = ["Date & Time", "Site", "Title", "Category", "Author", "Notes", "Location", "Photos"];
-  const rows = logs.map((l) => [
-    format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
-    l.siteName,
-    l.title,
-    CATEGORY_LABELS[l.category as LogCategory] ?? l.category,
-    l.authorName,
-    l.content.replace(/\n/g, " "),
-    l.location ?? "",
-    String(l.photoUrls?.length ?? 0),
-  ]);
-  const meta: string[][] = [
-    ["Multi-Site Export"],
-    [`Sites: ${siteNames.join(", ")}`],
-    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
-    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
-    [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
-    [`Total entries: ${logs.length}`],
-    [],
+export async function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): Promise<void> {
+  const metaRows: [string, string][] = [
+    ["GroundWork — Multi-Site Export", ""],
+    ["Sites:", siteNames.join(", ")],
+    ...(dateFrom || dateTo ? [["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [string, string]] : []),
+    ...(category && category !== "all" ? [["Category:", CATEGORY_LABELS[category as LogCategory] ?? category] as [string, string]] : []),
+    ["Exported:", format(new Date(), "yyyy-MM-dd HH:mm")],
+    ["Total entries:", String(logs.length)],
   ];
-  downloadXlsx([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+
+  const entries: XlsxEntry[] = logs.map((l) => ({
+    title: l.title,
+    content: l.content,
+    category: l.category,
+    authorName: l.authorName,
+    loggedAt: l.loggedAt,
+    location: l.location,
+    siteName: l.siteName,
+    photoUrls: l.photoUrls,
+  }));
+
+  const workbook = await buildEntryWorkbook(entries, metaRows, "Multi-Site Export");
+  await downloadWorkbook(workbook, `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
 }
 
 export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {

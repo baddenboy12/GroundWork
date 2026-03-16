@@ -228,7 +228,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
         await exportFullReportPDF(opts);
         toast.success(`Full report exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else if (format_ === "xlsx") {
-        exportXLSX(opts);
+        await exportXLSX(opts);
         toast.success(`Excel exported — ${count} ${count === 1 ? "entry" : "entries"}`);
       } else {
         exportCSV(opts);
