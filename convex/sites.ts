@@ -40,7 +40,8 @@ export const create = mutation({
     // Enforce per-tier site limit
     const tier = user.subscriptionTier ?? "free";
     const siteLimits: Record<string, number | null> = { free: 1, starter: 15, pro: 15, business: null };
-    const siteLimit = siteLimits[tier] ?? 1;
+    // Use `in` check so that null (unlimited) is not replaced by the fallback
+    const siteLimit = tier in siteLimits ? siteLimits[tier] : 1;
     if (siteLimit !== null) {
       const existingCount = await ctx.db
         .query("sites")
@@ -141,7 +142,8 @@ export const findOrCreate = mutation({
       pro: 15,
       business: null,
     };
-    const limit = limits[tier] ?? 2;
+    // Use `in` check so that null (unlimited) is not replaced by the fallback
+    const limit = tier in limits ? limits[tier] : 1;
     if (limit !== null && allSites.length >= limit) {
       throw new ConvexError({
         message: `Site limit reached for your plan. Upgrade to add more sites.`,
