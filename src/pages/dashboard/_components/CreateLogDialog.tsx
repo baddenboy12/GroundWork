@@ -52,6 +52,7 @@ export default function CreateLogDialog({
   const createLog = useMutation(api.logs.create);
   const findOrCreateSite = useMutation(api.sites.findOrCreate);
   const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
+  const deleteOrphanedPhotos = useAction(api.r2.storageActions.deleteOrphanedPhotos);
   const sites = useQuery(api.sites.list, {});
   const { isAtLeast, config } = useSubscription();
   const canAttachPhotos = isAtLeast("pro");
@@ -140,6 +141,8 @@ export default function CreateLogDialog({
     }
 
     // ── Online path: save to Convex ────────────────────────────────────────
+    // Track keys that were freshly uploaded so we can delete them if the save fails
+    let freshlyUploadedKeys: string[] = [];
     try {
       // Upload any staged (pending) photos to R2 now that the user confirmed saving
       const resolvedPhotos = await Promise.all(
@@ -156,6 +159,7 @@ export default function CreateLogDialog({
             body: p.file,
           });
           if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+          freshlyUploadedKeys.push(key);
           return { ...p, url: publicUrl, key };
         })
       );
@@ -179,10 +183,16 @@ export default function CreateLogDialog({
         latitude: coords?.lat,
         longitude: coords?.lng,
       });
+      // Success — clear the tracking list so cleanup doesn't run
+      freshlyUploadedKeys = [];
       toast.success("Log entry saved");
       onCreated?.(siteId as Id<"sites">);
       handleClose();
     } catch (err) {
+      // If photos were uploaded but the log save failed, remove them from R2
+      if (freshlyUploadedKeys.length > 0) {
+        void deleteOrphanedPhotos({ keys: freshlyUploadedKeys }).catch(() => {});
+      }
       if (err instanceof ConvexError) {
         const data = err.data as { code?: string; message?: string };
         if (data.code === "FORBIDDEN") {

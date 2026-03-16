@@ -97,6 +97,27 @@ export const getUploadUrl = action({
   },
 });
 
+// ── Public action: delete a specific set of R2 keys (orphan cleanup) ──────────
+// Called by the client when a log save fails after photos were already uploaded.
+
+export const deleteOrphanedPhotos = action({
+  args: { keys: v.array(v.string()) },
+  handler: async (ctx, args): Promise<void> => {
+    if (args.keys.length === 0) return;
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return; // silently skip
+    const s3 = getS3();
+    const bucket = requireEnv("CLOUDFLARE_R2_BUCKET_NAME");
+    for (const key of args.keys) {
+      try {
+        await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      } catch (e) {
+        console.error(`R2 orphan cleanup failed for key "${key}":`, e);
+      }
+    }
+  },
+});
+
 // ── Internal action: delete photo keys from R2 (after log deletion) ───────────
 
 export const deletePhotosFromR2 = internalAction({
