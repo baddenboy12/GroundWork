@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useBlocker } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -17,6 +18,27 @@ import DashboardHome from "./_components/DashboardHome.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
+
+// Blocks the Android back button / swipe-back gesture in standalone PWA mode.
+// Uses React Router's blocker to intercept POP (back/forward) navigation
+// and immediately cancel it, keeping the user on the dashboard.
+function BackBlocker() {
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as { standalone?: boolean }).standalone === true;
+
+  const blocker = useBlocker(
+    ({ historyAction }) => isStandalone && historyAction === "POP"
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      blocker.reset();
+    }
+  }, [blocker]);
+
+  return null;
+}
 
 function DashboardInner() {
   const isMobile = useIsMobile();
@@ -44,6 +66,7 @@ function DashboardInner() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
+      <BackBlocker />
       <DashboardNavbar
         onNewLog={() => setGlobalCreateOpen(true)}
         onMenuClick={isMobile ? () => setSiteDrawerOpen(true) : undefined}
