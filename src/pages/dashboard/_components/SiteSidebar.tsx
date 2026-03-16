@@ -75,6 +75,8 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   useEffect(() => { currentWidthRef.current = sidebarWidth; }, [sidebarWidth]);
 
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Prevent scroll on touch so drag is smooth
+    if ("touches" in e) e.preventDefault();
     isDragging.current = true;
     setIsResizing(true);
     startX.current = "touches" in e ? e.touches[0].clientX : e.clientX;
@@ -290,21 +292,25 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
         </div>
       )}
 
-      {/* Drag-to-resize handle — only shown on desktop (non-fullscreen) */}
+      {/* Drag-to-resize handle — only shown on desktop (non-fullscreen).
+          The outer div is 20px wide (good touch target) centered on the right
+          border via translate-x-1/2. The visual pill stays thin inside it. */}
       {!fullscreen && (
         <div
           className={cn(
-            "absolute top-0 right-0 h-full w-1.5 group flex items-center justify-center cursor-col-resize z-10 select-none",
-            "hover:bg-primary/20 transition-colors duration-150",
-            isResizing && "bg-primary/30"
+            "absolute top-0 right-0 h-full w-5 translate-x-1/2",
+            "flex items-center justify-center cursor-col-resize z-20 select-none group"
           )}
           onMouseDown={handleDragStart}
           onTouchStart={handleDragStart}
           title="Drag to resize sidebar"
         >
+          {/* Visual pill */}
           <div className={cn(
-            "w-0.5 h-8 rounded-full bg-border group-hover:bg-primary/60 transition-colors duration-150",
-            isResizing && "bg-primary"
+            "w-1 h-10 rounded-full transition-all duration-150",
+            isResizing
+              ? "bg-primary scale-y-110"
+              : "bg-border group-hover:bg-primary/70 group-active:bg-primary"
           )} />
         </div>
       )}
