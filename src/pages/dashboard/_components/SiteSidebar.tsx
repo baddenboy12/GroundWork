@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { MapPin, Plus, Settings, Trash2, ChevronRight, Lock, Info } from "lucide-react";
+import { Plus, Settings, Trash2, ChevronRight, Lock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -238,7 +238,6 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
               )}
               onClick={() => onSelectSite(site._id)}
             >
-              <MapPin className="w-4 h-4 shrink-0 text-primary" />
               <span className="flex-1 text-sm font-semibold truncate">{site.name}</span>
               {selectedSiteId === site._id && (
                 <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
