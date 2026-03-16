@@ -11,6 +11,19 @@ import Footer from "./landing/Footer.tsx";
 function RedirectToDashboard() {
   const navigate = useNavigate();
   useEffect(() => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+
+    if (isStandalone) {
+      // Push 10 same-origin entries right after auth so the auth provider's
+      // history entry is deeply buried. The PwaBackGuard popstate handler
+      // refills this buffer on every back press, keeping the user in the app.
+      for (let i = 0; i < 10; i++) {
+        window.history.pushState(null, "", "/dashboard");
+      }
+    }
+
     navigate("/dashboard", { replace: true });
   }, [navigate]);
   return null;

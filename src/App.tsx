@@ -22,16 +22,18 @@ function PwaBackGuard() {
 
     if (!isStandalone) return;
 
-    // Seed a history entry so the first back press has something to consume
-    window.history.pushState(null, "", window.location.href);
-
-    const handler = () => {
-      // Re-push the current URL every time back is pressed, keeping the user in place
-      window.history.pushState(null, "", window.location.href);
+    // Refill same-origin history buffer so the back gesture never reaches
+    // the external auth page. Called once on mount and after every back press.
+    const fillBuffer = () => {
+      window.history.replaceState(null, "", window.location.href);
+      for (let i = 0; i < 5; i++) {
+        window.history.pushState(null, "", window.location.href);
+      }
     };
 
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
+    fillBuffer();
+    window.addEventListener("popstate", fillBuffer);
+    return () => window.removeEventListener("popstate", fillBuffer);
   }, []);
 
   return null;
