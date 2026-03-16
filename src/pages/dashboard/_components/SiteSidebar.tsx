@@ -208,7 +208,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
       </div>
 
       {/* Site list */}
-      <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex-1 overflow-y-auto py-3 space-y-1">
         {sites === undefined ? (
           <div className="px-4 space-y-2 pt-2">
             {[1, 2, 3].map((i) => (
@@ -231,24 +231,24 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
               transition={{ delay: i * 0.04, duration: 0.2 }}
               whileTap={{ scale: 0.97 }}
               className={cn(
-                "group flex items-center gap-2 mx-2 px-3 py-3 md:py-2.5 rounded-lg cursor-pointer transition-colors",
+                "group flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl cursor-pointer transition-colors",
                 selectedSiteId === site._id
                   ? "bg-primary/15 text-foreground"
                   : "hover:bg-accent text-muted-foreground hover:text-foreground"
               )}
               onClick={() => onSelectSite(site._id)}
             >
-              <MapPin className="w-3.5 h-3.5 shrink-0 text-primary" />
-              <span className="flex-1 text-sm font-medium truncate">{site.name}</span>
+              <MapPin className="w-4 h-4 shrink-0 text-primary" />
+              <span className="flex-1 text-sm font-semibold truncate">{site.name}</span>
               {selectedSiteId === site._id && (
-                <ChevronRight className="w-3 h-3 shrink-0 text-primary" />
+                <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
               )}
 
               {/* Site actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <button className="opacity-40 group-hover:opacity-100 p-0.5 rounded hover:bg-accent transition-opacity">
-                    <Settings className="w-3.5 h-3.5" />
+                  <button className="opacity-40 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity">
+                    <Settings className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-36">
