@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import {
-  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList,
+  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -11,6 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +35,7 @@ import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 
-const PANEL_WIDTH = 276;
+const PANEL_WIDTH = 300;
 
 type Props = {
   selectedSiteId: Id<"sites"> | null;
@@ -40,8 +45,10 @@ type Props = {
 
 export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted }: Props) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Map site._id → DOM element for scroll-to-selected
+  const itemRefs = useRef<Map<string, HTMLElement>>(new Map());
 
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
@@ -56,14 +63,11 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
-  // Close when clicking outside
+  // Close when clicking outside the whole wrapper
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
-        setOpen(false);
-      }
+      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
@@ -73,14 +77,27 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
     };
   }, [open]);
 
-  const handleAddSite = () => {
+  // Scroll to selected site when panel opens
+  useEffect(() => {
+    if (!open || !selectedSiteId) return;
+    // Wait for panel + items to animate in (~200 ms)
+    const id = setTimeout(() => {
+      const el = itemRefs.current.get(selectedSiteId);
+      if (el && listRef.current) {
+        el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }, 200);
+    return () => clearTimeout(id);
+  }, [open, selectedSiteId]);
+
+  const handleAddSite = useCallback(() => {
     if (atSiteLimit) {
       setUpgradeOpen(true);
     } else {
       setCreateOpen(true);
       setOpen(false);
     }
-  };
+  }, [atSiteLimit]);
 
   const handleDelete = async () => {
     if (!deleteSiteId) return;
@@ -95,10 +112,9 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   };
 
   return (
-    <div className="relative" style={{ zIndex: 50 }}>
+    <div ref={wrapperRef} className="flex items-center gap-1" style={{ zIndex: 50, position: "relative" }}>
       {/* ── Trigger ──────────────────────────────────────────────────────── */}
       <button
-        ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex items-center gap-2 h-9 px-3 rounded-xl text-sm font-semibold transition-all duration-200",
@@ -107,7 +123,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
         )}
       >
         <LayoutList className="w-4 h-4 text-primary shrink-0" />
-        <span className="max-w-32 truncate">
+        <span className="max-w-36 truncate">
           {selectedSite?.name ?? "Sites"}
         </span>
         {siteCount > 0 && (
@@ -115,33 +131,66 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
             {siteCount}
           </span>
         )}
-        <motion.div
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
         </motion.div>
       </button>
+
+      {/* ── Info tooltip beside trigger ──────────────────────────────────── */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="How sites work"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="bottom" align="start" className="w-72 p-4 space-y-3 text-sm">
+          <p className="font-semibold text-foreground">How Sites Work</p>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-foreground">Site name = grouping key</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              All log entries with the same site name are grouped under one site. Renaming a site updates every log entry under it instantly.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-foreground">Smart features</p>
+            <ul className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
+              {[
+                ["Auto-create on first log", "Type a new site name in the log dialog and the site is created automatically."],
+                ["Autocomplete selector", "The site field suggests existing sites as you type to prevent duplicates."],
+                ["Fuzzy-match warning", "If a name is close to an existing site a 'Did you mean?' hint appears."],
+                ["GPS & map location", "Each site and log entry can store GPS coordinates from a live map."],
+                ["Bulk rename via Edit Site", "Renaming a site updates all its log entries at once."],
+              ].map(([title, desc]) => (
+                <li key={title} className="flex gap-2">
+                  <span className="text-primary shrink-0">→</span>
+                  <span><strong className="text-foreground">{title}</strong> — {desc}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* ── Floating panel ───────────────────────────────────────────────── */}
       <AnimatePresence>
         {open && (
           <motion.div
-            ref={panelRef}
             className="absolute left-0 top-[calc(100%+6px)] bg-card border border-border rounded-2xl shadow-2xl"
             style={{ width: PANEL_WIDTH, overflow: "hidden" }}
-            /* Phase 1: horizontal sweep from left */
             initial={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
             animate={{ clipPath: "inset(0 0% 0 0 round 16px)", opacity: 1 }}
             exit={{ clipPath: "inset(0 100% 0 0 round 16px)", opacity: 0 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Panel header */}
             <motion.div
               className="flex items-center justify-between px-4 py-3 border-b border-border"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: 0.08 }}
             >
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 All Sites
@@ -149,8 +198,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
               <div className="flex items-center gap-2">
                 {siteCount > 0 && (
                   <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground">
-                    {siteCount}
-                    {config.maxSites !== null ? `/${config.maxSites}` : ""}
+                    {siteCount}{config.maxSites !== null ? `/${config.maxSites}` : ""}
                   </span>
                 )}
                 <button
@@ -162,21 +210,17 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                       : "bg-primary/10 hover:bg-primary/20 text-primary"
                   )}
                 >
-                  {atSiteLimit ? (
-                    <Lock className="w-3 h-3" />
-                  ) : (
-                    <Plus className="w-3 h-3" />
-                  )}
+                  {atSiteLimit ? <Lock className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                 </button>
               </div>
             </motion.div>
 
-            {/* Phase 2: items cascade downward */}
-            <div className="py-2 max-h-[65vh] overflow-y-auto">
+            {/* Site list */}
+            <div ref={listRef} className="py-2 max-h-[65vh] overflow-y-auto">
               {sites === undefined ? (
-                <div className="px-4 space-y-2 py-2">
+                <div className="px-3 space-y-1.5 py-2">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-11 w-full rounded-xl" />
+                    <Skeleton key={i} className="h-12 w-full rounded-xl" />
                   ))}
                 </div>
               ) : sites.length === 0 ? (
@@ -186,80 +230,80 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                   </p>
                 </div>
               ) : (
-                sites.map((site, i) => (
-                  <motion.div
-                    key={site._id}
-                    /* each item slides in from the top, staggered */
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: 0.18 + i * 0.045,
-                      duration: 0.22,
-                      ease: "easeOut",
-                    }}
-                    className={cn(
-                      "group flex items-center gap-3 mx-2 px-3 py-3 rounded-xl cursor-pointer transition-colors",
-                      selectedSiteId === site._id
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-accent text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => {
-                      onSelectSite(site._id);
-                      setOpen(false);
-                    }}
-                  >
-                    {/* index */}
-                    <span
+                sites.map((site, i) => {
+                  const isSelected = selectedSiteId === site._id;
+                  return (
+                    <motion.div
+                      key={site._id}
+                      ref={(el) => {
+                        if (el) itemRefs.current.set(site._id, el);
+                        else itemRefs.current.delete(site._id);
+                      }}
+                      /* Fast stagger — base 80ms + 20ms per item */
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 + i * 0.02, duration: 0.18, ease: "easeOut" }}
+                      /* Press animation */
+                      whileTap={{ scale: 0.96, transition: { duration: 0.08 } }}
                       className={cn(
-                        "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
-                        selectedSiteId === site._id
-                          ? "text-primary/60"
-                          : "text-muted-foreground/35 group-hover:text-muted-foreground/55"
+                        "group flex items-center gap-3 mx-2 px-3 py-3 rounded-xl cursor-pointer",
+                        "border transition-all duration-200",
+                        isSelected
+                          ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
+                          : "border-border/20 hover:border-border/55 text-muted-foreground hover:text-foreground hover:bg-accent/40"
                       )}
+                      onClick={() => {
+                        onSelectSite(site._id);
+                        setOpen(false);
+                      }}
                     >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
+                      {/* index */}
+                      <span className={cn(
+                        "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
+                        isSelected
+                          ? "text-primary/60"
+                          : "text-muted-foreground/35 group-hover:text-muted-foreground/60"
+                      )}>
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
 
-                    <span className="flex-1 text-sm font-semibold truncate">
-                      {site.name}
-                    </span>
+                      {/* Site name — larger */}
+                      <span className="flex-1 text-[15px] font-semibold truncate leading-tight">
+                        {site.name}
+                      </span>
 
-                    {selectedSiteId === site._id && (
-                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
-                    )}
-
-                    {/* per-site actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button className="opacity-0 group-hover:opacity-80 p-1 rounded-lg hover:bg-accent transition-opacity">
-                          <Settings className="w-3.5 h-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-36">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditSite(site);
-                          }}
+                      {isSelected && (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 20 }}
                         >
-                          <Settings className="w-3.5 h-3.5 mr-2" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteSiteId(site._id);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </motion.div>
-                ))
+                          <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
+                        </motion.div>
+                      )}
+
+                      {/* per-site actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <button className="opacity-0 group-hover:opacity-70 p-1 rounded-lg hover:bg-accent transition-opacity shrink-0">
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditSite(site); }}>
+                            <Settings className="w-3.5 h-3.5 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); setDeleteSiteId(site._id); }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </motion.div>
@@ -269,11 +313,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       {/* Dialogs */}
       <CreateSiteDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       {editSite && (
-        <EditSiteDialog
-          open={!!editSite}
-          onClose={() => setEditSite(null)}
-          site={editSite}
-        />
+        <EditSiteDialog open={!!editSite} onClose={() => setEditSite(null)} site={editSite} />
       )}
       <UpgradeDialog
         open={upgradeOpen}
@@ -282,16 +322,12 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
         featureName="More sites"
         featureDescription={`The ${config.name} plan allows up to ${config.maxSites} sites. Upgrade to add more.`}
       />
-      <AlertDialog
-        open={!!deleteSiteId}
-        onOpenChange={(v) => !v && setDeleteSiteId(null)}
-      >
+      <AlertDialog open={!!deleteSiteId} onOpenChange={(v) => !v && setDeleteSiteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete site?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the site and all of its log entries.
-              This cannot be undone.
+              This will permanently delete the site and all of its log entries. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
