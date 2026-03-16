@@ -195,3 +195,10 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Prevent iOS Safari from auto-zooming when tapping inputs with small font sizes */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
