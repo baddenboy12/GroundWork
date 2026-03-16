@@ -227,7 +227,7 @@ export default function CreateLogDialog({
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   required
                 />
-                {showSuggestions && (siteName.length > 0 || filteredSites.length > 0) && (
+                {showSuggestions && siteName.trim().length > 0 && !exactMatch && (
                   <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto">
                     {/* Exact / substring matches */}
                     {filteredSites.length > 0 && (
@@ -292,7 +292,7 @@ export default function CreateLogDialog({
                       </>
                     )}
 
-                    {/* Create new option */}
+                    {/* Create new option — only when text is typed and no exact match */}
                     {siteName.trim() && !exactMatch && (
                       <button
                         type="button"
@@ -312,9 +312,9 @@ export default function CreateLogDialog({
                       </button>
                     )}
 
-                    {filteredSites.length === 0 && fuzzyMatches.length === 0 && !siteName.trim() && (
+                    {filteredSites.length === 0 && fuzzyMatches.length === 0 && siteName.trim() && (
                       <p className="px-3 py-3 text-sm text-muted-foreground">
-                        Start typing a site name…
+                        No matching sites — a new one will be created.
                       </p>
                     )}
                   </div>
