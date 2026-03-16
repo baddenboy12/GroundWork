@@ -34,17 +34,17 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
   const isMobile = useIsMobile();
 
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0">
+    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0">
       {/* Left: hamburger (mobile) + logo */}
       <div className="flex items-center gap-2">
         {isMobile && onMenuClick && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="h-11 w-11 shrink-0"
             onClick={onMenuClick}
           >
-            <Menu className="w-4 h-4" />
+            <Menu className="w-5 h-5" />
           </Button>
         )}
         <button
@@ -54,7 +54,7 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
           <img
             src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
             alt="GroundWork"
-            className="w-7 h-7 rounded-md"
+            className="w-8 h-8 rounded-md"
           />
           <span className="font-bold text-foreground hidden sm:block">
             Ground<span className="text-primary">Work</span>
@@ -64,8 +64,8 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
 
       <div className="flex items-center gap-2">
         {/* New log — icon only on mobile, label on desktop */}
-        <Button size="sm" className="gap-1.5" onClick={onNewLog}>
-          <Plus className="w-4 h-4" />
+        <Button size="default" className="gap-1.5 h-10" onClick={onNewLog}>
+          <Plus className="w-5 h-5" />
           <span className="hidden sm:inline">New log</span>
         </Button>
 
@@ -84,9 +84,9 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 h-8 px-2">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <User className="w-3.5 h-3.5 text-primary" />
+            <Button variant="ghost" className="gap-2 h-11 px-2">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-primary" />
               </div>
               <span className="text-sm text-muted-foreground max-w-28 truncate hidden md:block">
                 {user?.profile.name ?? user?.profile.email ?? "Account"}

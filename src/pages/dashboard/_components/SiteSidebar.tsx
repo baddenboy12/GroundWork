@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { MapPin, Plus, Settings, Trash2, ChevronRight, Lock, Info } from "lucide-react";
@@ -159,9 +160,13 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
             </p>
           </div>
         ) : (
-          sites.map((site) => (
-            <div
+          sites.map((site, i) => (
+            <motion.div
               key={site._id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.2 }}
+              whileTap={{ scale: 0.97 }}
               className={cn(
                 "group flex items-center gap-2 mx-2 px-3 py-3 md:py-2.5 rounded-lg cursor-pointer transition-colors",
                 selectedSiteId === site._id
@@ -203,7 +208,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </motion.div>
           ))
         )}
       </div>

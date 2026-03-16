@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { motion } from "motion/react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { Plus, MapPin, FileDown, Lock, ChevronLeft, MoreHorizontal, FileText } from "lucide-react";
@@ -227,8 +228,15 @@ export default function LogList({ siteId, onBack }: Props) {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {activeResults.map((log) => (
-                <LogCard key={log._id} log={log} />
+              {activeResults.map((log, i) => (
+                <motion.div
+                  key={log._id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.25, ease: "easeOut" }}
+                >
+                  <LogCard log={log} />
+                </motion.div>
               ))}
             </div>
             {hasMorePages && (
