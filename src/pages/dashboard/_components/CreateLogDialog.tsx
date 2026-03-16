@@ -181,7 +181,11 @@ export default function CreateLogDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="sm:max-w-xl max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>New log entry</DialogTitle>
           </DialogHeader>
