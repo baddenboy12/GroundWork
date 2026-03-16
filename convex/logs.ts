@@ -328,6 +328,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     logId: v.id("logs"),
+    siteId: v.optional(v.id("sites")),
     title: v.string(),
     content: v.string(),
     category: categoryValidator,
@@ -349,7 +350,17 @@ export const update = mutation({
     const log = await ctx.db.get(args.logId);
     if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
+
+    // If changing site, verify the new site belongs to the user
+    if (args.siteId && args.siteId !== log.siteId) {
+      const newSite = await ctx.db.get(args.siteId);
+      if (!newSite || newSite.ownerId !== user._id) {
+        throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+      }
+    }
+
     await ctx.db.patch(args.logId, {
+      ...(args.siteId ? { siteId: args.siteId } : {}),
       title: args.title,
       content: args.content,
       category: args.category,

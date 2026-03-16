@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import LocationPicker from "./LocationPicker.tsx";
 
@@ -34,10 +34,12 @@ type Props = {
 
 export default function EditLogDialog({ open, onClose, log }: Props) {
   const updateLog = useMutation(api.logs.update);
+  const sites = useQuery(api.sites.list, {});
 
   const [title, setTitle] = useState(log.title);
   const [content, setContent] = useState(log.content);
   const [category, setCategory] = useState<LogCategory>(log.category as LogCategory);
+  const [siteId, setSiteId] = useState<Id<"sites">>(log.siteId);
   const [loggedAt, setLoggedAt] = useState(
     () => new Date(log.loggedAt).toISOString().slice(0, 16)
   );
@@ -54,6 +56,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     setTitle(log.title);
     setContent(log.content);
     setCategory(log.category as LogCategory);
+    setSiteId(log.siteId);
     setLoggedAt(new Date(log.loggedAt).toISOString().slice(0, 16));
     setLocation(log.location ?? "");
     setCoords(
@@ -71,6 +74,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     try {
       await updateLog({
         logId: log._id,
+        siteId,
         title: title.trim(),
         content: content.trim(),
         category,
@@ -105,6 +109,25 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               onChange={(e) => setTitle(e.target.value)}
               required
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Site *</Label>
+            <Select
+              value={siteId}
+              onValueChange={(v) => setSiteId(v as Id<"sites">)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a site" />
+              </SelectTrigger>
+              <SelectContent>
+                {(sites ?? []).map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
