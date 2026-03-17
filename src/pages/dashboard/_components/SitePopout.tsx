@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import {
-  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff,
+  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff, MoreVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,7 +37,7 @@ import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 
-const PANEL_WIDTH = 300;
+const PANEL_WIDTH = 320;
 
 type Props = {
   selectedSiteId: Id<"sites"> | null;
@@ -223,13 +223,14 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                 <button
                   onClick={handleAddSite}
                   className={cn(
-                    "w-6 h-6 rounded-lg flex items-center justify-center transition-colors",
+                    "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
                     atSiteLimit
                       ? "bg-muted text-muted-foreground"
-                      : "bg-primary/10 hover:bg-primary/20 text-primary"
+                      : "bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary"
                   )}
+                  aria-label="Add site"
                 >
-                  {atSiteLimit ? <Lock className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                  {atSiteLimit ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </motion.div>
@@ -259,14 +260,12 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           if (el) itemRefs.current.set(site._id, el);
                           else itemRefs.current.delete(site._id);
                         }}
-                        /* Fast stagger — base 80ms + 20ms per item */
                         initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
-                        /* Press animation */
-                        whileTap={{ scale: 0.96, transition: { duration: 0.08 } }}
+                        whileTap={{ scale: 0.97, transition: { duration: 0.08 } }}
                         className={cn(
-                          "group flex items-center gap-3 mx-2 px-3 py-3 rounded-xl cursor-pointer",
+                          "group flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl cursor-pointer",
                           "border transition-all duration-200",
                           isSelected
                             ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
@@ -287,7 +286,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           {String(i + 1).padStart(2, "0")}
                         </span>
 
-                        {/* Site name — larger */}
+                        {/* Site name */}
                         <span className="flex-1 text-[15px] font-semibold truncate leading-tight">
                           {site.name}
                         </span>
@@ -302,22 +301,34 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           </motion.div>
                         )}
 
-                        {/* per-site actions */}
+                        {/* ⋮ actions menu — always visible for touch */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <button className="opacity-0 group-hover:opacity-70 p-1 rounded-lg hover:bg-accent transition-opacity shrink-0">
-                              <Settings className="w-3.5 h-3.5" />
+                            <button
+                              className={cn(
+                                "w-9 h-9 flex items-center justify-center rounded-xl shrink-0 transition-colors",
+                                "bg-transparent hover:bg-accent active:bg-accent",
+                                isSelected
+                                  ? "text-primary/50 hover:text-primary"
+                                  : "text-muted-foreground/40 hover:text-foreground"
+                              )}
+                              aria-label="Site actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditSite(site); }}>
-                              <Settings className="w-3.5 h-3.5 mr-2" /> Edit
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              className="py-2.5 text-sm cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); setEditSite(site); }}
+                            >
+                              <Settings className="w-4 h-4 mr-2.5" /> Edit site
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
+                              className="py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive"
                               onClick={(e) => { e.stopPropagation(); setDeleteSiteId(site._id); }}
                             >
-                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                              <Trash2 className="w-4 h-4 mr-2.5" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -332,7 +343,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: (siteCount + i) * 0.008, duration: 0.1, ease: "easeOut" }}
-                      className="flex items-center gap-3 mx-2 px-3 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 cursor-default"
+                      className="flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 cursor-default"
                       title="This site is queued offline and will sync when back online"
                     >
                       <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-500/70" />
