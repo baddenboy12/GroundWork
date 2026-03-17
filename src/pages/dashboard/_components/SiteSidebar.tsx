@@ -33,6 +33,7 @@ import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 
 type Props = {
   selectedSiteId: Id<"sites"> | null;
@@ -51,6 +52,7 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   const sites = useQuery(api.sites.list, {});
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
+  const isOnline = useOnlineStatus();
   const [createOpen, setCreateOpen] = useState(false);
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
@@ -117,6 +119,10 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
 
   const handleAddSite = () => {
+    if (!isOnline) {
+      toast.error("You're offline — creating sites requires a connection");
+      return;
+    }
     if (atSiteLimit) {
       setUpgradeOpen(true);
     } else {
@@ -126,6 +132,11 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
 
   const handleDelete = async () => {
     if (!deleteSiteId) return;
+    if (!isOnline) {
+      toast.error("You're offline — deletion requires a connection");
+      setDeleteSiteId(null);
+      return;
+    }
     try {
       await removeSite({ siteId: deleteSiteId });
       toast.success("Site deleted");
@@ -260,17 +271,26 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-36">
                   <DropdownMenuItem
+                    className={cn(!isOnline && "opacity-50")}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!isOnline) {
+                        toast.error("You're offline — editing requires a connection");
+                        return;
+                      }
                       setEditSite(site);
                     }}
                   >
                     <Settings className="w-3.5 h-3.5 mr-2" /> Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
+                    className={cn("text-destructive focus:text-destructive", !isOnline && "opacity-50")}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!isOnline) {
+                        toast.error("You're offline — deletion requires a connection");
+                        return;
+                      }
                       setDeleteSiteId(site._id);
                     }}
                   >

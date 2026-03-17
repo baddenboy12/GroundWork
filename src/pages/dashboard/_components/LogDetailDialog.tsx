@@ -16,12 +16,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
-import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip.tsx";
+import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff } from "lucide-react";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 import PhotoLightbox from "./PhotoLightbox.tsx";
 import EditLogDialog from "./EditLogDialog.tsx";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -33,6 +39,7 @@ type Props = {
 
 export default function LogDetailDialog({ log, open, onClose }: Props) {
   const removeLog = useMutation(api.logs.remove);
+  const isOnline = useOnlineStatus();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -140,23 +147,70 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                 <h2 className="text-2xl font-semibold leading-snug text-foreground">{log.title}</h2>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setEditOpen(true)}
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
+                {/* Offline indicator */}
+                {!isOnline && (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-1 rounded-full mr-1">
+                    <WifiOff className="w-3 h-3" />
+                    Offline
+                  </span>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={cn(
+                          "h-8 w-8 text-muted-foreground hover:text-foreground",
+                          !isOnline && "opacity-40 cursor-not-allowed"
+                        )}
+                        onClick={() => {
+                          if (!isOnline) {
+                            toast.error("You're offline — editing requires a connection");
+                            return;
+                          }
+                          setEditOpen(true);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!isOnline && (
+                    <TooltipContent side="bottom">
+                      <p>Editing requires an internet connection</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className={cn(
+                              "h-8 w-8 text-muted-foreground hover:text-destructive",
+                              !isOnline && "opacity-40 cursor-not-allowed"
+                            )}
+                            onClick={(e) => {
+                              if (!isOnline) {
+                                e.preventDefault();
+                                toast.error("You're offline — deletion requires a connection");
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!isOnline && (
+                        <TooltipContent side="bottom">
+                          <p>Deletion requires an internet connection</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>

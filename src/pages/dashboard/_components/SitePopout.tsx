@@ -33,6 +33,7 @@ import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
@@ -56,6 +57,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const sites = useCachedQuery("gw_cache_sites_list", sitesRaw);
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
+  const isOnline = useOnlineStatus();
 
   // Offline queue: find sites that only exist in the queue (not yet in DB)
   const offlineQueue = useOfflineQueueState();
@@ -110,16 +112,25 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   }, [open, selectedSiteId]);
 
   const handleAddSite = useCallback(() => {
+    if (!isOnline) {
+      toast.error("You're offline — creating sites requires a connection");
+      return;
+    }
     if (atSiteLimit) {
       setUpgradeOpen(true);
     } else {
       setCreateOpen(true);
       setOpen(false);
     }
-  }, [atSiteLimit]);
+  }, [atSiteLimit, isOnline]);
 
   const handleDelete = async () => {
     if (!deleteSiteId) return;
+    if (!isOnline) {
+      toast.error("You're offline — deletion requires a connection");
+      setDeleteSiteId(null);
+      return;
+    }
     try {
       await removeSite({ siteId: deleteSiteId });
       toast.success("Site deleted");
@@ -319,14 +330,28 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem
-                              className="py-2.5 text-sm cursor-pointer"
-                              onClick={(e) => { e.stopPropagation(); setEditSite(site); }}
+                              className={cn("py-2.5 text-sm cursor-pointer", !isOnline && "opacity-50")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isOnline) {
+                                  toast.error("You're offline — editing requires a connection");
+                                  return;
+                                }
+                                setEditSite(site);
+                              }}
                             >
                               <Settings className="w-4 h-4 mr-2.5" /> Edit site
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); setDeleteSiteId(site._id); }}
+                              className={cn("py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive", !isOnline && "opacity-50")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isOnline) {
+                                  toast.error("You're offline — deletion requires a connection");
+                                  return;
+                                }
+                                setDeleteSiteId(site._id);
+                              }}
                             >
                               <Trash2 className="w-4 h-4 mr-2.5" /> Delete
                             </DropdownMenuItem>

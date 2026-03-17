@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileDown, Lock, ChevronLeft, FileText } from "lucide-react";
+import { Plus, MapPin, FileDown, Lock, ChevronLeft, FileText, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -20,10 +20,13 @@ import UpgradeDialog from "./UpgradeDialog.tsx";
 import ExportDialog from "./ExportDialog.tsx";
 import OfflinePendingCard from "./OfflinePendingCard.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -47,6 +50,7 @@ export default function LogList({ siteId, onBack }: Props) {
   const site = sites?.find((s) => s._id === siteId);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
+  const isOnline = useOnlineStatus();
 
   // ── Per-site log cache for offline fallback ───────────────────────────────
   // listBySiteSimple returns the most recent 50 logs without pagination.
@@ -137,6 +141,10 @@ export default function LogList({ siteId, onBack }: Props) {
   const hasMorePages = !isSearchMode && pagedStatus === "CanLoadMore";
 
   const handleOpenExport = () => {
+    if (!isOnline) {
+      toast.error("You're offline — export requires a connection");
+      return;
+    }
     if (!canExport) { setExportUpgradeOpen(true); return; }
     setExportOpen(true);
   };
@@ -181,8 +189,16 @@ export default function LogList({ siteId, onBack }: Props) {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">New log</span>
             </Button>
-            <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenExport}>
-              {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            <Button
+              variant="secondary"
+              size="sm"
+              className={cn("gap-1.5", !isOnline && "opacity-50")}
+              onClick={handleOpenExport}
+              title={!isOnline ? "Export requires an internet connection" : undefined}
+            >
+              {!isOnline
+                ? <WifiOff className="w-4 h-4" />
+                : canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               <span className="hidden sm:inline">Export</span>
             </Button>
           </div>

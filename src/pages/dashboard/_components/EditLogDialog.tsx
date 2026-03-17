@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import {
@@ -35,6 +36,7 @@ type Props = {
 export default function EditLogDialog({ open, onClose, log }: Props) {
   const updateLog = useMutation(api.logs.update);
   const sites = useQuery(api.sites.list, {});
+  const isOnline = useOnlineStatus();
 
   const [title, setTitle] = useState(log.title);
   const [content, setContent] = useState(log.content);
@@ -70,6 +72,10 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    if (!isOnline) {
+      toast.error("You're offline — saving changes requires a connection");
+      return;
+    }
     setLoading(true);
     try {
       await updateLog({
@@ -204,9 +210,9 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             </Button>
             <Button
               type="submit"
-              disabled={loading || !title.trim() || !content.trim()}
+              disabled={loading || !title.trim() || !content.trim() || !isOnline}
             >
-              {loading ? "Saving..." : "Save changes"}
+              {loading ? "Saving..." : !isOnline ? "Offline" : "Save changes"}
             </Button>
           </DialogFooter>
         </form>
