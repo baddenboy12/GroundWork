@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
@@ -95,89 +95,105 @@ export function useOfflineQueueState(): OfflineEntry[] {
 export function useOfflineSync() {
   const isOnline = useOnlineStatus();
   const [isSyncing, setIsSyncing] = useState(false);
+  // Ref-based guard prevents concurrent sync calls from processing the same
+  // queue entries twice. This avoids duplicate log creation when:
+  //   1. The app opens with navigator.onLine=true (unreliable) → sync starts
+  //   2. The real probe later detects online → a second sync is triggered
+  //   3. Both calls read the queue before either removes the entry
+  const syncingRef = useRef(false);
 
   const createLog = useMutation(api.logs.create);
   const findOrCreateSite = useMutation(api.sites.findOrCreate);
   const getUploadUrl = useAction(api.r2.storageActions.getUploadUrl);
 
   const syncQueue = useCallback(async () => {
+    // Hard guard — bail immediately if a sync is already in flight
+    if (syncingRef.current) return;
     const pending = getOfflineQueue();
-    if (pending.length === 0 || !navigator.onLine) return;
+    // Use the probed isOnline value (not navigator.onLine which is unreliable
+    // on 4G with no data) so we don't attempt sync on a dead connection.
+    if (pending.length === 0 || !isOnline) return;
 
+    syncingRef.current = true;
     setIsSyncing(true);
     const failed: OfflineEntry[] = [];
     let synced = 0;
 
-    for (const entry of pending) {
-      try {
-        const siteId = await findOrCreateSite({
-          name: entry.siteName,
-          location: entry.siteLocation,
-          latitude: entry.siteLat,
-          longitude: entry.siteLng,
-        });
+    try {
+      for (const entry of pending) {
+        try {
+          const siteId = await findOrCreateSite({
+            name: entry.siteName,
+            location: entry.siteLocation,
+            latitude: entry.siteLat,
+            longitude: entry.siteLng,
+          });
 
-        // Upload any locally-stored photos to R2 before creating the log
-        const uploadedPhotos: { url: string; key: string; bytes: number }[] = [];
-        if (entry.photos && entry.photos.length > 0) {
-          for (const photo of entry.photos) {
-            try {
-              const blob = dataUrlToBlob(photo.dataUrl);
-              const { uploadUrl, key, publicUrl } = await getUploadUrl({
-                fileName: photo.fileName,
-                contentType: "image/jpeg",
-                bytes: blob.size,
-              });
-              const res = await fetch(uploadUrl, {
-                method: "PUT",
-                headers: { "Content-Type": "image/jpeg" },
-                body: blob,
-              });
-              if (res.ok) {
-                uploadedPhotos.push({ url: publicUrl, key, bytes: blob.size });
+          // Upload any locally-stored photos to R2 before creating the log
+          const uploadedPhotos: { url: string; key: string; bytes: number }[] = [];
+          if (entry.photos && entry.photos.length > 0) {
+            for (const photo of entry.photos) {
+              try {
+                const blob = dataUrlToBlob(photo.dataUrl);
+                const { uploadUrl, key, publicUrl } = await getUploadUrl({
+                  fileName: photo.fileName,
+                  contentType: "image/jpeg",
+                  bytes: blob.size,
+                });
+                const res = await fetch(uploadUrl, {
+                  method: "PUT",
+                  headers: { "Content-Type": "image/jpeg" },
+                  body: blob,
+                });
+                if (res.ok) {
+                  uploadedPhotos.push({ url: publicUrl, key, bytes: blob.size });
+                }
+              } catch {
+                // Best-effort: skip failed individual photos, still save the log
               }
-            } catch {
-              // Best-effort: skip failed individual photos, still save the log
             }
           }
+
+          await createLog({
+            siteId: siteId as Id<"sites">,
+            title: entry.title,
+            content: entry.content,
+            category: entry.category as
+              | "inspection"
+              | "maintenance"
+              | "incident"
+              | "audit"
+              | "general",
+            loggedAt: entry.loggedAt,
+            photos: uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
+            location: entry.location,
+            latitude: entry.latitude,
+            longitude: entry.longitude,
+          });
+          synced++;
+        } catch {
+          failed.push(entry);
         }
-
-        await createLog({
-          siteId: siteId as Id<"sites">,
-          title: entry.title,
-          content: entry.content,
-          category: entry.category as
-            | "inspection"
-            | "maintenance"
-            | "incident"
-            | "audit"
-            | "general",
-          loggedAt: entry.loggedAt,
-          photos: uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
-          location: entry.location,
-          latitude: entry.latitude,
-          longitude: entry.longitude,
-        });
-        synced++;
-      } catch {
-        failed.push(entry);
       }
-    }
 
-    setOfflineQueue(failed);
-    setIsSyncing(false);
+      setOfflineQueue(failed);
 
-    if (synced > 0) {
-      toast.success(
-        `Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}`
-      );
+      if (synced > 0) {
+        toast.success(
+          `Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}`
+        );
+      }
+      if (failed.length > 0) {
+        toast.error(
+          `${failed.length} ${failed.length === 1 ? "entry" : "entries"} failed to sync — will retry when online`
+        );
+      }
+    } finally {
+      // Always release the lock so future syncs can proceed
+      syncingRef.current = false;
+      setIsSyncing(false);
     }
-    if (failed.length > 0) {
-      toast.error(
-        `${failed.length} ${failed.length === 1 ? "entry" : "entries"} failed to sync — will retry when online`
-      );
-    }
-  }, [createLog, findOrCreateSite, getUploadUrl]);
+  }, [createLog, findOrCreateSite, getUploadUrl, isOnline]);
 
   // Auto-sync whenever we come back online
   useEffect(() => {
