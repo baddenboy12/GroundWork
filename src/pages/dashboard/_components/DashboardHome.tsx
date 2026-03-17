@@ -10,6 +10,7 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/cons
 import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
+import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
 import GlobalExportDialog from "./GlobalExportDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
@@ -52,10 +53,11 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
     filters.category !== "all" ? filters.category : undefined;
 
   // Default recent logs (no filters)
-  const recent = useQuery(
+  const recentRaw = useQuery(
     api.logs.listRecent,
     !isFiltered ? { limit: 24 } : "skip"
   );
+  const recent = useCachedQuery("gw_cache_recent_logs", recentRaw);
 
   // Filtered (no text search)
   const filtered = useQuery(

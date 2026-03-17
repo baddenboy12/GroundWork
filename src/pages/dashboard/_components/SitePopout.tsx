@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils.ts";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
+import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
@@ -50,7 +51,8 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   // Map site._id → DOM element for scroll-to-selected
   const itemRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  const sites = useQuery(api.sites.list, {});
+  const sitesRaw = useQuery(api.sites.list, {});
+  const sites = useCachedQuery("gw_cache_sites_list", sitesRaw);
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
 

@@ -1,4 +1,5 @@
 import { HerculesAuthProvider } from "@usehercules/auth/react";
+import { WebStorageStateStore } from "oidc-client-ts";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirect_uri:
           import.meta.env.VITE_HERCULES_OIDC_REDIRECT_URI ??
           `${window.location.origin}/auth/callback`,
+        // Persist auth tokens to localStorage so the user stays logged in
+        // after closing and reopening the PWA with no internet connection.
+        userStore: new WebStorageStateStore({ store: window.localStorage }),
+        stateStore: new WebStorageStateStore({ store: window.localStorage }),
       }}
     >
       {children}

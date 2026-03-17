@@ -21,6 +21,7 @@ import ExportDialog from "./ExportDialog.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
+import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -39,7 +40,8 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export default function LogList({ siteId, onBack }: Props) {
-  const sites = useQuery(api.sites.list, {});
+  const sitesRaw = useQuery(api.sites.list, {});
+  const sites = useCachedQuery("gw_cache_sites_list", sitesRaw);
   const site = sites?.find((s) => s._id === siteId);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
