@@ -114,7 +114,16 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-base py-3 gap-3 text-destructive focus:text-destructive"
-              onClick={async () => { await removeUser(); navigate("/"); }}
+              onClick={async () => {
+                // Clear all locally-cached query data before signing out so
+                // a different user on this device doesn't see stale data.
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const k = localStorage.key(i);
+                  if (k?.startsWith("gw_cache_")) localStorage.removeItem(k);
+                }
+                await removeUser();
+                navigate("/");
+              }}
             >
               <LogOut className="w-5 h-5" /> Sign out
             </DropdownMenuItem>

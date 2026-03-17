@@ -176,7 +176,9 @@ export const listBySite = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    // Return empty pagination rather than throwing — LogList may render before
+    // Convex auth resolves (offline-first mode) and we don't want a crash.
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
 
     const site = await ctx.db.get(args.siteId);
     if (!site) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
@@ -200,6 +202,33 @@ export const listBySite = query({
   },
 });
 
+/**
+ * Non-paginated query that returns the most recent 50 logs for a site.
+ * Used exclusively for offline caching via useCachedQuery — the full paginated
+ * version (listBySite) is used for live online display.
+ */
+export const listBySiteSimple = query({
+  args: { siteId: v.id("sites") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+      .order("desc")
+      .take(50);
+
+    return await Promise.all(
+      logs.map(async (log) => {
+        const author = await ctx.db.get(log.authorId);
+        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
+      })
+    );
+  },
+});
+
 export const searchBySite = query({
   args: {
     siteId: v.id("sites"),
@@ -208,7 +237,8 @@ export const searchBySite = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    // Return empty rather than throwing — offline-first mode may call this before auth resolves.
+    if (!identity) return [];
 
     const results = await ctx.db
       .query("logs")

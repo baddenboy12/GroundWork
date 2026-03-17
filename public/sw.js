@@ -6,8 +6,10 @@ const CACHE = "groundwork-sw";
 const BYPASS = [
   "convex.cloud",
   "convex.site",
+  // r2.cloudflarestorage.com = internal presigned upload API — skip caching
   "r2.cloudflarestorage.com",
-  "r2.dev",
+  // r2.dev is intentionally NOT bypassed so that R2 photo URLs are cached
+  // offline via the fetch handler below. Public R2 bucket CORS is required.
   "cdn.hercules.app",
   "fonts.googleapis.com",
   "fonts.gstatic.com",

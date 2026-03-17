@@ -48,6 +48,14 @@ export default function LogList({ siteId, onBack }: Props) {
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
 
+  // ── Per-site log cache for offline fallback ───────────────────────────────
+  // listBySiteSimple returns the most recent 50 logs without pagination.
+  // useCachedQuery persists them to localStorage so they're available offline
+  // even on a fresh cold start (before Convex auth resolves).
+  const simpleCacheKey = `gw_cache_logs_${siteId}`;
+  const simpleLogsRaw = useQuery(api.logs.listBySiteSimple, { siteId });
+  const cachedLogs = useCachedQuery(simpleCacheKey, simpleLogsRaw);
+
   // Offline queue — filter entries for this site (match by name, case-insensitive)
   const offlineQueue = useOfflineQueueState();
   const pendingEntries = useMemo(() => {
@@ -90,7 +98,17 @@ export default function LogList({ siteId, onBack }: Props) {
 
   // Apply client-side date + category filters to whichever result set is active
   const activeResults: LogWithAuthor[] = useMemo(() => {
-    const base = (isSearchMode ? (searchResults ?? []) : pagedResults) as LogWithAuthor[];
+    // When the paginated query hasn't finished its first page yet (includes the
+    // offline case where Convex never connects), fall back to the locally-cached
+    // snapshot so the UI stays populated.
+    const isPagedLoading = pagedStatus === "LoadingFirstPage";
+    const base = (
+      isSearchMode
+        ? (searchResults ?? [])
+        : isPagedLoading
+        ? (cachedLogs ?? pagedResults)
+        : pagedResults
+    ) as LogWithAuthor[];
 
     return base.filter((log) => {
       // Category filter (only for paged mode; search mode filters server-side)
@@ -109,11 +127,12 @@ export default function LogList({ siteId, onBack }: Props) {
       }
       return true;
     });
-  }, [isSearchMode, searchResults, pagedResults, filters]);
+  }, [isSearchMode, searchResults, pagedResults, pagedStatus, cachedLogs, filters]);
 
+  // Show skeleton only when truly loading with no cached fallback available
   const isLoading = isSearchMode
     ? searchResults === undefined
-    : pagedStatus === "LoadingFirstPage";
+    : pagedStatus === "LoadingFirstPage" && !cachedLogs;
 
   const hasMorePages = !isSearchMode && pagedStatus === "CanLoadMore";
 
