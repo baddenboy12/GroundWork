@@ -3,6 +3,7 @@ import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "conv
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import { useBackgroundCacheSync } from "@/hooks/use-background-cache-sync.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
@@ -69,6 +70,10 @@ function DashboardInner() {
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
   const offlineQueue = useOfflineQueueState();
+
+  // Background cache — proactively caches every site's logs and photos
+  // while online so they're available on any site after going offline.
+  useBackgroundCacheSync();
 
   const handleSiteDeleted = (id: Id<"sites">) => {
     if (selectedSiteId === id) setSelectedSiteId(null);

@@ -671,6 +671,58 @@ export const getStats = query({
   },
 });
 
+/**
+ * Returns all logs for every site owned by the current user, keyed by siteId.
+ *
+ * Used exclusively by the front-end background cache sync so that every site's
+ * logs are available in localStorage before the user goes offline — even for
+ * sites they haven't opened yet.
+ *
+ * Optimisations to stay within Convex limits:
+ * - Authorise once and reuse the user's name for all logs (avoids N db.get
+ *   calls for authorId — every log in this dataset belongs to the same user).
+ * - Cap at 50 logs per site so the total document scan stays reasonable.
+ */
+export const listAllForOfflineCache = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return {};
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return {};
+
+    const sites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+
+    const result: Record<string, Array<ReturnType<typeof Object.assign>>> = {};
+
+    for (const site of sites) {
+      const logs = await ctx.db
+        .query("logs")
+        .withIndex("by_site", (q) => q.eq("siteId", site._id))
+        .order("desc")
+        .take(50);
+
+      result[site._id as string] = await Promise.all(
+        logs.map(async (log) => {
+          const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+          // All logs here belong to the authenticated user — reuse their name
+          // instead of doing a separate db.get per log to stay within query limits.
+          return { ...log, authorName: user.name ?? "Unknown", photoUrls };
+        })
+      );
+    }
+
+    return result;
+  },
+});
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /** Returns every R2 photo key currently referenced by a log in the DB. */
