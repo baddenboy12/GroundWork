@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { useState, useEffect } from "react";
+import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
-import { useAuthFallback, MarkAuthResolved } from "@/hooks/use-auth-fallback.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
@@ -14,8 +13,6 @@ import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 
 // Blocks the Android back button / swipe-back gesture in standalone PWA mode.
-// Uses the popstate event to detect back navigation and push a new history
-// entry, keeping the user on the dashboard.
 function BackBlocker() {
   useEffect(() => {
     const isStandalone =
@@ -28,7 +25,6 @@ function BackBlocker() {
       window.history.pushState(null, "", window.location.href);
     };
 
-    // Push a sentinel entry so the first back press is absorbed
     window.history.pushState(null, "", window.location.href);
     window.addEventListener("popstate", handlePopState);
 
@@ -38,6 +34,30 @@ function BackBlocker() {
   }, []);
 
   return null;
+}
+
+/**
+ * Watches for explicit sign-out while the dashboard is open.
+ *
+ * When Convex confirms the user is unauthenticated AND there is no stored
+ * OIDC session (meaning the user actually signed out or their refresh token
+ * expired), we redirect to the landing page.
+ *
+ * This does NOT redirect when offline — Convex auth stays in "loading" state
+ * (isLoading = true) when the WebSocket can't connect, so the condition is
+ * never satisfied offline.
+ */
+function DashboardSessionGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  useEffect(() => {
+    // Only act when Convex has fully resolved (not just "loading")
+    if (!isLoading && !isAuthenticated && !hasStoredOidcSession()) {
+      window.location.replace("/");
+    }
+  }, [isAuthenticated, isLoading]);
+
+  return <>{children}</>;
 }
 
 function DashboardInner() {
@@ -116,32 +136,28 @@ function DashboardSignInScreen({ message }: { message: string }) {
 }
 
 export default function DashboardPage() {
-  const { shouldUseFallback, markResolved } = useAuthFallback();
-  const handleResolved = useCallback(() => markResolved(), [markResolved]);
-
-  // navigator.onLine is unreliable (true even with 4G radio but no data plan).
-  // If Convex auth doesn't resolve within 5 s we assume no real internet and
-  // fall back to the OIDC session stored in localStorage.
-  if (shouldUseFallback) {
-    return hasStoredOidcSession() ? (
-      <DashboardInner />
-    ) : (
-      <DashboardSignInScreen message="No offline session found. Connect to the internet and sign in first." />
+  // ── Local-first: render the dashboard immediately if a stored session exists ──
+  // Convex will authenticate in the background (online) or use cached data
+  // (offline). The DashboardSessionGuard watches for explicit sign-out and
+  // redirects only when Convex confirms the session is truly gone.
+  if (hasStoredOidcSession()) {
+    return (
+      <DashboardSessionGuard>
+        <DashboardInner />
+      </DashboardSessionGuard>
     );
   }
 
-  // ── Online mode: normal Convex auth flow ────────────────────────────────────
+  // No stored session — require Convex auth (new user or just signed out)
   return (
     <>
       <AuthLoading>
         <DashboardLoadingScreen />
       </AuthLoading>
       <Unauthenticated>
-        <MarkAuthResolved onMark={handleResolved} />
         <DashboardSignInScreen message="Sign in to access your dashboard" />
       </Unauthenticated>
       <Authenticated>
-        <MarkAuthResolved onMark={handleResolved} />
         <DashboardInner />
       </Authenticated>
     </>
