@@ -1,8 +1,8 @@
-// Fixed cache name — never bumped, so old content-hashed assets are never
-// deleted when the SW updates. Old Vite chunks co-exist safely with new ones
-// because each build uses unique content hashes.
+// ── Configuration ─────────────────────────────────────────────────────────────
+
 const CACHE = "groundwork-sw";
 
+// Hosts whose responses should never be intercepted or cached.
 const BYPASS = [
   "convex.cloud",
   "convex.site",
@@ -21,62 +21,116 @@ const BYPASS = [
   // OIDC requests to hercules.app are cross-origin so the SW never sees them.
 ];
 
-// ── Precache the app shell ────────────────────────────────────────────────────
+// Minimum ms between background asset refreshes (avoids hammering the CDN on
+// rapid navigations but still keeps the cache fresh on longer sessions).
+const REFRESH_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
-async function precache() {
-  const cache = await caches.open(CACHE);
+// ── Offline fallback page ─────────────────────────────────────────────────────
+// Shown when the app shell is not yet cached (e.g. first ever launch offline).
+const OFFLINE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GroundWork – Offline</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:#0f1117;color:#fff;display:flex;align-items:center;
+         justify-content:center;min-height:100svh;padding:24px;text-align:center}
+    .icon{font-size:48px;margin-bottom:16px}
+    h1{font-size:22px;font-weight:700;color:#f97316;margin-bottom:8px}
+    p{color:#9ca3af;line-height:1.5;max-width:320px}
+    small{display:block;margin-top:12px;color:#6b7280;font-size:12px}
+    button{margin-top:20px;padding:10px 24px;background:#f97316;border:none;
+           border-radius:8px;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div>
+    <div class="icon">📵</div>
+    <h1>You're offline</h1>
+    <p>Open GroundWork while connected to the internet at least once to enable full offline support.</p>
+    <small>All your data will be available offline after that first visit.</small>
+    <button onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>`;
 
-  // Static assets that never change
-  await Promise.allSettled([
-    cache.add("/icon/icon-192.png"),
-    cache.add("/icon/icon-512.png"),
-    cache.add("/site.webmanifest"),
-  ]);
+// ── Asset caching ─────────────────────────────────────────────────────────────
 
-  // Fetch the built HTML shell (force-reload to bypass HTTP cache)
-  let html;
+// Tracks when we last ran a full asset refresh so we don't hammer the CDN.
+let lastRefreshAt = 0;
+
+/**
+ * Fetches the current app shell HTML, extracts every /assets/ URL referenced
+ * in it, and caches all of them (plus icons and the manifest).
+ *
+ * Safe to call at any time — it simply returns early if offline or if it was
+ * called recently.
+ *
+ * @param {boolean} force – ignore the cooldown and always refresh
+ */
+async function refreshCache(force = false) {
+  const now = Date.now();
+  if (!force && now - lastRefreshAt < REFRESH_COOLDOWN_MS) return;
+  lastRefreshAt = now;
+
   try {
-    const res = await fetch("/", { cache: "reload" });
-    if (!res.ok) return;
-    html = await res.clone().text();
-    await cache.put("/", res);
-  } catch {
-    // Offline during install — skip, assets will be cached as they're fetched
-    return;
-  }
+    // Fetch the latest shell HTML, bypassing the HTTP cache so we always get
+    // the most recently deployed version.
+    const htmlRes = await fetch("/", { cache: "reload" });
+    if (!htmlRes.ok) return;
 
-  // Extract every /assets/ URL from src="..." and href="..." attributes.
-  // This covers <script src>, <link rel="stylesheet">, and
-  // <link rel="modulepreload"> — all the Vite-generated chunks.
-  const assetUrls = new Set();
-  for (const m of html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)) {
-    assetUrls.add(m[1]);
-  }
+    const cache = await caches.open(CACHE);
 
-  await Promise.allSettled(
-    [...assetUrls].map((url) =>
-      fetch(url, { cache: "reload" })
-        .then((r) => {
-          if (r.ok) cache.put(url, r);
+    // Store the HTML itself so it can be served during offline navigations.
+    const htmlText = await htmlRes.clone().text();
+    await cache.put("/", htmlRes);
+
+    // Extract every /assets/... path referenced in src="..." or href="..."
+    // attributes.  This captures Vite's hashed JS/CSS chunks and module
+    // preloads, which are the only assets we need to serve the app offline.
+    const assetUrls = new Set();
+    for (const m of htmlText.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)) {
+      assetUrls.add(m[1]);
+    }
+
+    // Cache static app-shell resources and all discovered asset chunks.
+    await Promise.allSettled([
+      cache.add("/icon/icon-192.png"),
+      cache.add("/icon/icon-512.png"),
+      cache.add("/site.webmanifest"),
+      ...[...assetUrls].map((url) =>
+        // Only re-fetch assets that aren't already cached (content-hashed URLs
+        // are immutable, so we never need to revalidate them).
+        caches.match(url).then((hit) => {
+          if (hit) return;
+          return fetch(url, { cache: "reload" })
+            .then((r) => { if (r.ok) cache.put(url, r); })
+            .catch(() => {});
         })
-        .catch(() => {})
-    )
-  );
+      ),
+    ]);
+  } catch {
+    // Network unavailable — silently skip, will retry on next navigation.
+  }
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 self.addEventListener("install", (event) => {
-  // skipWaiting regardless of whether precaching succeeded — the fetch handler
-  // will cache any missed assets on-the-fly the next time they're requested.
-  event.waitUntil(precache().then(() => self.skipWaiting()));
+  // Force-refresh on install so we always get a clean cache for this SW
+  // version, then skip waiting so this SW takes over immediately.
+  event.waitUntil(refreshCache(true).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
-  // Do NOT delete old caches. Old content-hashed Vite bundles are still valid
-  // and keeping them ensures the app loads offline even when precaching was
-  // interrupted. Just claim clients so this SW controls the page immediately.
-  event.waitUntil(self.clients.claim());
+  // Claim all open clients so this SW controls them without a reload, then
+  // prime the cache in case this is a fresh activation after a browser restart.
+  event.waitUntil(
+    self.clients.claim().then(() => refreshCache(true))
+  );
 });
 
 // ── Fetch strategy ────────────────────────────────────────────────────────────
@@ -86,18 +140,18 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
 
-  // Skip caching for external APIs and the OIDC auth server
+  // Skip caching for external APIs and the OIDC auth server.
   if (BYPASS.some((h) => url.hostname.includes(h))) return;
 
   // ── Vite content-hashed bundles: cache-first (immutable filenames) ──────
+  // If a chunk is in cache serve it instantly; otherwise fetch, cache, return.
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
       caches.match(event.request).then((hit) => {
         if (hit) return hit;
         return fetch(event.request)
           .then((r) => {
-            if (r.ok)
-              caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
+            if (r.ok) caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
             return r;
           })
           .catch(() => Response.error());
@@ -106,32 +160,44 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ── Navigation: serve cached shell instantly, refresh in background ─────
+  // ── Navigation requests (HTML shell) ────────────────────────────────────
+  // Serve the cached shell immediately so offline loads are instant.
+  // At the same time, keep the cache fresh in the background whenever we're
+  // online so that the next offline session has up-to-date assets.
   if (event.request.mode === "navigate") {
+    // Background refresh — keeps SW alive long enough to finish.
+    event.waitUntil(refreshCache());
+
     event.respondWith(
       caches.match("/").then((hit) => {
-        // Always try to refresh the cached shell in the background
-        fetch(event.request)
+        if (hit) return hit;
+        // Shell not cached yet — try the network and cache the response.
+        return fetch(event.request)
           .then((r) => {
-            if (r.ok) caches.open(CACHE).then((c) => c.put("/", r.clone()));
+            if (r.ok) {
+              caches.open(CACHE).then((c) => c.put("/", r.clone()));
+            }
+            return r;
           })
-          .catch(() => {});
-
-        // Serve cached shell immediately; if nothing cached yet, wait for network
-        return hit ?? fetch(event.request).catch(() => Response.error());
+          .catch(() =>
+            // Still no shell and no network → show a friendly offline page.
+            new Response(OFFLINE_HTML, {
+              status: 200,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            })
+          );
       })
     );
     return;
   }
 
-  // ── Everything else (icons, manifest, etc.): cache-first ────────────────
+  // ── Everything else (icons, manifest, R2 photos, etc.): cache-first ─────
   event.respondWith(
     caches.match(event.request).then((hit) => {
       if (hit) return hit;
       return fetch(event.request)
         .then((r) => {
-          if (r.ok)
-            caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
+          if (r.ok) caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
           return r;
         })
         .catch(() => Response.error());
