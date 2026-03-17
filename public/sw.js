@@ -1,6 +1,9 @@
-const CACHE_NAME = "groundwork-v4";
+// Fixed cache name — never bumped, so old content-hashed assets are never
+// deleted when the SW updates. Old Vite chunks co-exist safely with new ones
+// because each build uses unique content hashes.
+const CACHE = "groundwork-sw";
 
-const BYPASS_HOSTNAMES = [
+const BYPASS = [
   "convex.cloud",
   "convex.site",
   "r2.cloudflarestorage.com",
@@ -11,12 +14,13 @@ const BYPASS_HOSTNAMES = [
   "paypal.com",
   "sandbox.paypal.com",
   "paypalobjects.com",
+  "hercules.app", // OIDC authority — never cache auth requests
 ];
 
-// ── Precache everything needed to boot the app shell ─────────────────────────
+// ── Precache the app shell ────────────────────────────────────────────────────
 
-async function precacheAppShell() {
-  const cache = await caches.open(CACHE_NAME);
+async function precache() {
+  const cache = await caches.open(CACHE);
 
   // Static assets that never change
   await Promise.allSettled([
@@ -25,40 +29,31 @@ async function precacheAppShell() {
     cache.add("/site.webmanifest"),
   ]);
 
-  // Fetch the root HTML (force-reload so we always get fresh hashes)
-  let rootRes;
+  // Fetch the built HTML shell (force-reload to bypass HTTP cache)
+  let html;
   try {
-    rootRes = await fetch("/", { cache: "reload" });
+    const res = await fetch("/", { cache: "reload" });
+    if (!res.ok) return;
+    html = await res.clone().text();
+    await cache.put("/", res);
   } catch {
-    // Offline during SW install — skip, will retry on next online visit
+    // Offline during install — skip, assets will be cached as they're fetched
     return;
   }
-  if (!rootRes.ok) return;
 
-  const html = await rootRes.clone().text();
-  await cache.put("/", rootRes);
-
-  // ── Extract ALL /assets/ URLs from the HTML ──────────────────────────────
-  // Covers: <script src="/assets/...">, <link href="/assets/..."  (stylesheet
-  // AND modulepreload), and any other tag that references /assets/ paths.
+  // Extract every /assets/ URL from src="..." and href="..." attributes.
+  // This covers <script src>, <link rel="stylesheet">, and
+  // <link rel="modulepreload"> — all the Vite-generated chunks.
   const assetUrls = new Set();
-  const patterns = [
-    // <script ... src="/assets/...">
-    /<script[^>]+src="(\/assets\/[^"?#]+)"/g,
-    // <link ... href="/assets/...">  (stylesheet + modulepreload chunks)
-    /<link[^>]+href="(\/assets\/[^"?#]+)"/g,
-  ];
-  for (const re of patterns) {
-    let m;
-    while ((m = re.exec(html)) !== null) assetUrls.add(m[1]);
+  for (const m of html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)) {
+    assetUrls.add(m[1]);
   }
 
-  // Cache every asset — best-effort, never block activation
   await Promise.allSettled(
     [...assetUrls].map((url) =>
       fetch(url, { cache: "reload" })
-        .then((res) => {
-          if (res.ok) cache.put(url, res);
+        .then((r) => {
+          if (r.ok) cache.put(url, r);
         })
         .catch(() => {})
     )
@@ -68,20 +63,16 @@ async function precacheAppShell() {
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
+  // skipWaiting regardless of whether precaching succeeded — the fetch handler
+  // will cache any missed assets on-the-fly the next time they're requested.
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
-        )
-      )
-      .then(() => self.clients.claim())
-  );
+  // Do NOT delete old caches. Old content-hashed Vite bundles are still valid
+  // and keeping them ensures the app loads offline even when precaching was
+  // interrupted. Just claim clients so this SW controls the page immediately.
+  event.waitUntil(self.clients.claim());
 });
 
 // ── Fetch strategy ────────────────────────────────────────────────────────────
@@ -91,22 +82,19 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
 
-  // Always bypass external APIs / storage
-  if (BYPASS_HOSTNAMES.some((h) => url.hostname.includes(h))) return;
+  // Skip caching for external APIs and the OIDC auth server
+  if (BYPASS.some((h) => url.hostname.includes(h))) return;
 
-  // ── Vite content-hashed bundles: cache-first (immutable URLs) ──────────
+  // ── Vite content-hashed bundles: cache-first (immutable filenames) ──────
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached;
+      caches.match(event.request).then((hit) => {
+        if (hit) return hit;
         return fetch(event.request)
-          .then((res) => {
-            if (res.ok) {
-              caches
-                .open(CACHE_NAME)
-                .then((cache) => cache.put(event.request, res.clone()));
-            }
-            return res;
+          .then((r) => {
+            if (r.ok)
+              caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
+            return r;
           })
           .catch(() => Response.error());
       })
@@ -114,44 +102,33 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ── Navigation requests: cache-first with background refresh ───────────
-  // Return the cached shell IMMEDIATELY so the app loads offline, while
-  // refreshing the cache in the background for the next open.
+  // ── Navigation: serve cached shell instantly, refresh in background ─────
   if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.match("/").then((cached) => {
-        // Fire background network refresh (don't await)
+      caches.match("/").then((hit) => {
+        // Always try to refresh the cached shell in the background
         fetch(event.request)
-          .then((res) => {
-            if (res.ok) {
-              caches
-                .open(CACHE_NAME)
-                .then((cache) => cache.put("/", res.clone()));
-            }
+          .then((r) => {
+            if (r.ok) caches.open(CACHE).then((c) => c.put("/", r.clone()));
           })
           .catch(() => {});
 
-        if (cached) return cached;
-
-        // Nothing in cache yet — wait for network
-        return fetch(event.request).catch(() => Response.error());
+        // Serve cached shell immediately; if nothing cached yet, wait for network
+        return hit ?? fetch(event.request).catch(() => Response.error());
       })
     );
     return;
   }
 
-  // ── Everything else (icons, manifests, etc): cache-first ───────────────
+  // ── Everything else (icons, manifest, etc.): cache-first ────────────────
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+    caches.match(event.request).then((hit) => {
+      if (hit) return hit;
       return fetch(event.request)
-        .then((res) => {
-          if (res.ok) {
-            caches
-              .open(CACHE_NAME)
-              .then((cache) => cache.put(event.request, res.clone()));
-          }
-          return res;
+        .then((r) => {
+          if (r.ok)
+            caches.open(CACHE).then((c) => c.put(event.request, r.clone()));
+          return r;
         })
         .catch(() => Response.error());
     })

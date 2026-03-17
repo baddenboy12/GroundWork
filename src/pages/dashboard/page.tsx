@@ -4,7 +4,7 @@ import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
-import { useAuth } from "@/hooks/use-auth.ts";
+import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
@@ -117,25 +117,16 @@ function DashboardSignInScreen({ message }: { message: string }) {
 
 export default function DashboardPage() {
   const isOnline = useOnlineStatus();
-  const { user: oidcUser, isLoading: isOidcLoading } = useAuth();
 
   // ── Offline mode ────────────────────────────────────────────────────────────
-  // Convex auth requires a WebSocket connection to validate tokens.
-  // When offline that connection never resolves, so <AuthLoading> hangs forever.
-  // Instead, we read the OIDC session from localStorage (stored via
-  // WebStorageStateStore in auth.tsx) and render the dashboard directly if a
-  // previous session exists — cached query data will be served from localStorage.
+  // Convex auth needs a live WebSocket; offline it stays loading forever.
+  // The OIDC library also tries to fetch the discovery document on startup,
+  // which hangs. Instead, read the stored OIDC session from localStorage
+  // synchronously — no network required.
   if (!isOnline) {
-    // Brief moment while the OIDC library reads its user from localStorage
-    if (isOidcLoading) return <DashboardLoadingScreen />;
-
-    if (oidcUser) {
-      // Valid stored session — show the dashboard with cached data
-      return <DashboardInner />;
-    }
-
-    // No stored session — nothing to show
-    return (
+    return hasStoredOidcSession() ? (
+      <DashboardInner />
+    ) : (
       <DashboardSignInScreen message="No offline session found. Connect to the internet and sign in first." />
     );
   }
