@@ -1,4 +1,4 @@
-const CACHE_NAME = "logvault-v1";
+const CACHE_NAME = "groundwork-v2";
 const STATIC_ASSETS = ["/", "/icon/icon-192.png", "/icon/icon-512.png"];
 
 // Install — pre-cache core shell
@@ -11,16 +11,16 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate — purge old caches
+// Activate — purge old caches and claim all clients immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
       .then((names) =>
         Promise.all(
-          names.map((name) => {
-            if (name !== CACHE_NAME) return caches.delete(name);
-          })
+          names
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => caches.delete(name))
         )
       )
       .then(() => self.clients.claim())
@@ -32,7 +32,7 @@ self.addEventListener("fetch", (event) => {
   // Only handle GET requests
   if (event.request.method !== "GET") return;
 
-  // Skip Convex WebSocket / API, R2 storage (both upload API and public CDN), and external CDNs
+  // Skip Convex WebSocket / API, R2 storage, external CDNs
   const url = new URL(event.request.url);
   if (
     url.hostname.includes("convex.cloud") ||
