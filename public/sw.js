@@ -14,7 +14,9 @@ const BYPASS = [
   "paypal.com",
   "sandbox.paypal.com",
   "paypalobjects.com",
-  "hercules.app", // OIDC authority — never cache auth requests
+  // NOTE: do NOT add "hercules.app" here — it would also match the app's own
+  // subdomain (*.onhercules.app) and bypass caching for all app requests.
+  // OIDC requests to hercules.app are cross-origin so the SW never sees them.
 ];
 
 // ── Precache the app shell ────────────────────────────────────────────────────
