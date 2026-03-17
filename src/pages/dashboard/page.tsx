@@ -3,6 +3,8 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import { useOnlineStatus } from "@/hooks/use-online-status.ts";
+import { useAuth } from "@/hooks/use-auth.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
@@ -96,19 +98,56 @@ function DashboardInner() {
   );
 }
 
+function DashboardLoadingScreen() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-background">
+      <Skeleton className="h-10 w-32" />
+    </div>
+  );
+}
+
+function DashboardSignInScreen({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-background gap-4 px-6 text-center">
+      <p className="text-muted-foreground">{message}</p>
+      <SignInButton />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const isOnline = useOnlineStatus();
+  const { user: oidcUser, isLoading: isOidcLoading } = useAuth();
+
+  // ── Offline mode ────────────────────────────────────────────────────────────
+  // Convex auth requires a WebSocket connection to validate tokens.
+  // When offline that connection never resolves, so <AuthLoading> hangs forever.
+  // Instead, we read the OIDC session from localStorage (stored via
+  // WebStorageStateStore in auth.tsx) and render the dashboard directly if a
+  // previous session exists — cached query data will be served from localStorage.
+  if (!isOnline) {
+    // Brief moment while the OIDC library reads its user from localStorage
+    if (isOidcLoading) return <DashboardLoadingScreen />;
+
+    if (oidcUser) {
+      // Valid stored session — show the dashboard with cached data
+      return <DashboardInner />;
+    }
+
+    // No stored session — nothing to show
+    return (
+      <DashboardSignInScreen message="No offline session found. Connect to the internet and sign in first." />
+    );
+  }
+
+  // ── Online mode: normal Convex auth flow ────────────────────────────────────
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center h-screen bg-background">
-          <Skeleton className="h-10 w-32" />
-        </div>
+        <DashboardLoadingScreen />
       </AuthLoading>
       <Unauthenticated>
-        <div className="flex flex-col items-center justify-center h-screen bg-background gap-4">
-          <p className="text-muted-foreground">Sign in to access your dashboard</p>
-          <SignInButton />
-        </div>
+        <DashboardSignInScreen message="Sign in to access your dashboard" />
       </Unauthenticated>
       <Authenticated>
         <DashboardInner />
