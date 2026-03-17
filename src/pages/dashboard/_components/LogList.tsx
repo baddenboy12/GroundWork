@@ -18,10 +18,12 @@ import CreateLogDialog from "./CreateLogDialog.tsx";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import ExportDialog from "./ExportDialog.tsx";
+import OfflinePendingCard from "./OfflinePendingCard.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
+import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -45,6 +47,14 @@ export default function LogList({ siteId, onBack }: Props) {
   const site = sites?.find((s) => s._id === siteId);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
+
+  // Offline queue — filter entries for this site (match by name, case-insensitive)
+  const offlineQueue = useOfflineQueueState();
+  const pendingEntries = useMemo(() => {
+    if (!site) return [];
+    const siteLower = site.name.toLowerCase();
+    return offlineQueue.filter((e) => e.siteName.toLowerCase() === siteLower);
+  }, [offlineQueue, site]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
@@ -176,7 +186,7 @@ export default function LogList({ siteId, onBack }: Props) {
               <Skeleton key={i} className="h-40 w-full rounded-xl" />
             ))}
           </div>
-        ) : activeResults.length === 0 ? (
+        ) : activeResults.length === 0 && pendingEntries.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -206,6 +216,17 @@ export default function LogList({ siteId, onBack }: Props) {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {/* Pending offline entries for this site at the top */}
+              {!isSearchMode && pendingEntries.map((entry, i) => (
+                <motion.div
+                  key={`offline-${entry.id}`}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.25, ease: "easeOut" }}
+                >
+                  <OfflinePendingCard entry={entry} />
+                </motion.div>
+              ))}
               {activeResults.map((log, i) => (
                 <motion.div
                   key={log._id}

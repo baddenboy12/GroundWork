@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
+import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import FilterBar, { type FilterState } from "./FilterBar.tsx";
 import GlobalExportDialog from "./GlobalExportDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import LogDetailDialog from "./LogDetailDialog.tsx";
+import OfflinePendingCard from "./OfflinePendingCard.tsx";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type RecentLog = Doc<"logs"> & { siteName: string; photoUrls: string[] };
@@ -38,6 +40,9 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
+
+  // Offline queue — show pending entries even when offline
+  const offlineQueue = useOfflineQueueState();
 
   const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
 
@@ -135,13 +140,13 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
       </div>
 
       {/* Grid */}
-      {isLoading ? (
+      {isLoading && offlineQueue.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-64 w-full rounded-xl" />
           ))}
         </div>
-      ) : logs.length === 0 ? (
+      ) : !isLoading && (logs ?? []).length === 0 && offlineQueue.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
           <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
             <ClipboardList className="w-7 h-7 text-muted-foreground" />
@@ -171,12 +176,23 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {logs.map((log, i) => (
+          {/* Pending offline entries at the top (only shown when not filtering) */}
+          {!isFiltered && offlineQueue.map((entry, i) => (
+            <motion.div
+              key={`offline-${entry.id}`}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.25, ease: "easeOut" }}
+            >
+              <OfflinePendingCard entry={entry} showSiteBadge />
+            </motion.div>
+          ))}
+          {logs?.map((log, i) => (
             <motion.div
               key={log._id}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.25, ease: "easeOut" }}
+              transition={{ delay: (offlineQueue.length + i) * 0.05, duration: 0.25, ease: "easeOut" }}
             >
               <RecentLogCard
                 log={log}

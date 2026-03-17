@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import {
-  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info,
+  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils.ts";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
+import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
@@ -56,12 +57,28 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
 
+  // Offline queue: find sites that only exist in the queue (not yet in DB)
+  const offlineQueue = useOfflineQueueState();
+  const pendingNewSiteNames = useMemo(() => {
+    const existingNames = new Set((sites ?? []).map((s) => s.name.toLowerCase()));
+    const seen = new Set<string>();
+    return offlineQueue
+      .filter((e) => {
+        const lower = e.siteName.toLowerCase();
+        if (existingNames.has(lower) || seen.has(lower)) return false;
+        seen.add(lower);
+        return true;
+      })
+      .map((e) => e.siteName);
+  }, [offlineQueue, sites]);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const siteCount = sites?.length ?? 0;
+  const totalCount = siteCount + pendingNewSiteNames.length;
   const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
@@ -128,9 +145,9 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
         <span className="max-w-44 truncate">
           {selectedSite?.name ?? "Sites"}
         </span>
-        {siteCount > 0 && (
+        {totalCount > 0 && (
           <span className="text-[11px] font-mono bg-background/60 px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
-            {siteCount}
+            {totalCount}
           </span>
         )}
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -200,7 +217,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
               <div className="flex items-center gap-2">
                 {siteCount > 0 && (
                   <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground">
-                    {siteCount}{config.maxSites !== null ? `/${config.maxSites}` : ""}
+                    {totalCount}{config.maxSites !== null ? `/${config.maxSites}` : ""}
                   </span>
                 )}
                 <button
@@ -232,80 +249,102 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                   </p>
                 </div>
               ) : (
-                sites.map((site, i) => {
-                  const isSelected = selectedSiteId === site._id;
-                  return (
+                <>
+                  {sites.map((site, i) => {
+                    const isSelected = selectedSiteId === site._id;
+                    return (
+                      <motion.div
+                        key={site._id}
+                        ref={(el) => {
+                          if (el) itemRefs.current.set(site._id, el);
+                          else itemRefs.current.delete(site._id);
+                        }}
+                        /* Fast stagger — base 80ms + 20ms per item */
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
+                        /* Press animation */
+                        whileTap={{ scale: 0.96, transition: { duration: 0.08 } }}
+                        className={cn(
+                          "group flex items-center gap-3 mx-2 px-3 py-3 rounded-xl cursor-pointer",
+                          "border transition-all duration-200",
+                          isSelected
+                            ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
+                            : "border-border/20 hover:border-border/55 text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                        )}
+                        onClick={() => {
+                          onSelectSite(site._id);
+                          setOpen(false);
+                        }}
+                      >
+                        {/* index */}
+                        <span className={cn(
+                          "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
+                          isSelected
+                            ? "text-primary/60"
+                            : "text-muted-foreground/35 group-hover:text-muted-foreground/60"
+                        )}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+
+                        {/* Site name — larger */}
+                        <span className="flex-1 text-[15px] font-semibold truncate leading-tight">
+                          {site.name}
+                        </span>
+
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                          >
+                            <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
+                          </motion.div>
+                        )}
+
+                        {/* per-site actions */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <button className="opacity-0 group-hover:opacity-70 p-1 rounded-lg hover:bg-accent transition-opacity shrink-0">
+                              <Settings className="w-3.5 h-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditSite(site); }}>
+                              <Settings className="w-3.5 h-3.5 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); setDeleteSiteId(site._id); }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Pending new sites from offline queue */}
+                  {pendingNewSiteNames.map((name, i) => (
                     <motion.div
-                      key={site._id}
-                      ref={(el) => {
-                        if (el) itemRefs.current.set(site._id, el);
-                        else itemRefs.current.delete(site._id);
-                      }}
-                      /* Fast stagger — base 80ms + 20ms per item */
+                      key={`pending-site-${name}`}
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
-                      /* Press animation */
-                      whileTap={{ scale: 0.96, transition: { duration: 0.08 } }}
-                      className={cn(
-                        "group flex items-center gap-3 mx-2 px-3 py-3 rounded-xl cursor-pointer",
-                        "border transition-all duration-200",
-                        isSelected
-                          ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
-                          : "border-border/20 hover:border-border/55 text-muted-foreground hover:text-foreground hover:bg-accent/40"
-                      )}
-                      onClick={() => {
-                        onSelectSite(site._id);
-                        setOpen(false);
-                      }}
+                      transition={{ delay: (siteCount + i) * 0.008, duration: 0.1, ease: "easeOut" }}
+                      className="flex items-center gap-3 mx-2 px-3 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 cursor-default"
+                      title="This site is queued offline and will sync when back online"
                     >
-                      {/* index */}
-                      <span className={cn(
-                        "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
-                        isSelected
-                          ? "text-primary/60"
-                          : "text-muted-foreground/35 group-hover:text-muted-foreground/60"
-                      )}>
-                        {String(i + 1).padStart(2, "0")}
+                      <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-500/70" />
+                      <span className="flex-1 text-[15px] font-semibold truncate leading-tight text-muted-foreground">
+                        {name}
                       </span>
-
-                      {/* Site name — larger */}
-                      <span className="flex-1 text-[15px] font-semibold truncate leading-tight">
-                        {site.name}
+                      <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-md shrink-0">
+                        pending
                       </span>
-
-                      {isSelected && (
-                        <motion.div
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                        >
-                          <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
-                        </motion.div>
-                      )}
-
-                      {/* per-site actions */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <button className="opacity-0 group-hover:opacity-70 p-1 rounded-lg hover:bg-accent transition-opacity shrink-0">
-                            <Settings className="w-3.5 h-3.5" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditSite(site); }}>
-                            <Settings className="w-3.5 h-3.5 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); setDeleteSiteId(site._id); }}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </motion.div>
-                  );
-                })
+                  ))}
+                </>
               )}
             </div>
           </motion.div>
