@@ -1,51 +1,71 @@
-const CACHE_NAME = "groundwork-v3";
+const CACHE_NAME = "groundwork-v4";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+const BYPASS_HOSTNAMES = [
+  "convex.cloud",
+  "convex.site",
+  "r2.cloudflarestorage.com",
+  "r2.dev",
+  "cdn.hercules.app",
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+  "paypal.com",
+  "sandbox.paypal.com",
+  "paypalobjects.com",
+];
 
-/** Fetch the root HTML, cache it, and cache every local JS/CSS asset it links to. */
+// ── Precache everything needed to boot the app shell ─────────────────────────
+
 async function precacheAppShell() {
   const cache = await caches.open(CACHE_NAME);
 
-  // Always cache icons
+  // Static assets that never change
   await Promise.allSettled([
     cache.add("/icon/icon-192.png"),
     cache.add("/icon/icon-512.png"),
+    cache.add("/site.webmanifest"),
   ]);
 
-  // Fetch the root HTML
+  // Fetch the root HTML (force-reload so we always get fresh hashes)
   let rootRes;
   try {
     rootRes = await fetch("/", { cache: "reload" });
   } catch {
-    return; // offline during first install — skip, will retry next visit
+    // Offline during SW install — skip, will retry on next online visit
+    return;
   }
   if (!rootRes.ok) return;
 
   const html = await rootRes.clone().text();
   await cache.put("/", rootRes);
 
-  // Extract all local asset URLs from <script src="..."> and <link href="...css">
+  // ── Extract ALL /assets/ URLs from the HTML ──────────────────────────────
+  // Covers: <script src="/assets/...">, <link href="/assets/..."  (stylesheet
+  // AND modulepreload), and any other tag that references /assets/ paths.
   const assetUrls = new Set();
   const patterns = [
-    /<script[^>]+src="(\/[^"?#]+)"/g,
-    /<link[^>]+href="(\/[^"?#]+\.css[^"]*)"/g,
+    // <script ... src="/assets/...">
+    /<script[^>]+src="(\/assets\/[^"?#]+)"/g,
+    // <link ... href="/assets/...">  (stylesheet + modulepreload chunks)
+    /<link[^>]+href="(\/assets\/[^"?#]+)"/g,
   ];
   for (const re of patterns) {
     let m;
     while ((m = re.exec(html)) !== null) assetUrls.add(m[1]);
   }
 
-  // Cache each asset — best-effort (don't block activation on failure)
+  // Cache every asset — best-effort, never block activation
   await Promise.allSettled(
     [...assetUrls].map((url) =>
       fetch(url, { cache: "reload" })
-        .then((res) => { if (res.ok) cache.put(url, res); })
+        .then((res) => {
+          if (res.ok) cache.put(url, res);
+        })
         .catch(() => {})
     )
   );
 }
 
-// ── Lifecycle events ──────────────────────────────────────────────────────────
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 self.addEventListener("install", (event) => {
   event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
@@ -57,9 +77,7 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((names) =>
         Promise.all(
-          names
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
+          names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
         )
       )
       .then(() => self.clients.claim())
@@ -73,63 +91,69 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
 
-  // Bypass: Convex, R2 storage, external CDNs — always go to network
-  if (
-    url.hostname.includes("convex.cloud") ||
-    url.hostname.includes("convex.site") ||
-    url.hostname.includes("r2.cloudflarestorage.com") ||
-    url.hostname.includes("r2.dev") ||
-    url.hostname.includes("cdn.hercules.app") ||
-    url.hostname.includes("fonts.googleapis.com") ||
-    url.hostname.includes("fonts.gstatic.com")
-  ) {
-    return;
-  }
+  // Always bypass external APIs / storage
+  if (BYPASS_HOSTNAMES.some((h) => url.hostname.includes(h))) return;
 
-  // Vite content-hashed bundles (/assets/...) → cache-first (immutable URLs)
+  // ── Vite content-hashed bundles: cache-first (immutable URLs) ──────────
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;
-        return fetch(event.request).then((res) => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return res;
-        });
+        return fetch(event.request)
+          .then((res) => {
+            if (res.ok) {
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => cache.put(event.request, res.clone()));
+            }
+            return res;
+          })
+          .catch(() => Response.error());
       })
     );
     return;
   }
 
-  // Navigation requests → network-first, fall back to cached root shell
+  // ── Navigation requests: cache-first with background refresh ───────────
+  // Return the cached shell IMMEDIATELY so the app loads offline, while
+  // refreshing the cache in the background for the next open.
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
+      caches.match("/").then((cached) => {
+        // Fire background network refresh (don't await)
+        fetch(event.request)
+          .then((res) => {
+            if (res.ok) {
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => cache.put("/", res.clone()));
+            }
+          })
+          .catch(() => {});
+
+        if (cached) return cached;
+
+        // Nothing in cache yet — wait for network
+        return fetch(event.request).catch(() => Response.error());
+      })
+    );
+    return;
+  }
+
+  // ── Everything else (icons, manifests, etc): cache-first ───────────────
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request)
         .then((res) => {
-          // Cache fresh navigation responses
           if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, res.clone()));
           }
           return res;
         })
-        .catch(() => caches.match("/").then((cached) => cached ?? Response.error()))
-    );
-    return;
-  }
-
-  // Everything else → network-first, cache on success, fall back to cache
-  event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(event.request).then((cached) => cached ?? Response.error()))
+        .catch(() => Response.error());
+    })
   );
 });
