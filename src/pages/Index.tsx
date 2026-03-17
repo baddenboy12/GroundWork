@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { useOnlineStatus } from "@/hooks/use-online-status.ts";
+import { useAuthFallback, MarkAuthResolved } from "@/hooks/use-auth-fallback.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import Navbar from "./landing/Navbar.tsx";
 import Hero from "./landing/Hero.tsx";
@@ -42,27 +42,27 @@ function LandingPage() {
 }
 
 export default function Index() {
-  const isOnline = useOnlineStatus();
+  const { shouldUseFallback, markResolved } = useAuthFallback();
+  const handleResolved = useCallback(() => markResolved(), [markResolved]);
 
-  // ── Offline mode ────────────────────────────────────────────────────────────
-  // The OIDC library tries to fetch the discovery document from hercules.app on
-  // startup. Offline that request hangs forever, keeping isLoading:true and
-  // the app stuck on a grey screen. Instead, check localStorage directly —
-  // it's synchronous and requires zero network.
-  if (!isOnline) {
+  // navigator.onLine is unreliable (true even with 4G but no data plan).
+  // If Convex auth doesn't resolve within 5 s we assume no real internet and
+  // read the stored OIDC session from localStorage instead.
+  if (shouldUseFallback) {
     return hasStoredOidcSession() ? <RedirectToDashboard /> : <LandingPage />;
   }
 
-  // ── Online mode: normal Convex auth flow ────────────────────────────────────
   return (
     <>
       <AuthLoading>
         <div className="min-h-screen bg-background" />
       </AuthLoading>
       <Authenticated>
+        <MarkAuthResolved onMark={handleResolved} />
         <RedirectToDashboard />
       </Authenticated>
       <Unauthenticated>
+        <MarkAuthResolved onMark={handleResolved} />
         <LandingPage />
       </Unauthenticated>
     </>

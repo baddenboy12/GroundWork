@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
-import { useOnlineStatus } from "@/hooks/use-online-status.ts";
+import { useAuthFallback, MarkAuthResolved } from "@/hooks/use-auth-fallback.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
@@ -116,14 +116,13 @@ function DashboardSignInScreen({ message }: { message: string }) {
 }
 
 export default function DashboardPage() {
-  const isOnline = useOnlineStatus();
+  const { shouldUseFallback, markResolved } = useAuthFallback();
+  const handleResolved = useCallback(() => markResolved(), [markResolved]);
 
-  // ── Offline mode ────────────────────────────────────────────────────────────
-  // Convex auth needs a live WebSocket; offline it stays loading forever.
-  // The OIDC library also tries to fetch the discovery document on startup,
-  // which hangs. Instead, read the stored OIDC session from localStorage
-  // synchronously — no network required.
-  if (!isOnline) {
+  // navigator.onLine is unreliable (true even with 4G radio but no data plan).
+  // If Convex auth doesn't resolve within 5 s we assume no real internet and
+  // fall back to the OIDC session stored in localStorage.
+  if (shouldUseFallback) {
     return hasStoredOidcSession() ? (
       <DashboardInner />
     ) : (
@@ -138,9 +137,11 @@ export default function DashboardPage() {
         <DashboardLoadingScreen />
       </AuthLoading>
       <Unauthenticated>
+        <MarkAuthResolved onMark={handleResolved} />
         <DashboardSignInScreen message="Sign in to access your dashboard" />
       </Unauthenticated>
       <Authenticated>
+        <MarkAuthResolved onMark={handleResolved} />
         <DashboardInner />
       </Authenticated>
     </>
