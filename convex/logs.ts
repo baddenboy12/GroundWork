@@ -565,6 +565,112 @@ export const listForGlobalExport = query({
   },
 });
 
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+type SiteStat = { siteName: string; count: number };
+
+export const getStats = query({
+  args: {},
+  handler: async (ctx): Promise<{
+    totalEntries: number;
+    thisWeek: number;
+    thisMonth: number;
+    categoryBreakdown: Record<string, number>;
+    topSites: SiteStat[];
+    dailyActivity: Array<{ date: string; count: number }>;
+    totalPhotos: number;
+    totalSites: number;
+  } | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return null;
+
+    const allLogs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .collect();
+
+    const nowMs = Date.now();
+    const weekAgoIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const monthAgoIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const thisWeek = allLogs.filter((l) => l.loggedAt >= weekAgoIso).length;
+    const thisMonth = allLogs.filter((l) => l.loggedAt >= monthAgoIso).length;
+
+    // Category counts
+    const categoryBreakdown: Record<string, number> = {
+      inspection: 0,
+      maintenance: 0,
+      incident: 0,
+      audit: 0,
+      general: 0,
+    };
+    for (const log of allLogs) {
+      if (log.category in categoryBreakdown) {
+        categoryBreakdown[log.category] = (categoryBreakdown[log.category] ?? 0) + 1;
+      }
+    }
+
+    // Per-site counts
+    const siteCountMap: Record<string, number> = {};
+    for (const log of allLogs) {
+      const key = log.siteId as string;
+      siteCountMap[key] = (siteCountMap[key] ?? 0) + 1;
+    }
+    const topSiteEntries = Object.entries(siteCountMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const topSites: SiteStat[] = await Promise.all(
+      topSiteEntries.map(async ([siteId, count]) => {
+        const site = await ctx.db.get(siteId as Id<"sites">);
+        return { siteName: site?.name ?? "Unknown", count };
+      })
+    );
+
+    // Daily activity (last 30 days)
+    const dailyMap: Record<string, number> = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(nowMs - i * 24 * 60 * 60 * 1000);
+      dailyMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const log of allLogs) {
+      const dateStr = log.loggedAt.slice(0, 10);
+      if (dateStr in dailyMap) {
+        dailyMap[dateStr] = (dailyMap[dateStr] ?? 0) + 1;
+      }
+    }
+    const dailyActivity = Object.entries(dailyMap).map(([date, count]) => ({ date, count }));
+
+    const totalSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect()
+      .then((s) => s.length);
+
+    const totalPhotos = allLogs.reduce(
+      (sum, log) =>
+        sum + (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      0
+    );
+
+    return {
+      totalEntries: allLogs.length,
+      thisWeek,
+      thisMonth,
+      categoryBreakdown,
+      topSites,
+      dailyActivity,
+      totalPhotos,
+      totalSites,
+    };
+  },
+});
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /** Returns every R2 photo key currently referenced by a log in the DB. */

@@ -9,6 +9,7 @@ import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
 import LogList from "./_components/LogList.tsx";
 import DashboardHome from "./_components/DashboardHome.tsx";
+import StatsView from "./_components/StatsView.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 
@@ -63,6 +64,7 @@ function DashboardSessionGuard({ children }: { children: React.ReactNode }) {
 function DashboardInner() {
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
@@ -73,22 +75,31 @@ function DashboardInner() {
   };
 
   const handleLogCreated = (siteId: Id<"sites">) => {
+    setShowStats(false);
     setSelectedSiteId(siteId);
   };
 
   return (
     <div className="flex flex-col h-screen bg-background">
       <BackBlocker />
-      <DashboardNavbar onNewLog={() => setGlobalCreateOpen(true)} />
+      <DashboardNavbar
+        onNewLog={() => setGlobalCreateOpen(true)}
+        onStats={() => {
+          setShowStats((v) => !v);
+          setSelectedSiteId(null);
+        }}
+      />
 
-      {/* Site selector sub-bar — sits directly under the top bar, left-anchored */}
-      <div className="flex items-center px-4 py-2 border-b border-border bg-card/80 shrink-0">
-        <SitePopout
-          selectedSiteId={selectedSiteId}
-          onSelectSite={setSelectedSiteId}
-          onSiteDeleted={handleSiteDeleted}
-        />
-      </div>
+      {/* Site selector sub-bar — hidden when stats view is open */}
+      {!showStats && (
+        <div className="flex items-center px-4 py-2 border-b border-border bg-card/80 shrink-0">
+          <SitePopout
+            selectedSiteId={selectedSiteId}
+            onSelectSite={setSelectedSiteId}
+            onSiteDeleted={handleSiteDeleted}
+          />
+        </div>
+      )}
 
       <OfflineBanner
         isOnline={isOnline}
@@ -98,7 +109,9 @@ function DashboardInner() {
       />
 
       <main className="flex-1 overflow-hidden flex flex-col">
-        {selectedSiteId ? (
+        {showStats ? (
+          <StatsView onBack={() => setShowStats(false)} />
+        ) : selectedSiteId ? (
           <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
         ) : (
           <DashboardHome

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { LogOut, User, CreditCard, Zap, Menu, Plug } from "lucide-react";
+import { LogOut, User, CreditCard, Zap, Menu, Plug, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
 const TIER_BADGE_STYLE: Record<string, string> = {
@@ -23,11 +23,12 @@ const TIER_BADGE_STYLE: Record<string, string> = {
 
 type Props = {
   onNewLog: () => void;
+  onStats: () => void;
   /** Mobile only: opens the site list sheet */
   onMenuClick?: () => void;
 };
 
-export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
+export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
@@ -75,6 +76,17 @@ export default function DashboardNavbar({ onNewLog, onMenuClick }: Props) {
           <Zap className="w-3 h-3" />
           {config.name}
         </button>
+
+        {/* Stats button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11"
+          onClick={onStats}
+          title="Statistics"
+        >
+          <BarChart2 className="w-5 h-5" />
+        </Button>
 
         {/* User menu */}
         <DropdownMenu>
