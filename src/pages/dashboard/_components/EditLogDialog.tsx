@@ -102,34 +102,34 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit log entry</DialogTitle>
+          <DialogTitle className="text-2xl">Edit log entry</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-2xl">
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-log-title">Title *</Label>
+        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-log-title" className="text-base">Title *</Label>
             <Input
               id="edit-log-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-2xl h-14"
+              className="text-xl h-14"
               required
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Site *</Label>
+          <div className="space-y-2">
+            <Label className="text-base">Site *</Label>
             <Select
               value={siteId}
               onValueChange={(v) => setSiteId(v as Id<"sites">)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-14 text-base">
                 <SelectValue placeholder="Select a site" />
               </SelectTrigger>
               <SelectContent>
                 {(sites ?? []).map((s) => (
-                  <SelectItem key={s._id} value={s._id}>
+                  <SelectItem key={s._id} value={s._id} className="text-base py-3">
                     {s.name}
                   </SelectItem>
                 ))}
@@ -138,35 +138,36 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Category *</Label>
+            <div className="space-y-2">
+              <Label className="text-base">Category *</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-14 text-base">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {LOG_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
+                    <SelectItem key={c} value={c} className="text-base py-3">
                       {CATEGORY_LABELS[c]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-log-date">Date & Time *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-log-date" className="text-base">Date & Time *</Label>
               <Input
                 id="edit-log-date"
                 type="datetime-local"
                 value={loggedAt}
                 onChange={(e) => setLoggedAt(e.target.value)}
+                className="h-14 text-base"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Location</Label>
+          <div className="space-y-2">
+            <Label className="text-base">Location</Label>
             <LocationPicker
               value={location}
               onChange={setLocation}
@@ -176,21 +177,21 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-log-content">Notes *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="edit-log-content" className="text-base">Notes *</Label>
             <Textarea
               id="edit-log-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={6}
-              className="text-2xl h-14"
+              rows={7}
+              className="text-xl min-h-[180px] resize-none"
               required
             />
           </div>
 
           {log.photoUrls.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
                 Attached photos ({log.photoUrls.length}) — to change photos, delete and recreate this entry
               </Label>
               <div className="flex gap-2 flex-wrap">
@@ -199,7 +200,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                     key={url}
                     src={url}
                     alt={`Photo ${i + 1}`}
-                    className="w-16 h-16 rounded-lg object-cover border border-border"
+                    className="w-20 h-20 rounded-lg object-cover border border-border"
                   />
                 ))}
               </div>
@@ -207,11 +208,12 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
           )}
 
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={handleClose}>
+            <Button type="button" variant="secondary" size="lg" onClick={handleClose}>
               Cancel
             </Button>
             <Button
               type="submit"
+              size="lg"
               disabled={loading || !title.trim() || !content.trim() || !isOnline}
             >
               {loading ? "Saving..." : !isOnline ? "Offline" : "Save changes"}

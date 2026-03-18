@@ -212,19 +212,19 @@ export default function CreateLogDialog({
     <>
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent
-          className="sm:max-w-xl max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>New log entry</DialogTitle>
+            <DialogTitle className="text-2xl">New log entry</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-2xl">
+          <form onSubmit={handleSubmit} className="space-y-5 pt-2">
 
             {/* Offline notice */}
             {!isOnline && (
-              <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-                <WifiOff className="w-3.5 h-3.5 shrink-0" />
+              <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+                <WifiOff className="w-4 h-4 shrink-0" />
                 <span>
                   You&apos;re offline. This entry and any photos will be saved locally and synced automatically when you reconnect.
                 </span>
@@ -232,9 +232,9 @@ export default function CreateLogDialog({
             )}
 
             {/* Site name — autocomplete with auto-create */}
-            <div className="space-y-1.5">
-              <Label htmlFor="log-site" className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-primary" /> Site *
+            <div className="space-y-2">
+              <Label htmlFor="log-site" className="text-base flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-primary" /> Site *
               </Label>
               <div className="relative">
                 <Input
@@ -255,21 +255,22 @@ export default function CreateLogDialog({
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  className="h-14 text-xl"
                   required
                 />
                 {showSuggestions && siteName.trim().length > 0 && !exactMatch && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
                     {/* Exact / substring matches */}
                     {filteredSites.length > 0 && (
                       <>
-                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40">
+                        <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40">
                           Existing sites
                         </p>
                         {filteredSites.map((s) => (
                           <button
                             key={s._id}
                             type="button"
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-base hover:bg-accent text-left transition-colors"
                             onMouseDown={() => {
                               setSiteName(s.name);
                               setShowSuggestions(false);
@@ -282,7 +283,7 @@ export default function CreateLogDialog({
                               }
                             }}
                           >
-                            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
                             {s.name}
                           </button>
                         ))}
@@ -292,14 +293,14 @@ export default function CreateLogDialog({
                     {/* Fuzzy-only matches (possible typos / similar names) */}
                     {fuzzyMatches.length > 0 && (
                       <>
-                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/20 flex items-center gap-1.5">
+                        <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/20 flex items-center gap-1.5">
                           <AlertTriangle className="w-3 h-3" /> Did you mean?
                         </p>
                         {fuzzyMatches.map((s) => (
                           <button
                             key={s._id}
                             type="button"
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-base hover:bg-amber-50 dark:hover:bg-amber-900/20 text-left transition-colors"
                             onMouseDown={() => {
                               setSiteName(s.name);
                               setShowSuggestions(false);
@@ -312,9 +313,9 @@ export default function CreateLogDialog({
                               }
                             }}
                           >
-                            <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <MapPin className="w-4 h-4 text-amber-500 shrink-0" />
                             <span>{s.name}</span>
-                            <span className="ml-auto text-[10px] text-amber-600 dark:text-amber-400 font-medium shrink-0">
+                            <span className="ml-auto text-xs text-amber-600 dark:text-amber-400 font-medium shrink-0">
                               Similar
                             </span>
                           </button>
@@ -326,13 +327,13 @@ export default function CreateLogDialog({
                     {siteName.trim() && !exactMatch && (
                       <button
                         type="button"
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent text-left transition-colors border-t border-border"
+                        className="w-full flex items-center gap-2.5 px-4 py-3 text-base hover:bg-accent text-left transition-colors border-t border-border"
                         onMouseDown={() => {
                           setShowSuggestions(false);
                           siteInputRef.current?.blur();
                         }}
                       >
-                        <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <Plus className="w-4 h-4 text-primary shrink-0" />
                         <span>
                           Create new{" "}
                           <span className="font-semibold text-foreground">
@@ -343,7 +344,7 @@ export default function CreateLogDialog({
                     )}
 
                     {filteredSites.length === 0 && fuzzyMatches.length === 0 && siteName.trim() && (
-                      <p className="px-3 py-3 text-sm text-muted-foreground">
+                      <p className="px-4 py-3 text-base text-muted-foreground">
                         No matching sites — a new one will be created.
                       </p>
                     )}
@@ -353,8 +354,8 @@ export default function CreateLogDialog({
 
               {/* Inline hint below input */}
               {siteName.trim() && !exactMatch && fuzzyMatches.length > 0 && filteredSites.length === 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                   Similar to{" "}
                   {fuzzyMatches.slice(0, 2).map((s, i) => (
                     <span key={s._id}>
@@ -372,56 +373,57 @@ export default function CreateLogDialog({
                 </p>
               )}
               {siteName.trim() && !exactMatch && fuzzyMatches.length === 0 && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Plus className="w-3 h-3 text-primary" />
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5 text-primary" />
                   A new site named &quot;{siteName.trim()}&quot; will be created
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="log-title">Title *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="log-title" className="text-base">Title *</Label>
               <Input
                 id="log-title"
                 placeholder="Generator fuel level check"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-2xl h-14"
+                className="text-xl h-14"
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Category *</Label>
+              <div className="space-y-2">
+                <Label className="text-base">Category *</Label>
                 <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-14 text-base">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {LOG_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
+                      <SelectItem key={c} value={c} className="text-base py-3">
                         {CATEGORY_LABELS[c]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="log-date">Date & Time *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="log-date" className="text-base">Date & Time *</Label>
                 <Input
                   id="log-date"
                   type="datetime-local"
                   value={loggedAt}
                   onChange={(e) => setLoggedAt(e.target.value)}
+                  className="h-14 text-base"
                   required
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-2">
+            <div className="space-y-2">
+              <Label className="text-base flex items-center gap-2">
                 Location
                 {locationFromSite && (
-                  <span className="text-[10px] font-normal text-primary border border-primary/30 rounded-full px-1.5 py-0.5">
+                  <span className="text-xs font-normal text-primary border border-primary/30 rounded-full px-2 py-0.5">
                     Autofilled from site
                   </span>
                 )}
@@ -434,31 +436,31 @@ export default function CreateLogDialog({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="log-content">Notes *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="log-content" className="text-base">Notes *</Label>
               <Textarea
                 id="log-content"
                 placeholder="Describe what was observed, done, or found..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={5}
-                className="text-2xl h-14"
+                rows={6}
+                className="text-xl min-h-[160px] resize-none"
                 required
               />
             </div>
 
             {/* Photos — gated behind Pro plan; offline uploader shown when offline */}
-            <div className="space-y-1.5">
-              <Label className={cn("flex items-center gap-2")}>
+            <div className="space-y-2">
+              <Label className={cn("text-base flex items-center gap-2")}>
                 Photos
                 {!canAttachPhotos && (
-                  <span className="text-[10px] font-normal text-muted-foreground border border-border rounded-full px-1.5 py-0.5 flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Starter+
+                  <span className="text-xs font-normal text-muted-foreground border border-border rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Starter+
                   </span>
                 )}
                 {canAttachPhotos && !isOnline && (
-                  <span className="text-[10px] font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-1.5 py-0.5 flex items-center gap-1">
-                    <WifiOff className="w-2.5 h-2.5" /> Storing locally
+                  <span className="text-xs font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <WifiOff className="w-3 h-3" /> Storing locally
                   </span>
                 )}
               </Label>
@@ -472,19 +474,20 @@ export default function CreateLogDialog({
                   onClick={() => setPhotoUpgradeOpen(true)}
                   className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                 >
-                  <Lock className="w-5 h-5" />
-                  <span className="text-sm font-medium">Photo attachments require Pro or higher</span>
-                  <span className="text-xs">Click to upgrade</span>
+                  <Lock className="w-6 h-6" />
+                  <span className="text-base font-medium">Photo attachments require Pro or higher</span>
+                  <span className="text-sm">Click to upgrade</span>
                 </button>
               )}
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={handleClose}>
+              <Button type="button" variant="secondary" size="lg" onClick={handleClose}>
                 Cancel
               </Button>
               <Button
                 type="submit"
+                size="lg"
                 disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
               >
                 {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
