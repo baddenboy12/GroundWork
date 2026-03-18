@@ -234,9 +234,11 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </div>
 
             {/* Content */}
-            <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed">
-              {log.content}
-            </p>
+            <div className="max-h-64 overflow-y-auto overscroll-contain rounded-lg pr-1">
+              <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {log.content}
+              </p>
+            </div>
 
             {/* Meta */}
             <div className="flex flex-col gap-y-3 pt-3 border-t border-border/50 text-base text-muted-foreground">
