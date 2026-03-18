@@ -194,6 +194,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* 3:4 viewport cap — constrains to iPad-portrait proportions on phones.
+     Viewport meta height=1024 handles modern browsers; this is the fallback. */
+  max-height: min(100dvh, calc(100vw * 4 / 3));
+  overflow: hidden;
 }
 
 /* Prevent iOS Safari from auto-zooming when tapping inputs with small font sizes */
