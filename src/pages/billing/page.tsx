@@ -36,6 +36,7 @@ import {
   Key,
   Users,
   Plus,
+  Minus,
   ShieldCheck,
   LogOut,
   Crown,
@@ -118,6 +119,7 @@ function BillingInner() {
   const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
+  const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -144,6 +146,12 @@ function BillingInner() {
   // Create team key (for users who subscribed as individual and want to start a team)
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [createTeamPending, setCreateTeamPending] = useState(false);
+  const [createTeamSeats, setCreateTeamSeats] = useState(1);
+
+  // Edit seats dialog
+  const [editSeatsOpen, setEditSeatsOpen] = useState(false);
+  const [editSeatsPending, setEditSeatsPending] = useState(false);
+  const [editSeatsValue, setEditSeatsValue] = useState(1);
 
   // Change team tier dialog
   const [changeTeamTierOpen, setChangeTeamTierOpen] = useState(false);
@@ -179,10 +187,12 @@ function BillingInner() {
     const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
     const wantsTeam = sessionStorage.getItem("gw_sub_team");
+    const seatsRaw = sessionStorage.getItem("gw_sub_seats");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
     sessionStorage.removeItem("gw_sub_team");
+    sessionStorage.removeItem("gw_sub_seats");
 
     if (paypalCancelled === "1") {
       toast.info("PayPal subscription not completed — no changes made.");
@@ -199,11 +209,14 @@ function BillingInner() {
 
           // If the user chose team subscription, auto-create their team key
           if (wantsTeam === "1") {
+            const maxMembers = seatsRaw ? parseInt(seatsRaw, 10) : undefined;
             try {
               const { code } = await createSelfKeyMutation({
                 tier: newTier as "pro" | "business",
+                maxMembers: maxMembers && maxMembers > 0 ? maxMembers : undefined,
               });
-              toast.success(`Team workspace created! Share key ${code} with your team members.`);
+              const seatsLabel = maxMembers && maxMembers > 1 ? ` (${maxMembers} seats)` : "";
+              toast.success(`Team workspace created${seatsLabel}! Share key ${code} with your team members.`);
             } catch {
               toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
             }
@@ -217,12 +230,13 @@ function BillingInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePayPalSubscribe = async (newTier: SubscriptionTier, isTeam: boolean) => {
+  const handlePayPalSubscribe = async (newTier: SubscriptionTier, isTeam: boolean, maxMembers: number) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
     setPaypalPending(newTier);
     try {
       if (isTeam) {
         sessionStorage.setItem("gw_sub_team", "1");
+        sessionStorage.setItem("gw_sub_seats", String(maxMembers));
       }
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
@@ -234,6 +248,7 @@ function BillingInner() {
     } catch (err) {
       toast.error(extractErrorMessage(err));
       sessionStorage.removeItem("gw_sub_team");
+      sessionStorage.removeItem("gw_sub_seats");
       setPaypalPending(null);
     }
   };
@@ -244,11 +259,11 @@ function BillingInner() {
     setSubTypeDialogTier(newTier);
   };
 
-  const handleSubTypeConfirm = (isTeam: boolean) => {
+  const handleSubTypeConfirm = (isTeam: boolean, maxMembers: number) => {
     if (!subTypeDialogTier) return;
     const t = subTypeDialogTier;
     setSubTypeDialogTier(null);
-    void handlePayPalSubscribe(t, isTeam);
+    void handlePayPalSubscribe(t, isTeam, maxMembers);
   };
 
   const handleTransferAdmin = async () => {
@@ -291,13 +306,32 @@ function BillingInner() {
         toast.error("An active Pro or Business subscription is required to create a team.");
         return;
       }
-      const { code } = await createSelfKeyMutation({ tier: activeTier });
-      toast.success(`Team workspace created! Share this key with your team: ${code}`);
+      const { code } = await createSelfKeyMutation({
+        tier: activeTier,
+        maxMembers: createTeamSeats > 0 ? createTeamSeats : undefined,
+      });
+      const seatsLabel = createTeamSeats > 1 ? ` (${createTeamSeats} seats)` : "";
+      toast.success(`Team workspace created${seatsLabel}! Share this key with your team: ${code}`);
       setCreateTeamOpen(false);
+      setCreateTeamSeats(1);
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
       setCreateTeamPending(false);
+    }
+  };
+
+  const handleEditSeats = async () => {
+    if (!myKeyInfo) return;
+    setEditSeatsPending(true);
+    try {
+      await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: editSeatsValue });
+      toast.success(`Seat limit updated to ${editSeatsValue}.`);
+      setEditSeatsOpen(false);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setEditSeatsPending(false);
     }
   };
 
@@ -552,6 +586,11 @@ function BillingInner() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {myKeyInfo.memberCount} member{myKeyInfo.memberCount !== 1 ? "s" : ""}
+                    {myKeyInfo.maxMembers !== null && (
+                      <span className="ml-1">
+                        / {myKeyInfo.maxMembers} seat{myKeyInfo.maxMembers !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -565,6 +604,21 @@ function BillingInner() {
                     >
                       <Settings2 className="w-3.5 h-3.5" />
                       Change tier
+                    </Button>
+                  )}
+                  {/* Edit seats — only for admin */}
+                  {myKeyInfo.isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground text-xs gap-1.5"
+                      onClick={() => {
+                        setEditSeatsValue(myKeyInfo.maxMembers ?? myKeyInfo.memberCount);
+                        setEditSeatsOpen(true);
+                      }}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      Edit seats
                     </Button>
                   )}
                   {/* Transfer admin — only shown to current admin */}
@@ -1401,7 +1455,7 @@ function BillingInner() {
       </Dialog>
 
       {/* Create Team dialog (for existing individual subscribers) */}
-      <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+      <Dialog open={createTeamOpen} onOpenChange={(v) => { setCreateTeamOpen(v); if (!v) setCreateTeamSeats(1); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1411,9 +1465,48 @@ function BillingInner() {
             <DialogDescription>
               This will create a new team workspace separate from your personal sites.
               You will be the admin and can invite members by sharing your team key.
-              Members can be added or removed at any time.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Seat selector */}
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-foreground">Number of seats</p>
+              <p className="text-xs text-muted-foreground">
+                How many people (including you) will use this workspace?
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCreateTeamSeats(Math.max(1, createTeamSeats - 1))}
+                className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
+                disabled={createTeamSeats <= 1}
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <div className="flex-1 text-center">
+                <span className="text-xl font-bold text-foreground">{createTeamSeats}</span>
+                <span className="text-xs text-muted-foreground ml-1.5">
+                  {createTeamSeats === 1 ? "member" : "members"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateTeamSeats(Math.min(50, createTeamSeats + 1))}
+                className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
+                disabled={createTeamSeats >= 50}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {createTeamSeats > 1 && (
+              <p className="text-xs text-muted-foreground">
+                {createTeamSeats - 1} extra seat{createTeamSeats > 2 ? "s" : ""} × $1.99 = ${((createTeamSeats - 1) * 1.99).toFixed(2)}/mo additional
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateTeamOpen(false)} disabled={createTeamPending}>Cancel</Button>
             <Button onClick={handleCreateTeam} disabled={createTeamPending}>
@@ -1448,6 +1541,68 @@ function BillingInner() {
                 <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Deleting…</>
               ) : (
                 "Delete key"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Seats dialog */}
+      <Dialog open={editSeatsOpen} onOpenChange={setEditSeatsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Edit Team Seats
+            </DialogTitle>
+            <DialogDescription>
+              Set how many members can join your team. Currently{" "}
+              <strong>{myKeyInfo?.memberCount ?? 0}</strong> member{(myKeyInfo?.memberCount ?? 0) !== 1 ? "s" : ""} active.
+              You cannot reduce below the current member count.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setEditSeatsValue(Math.max(myKeyInfo?.memberCount ?? 1, editSeatsValue - 1))}
+                className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
+                disabled={editSeatsValue <= (myKeyInfo?.memberCount ?? 1)}
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <div className="flex-1 text-center">
+                <span className="text-xl font-bold text-foreground">{editSeatsValue}</span>
+                <span className="text-xs text-muted-foreground ml-1.5">
+                  {editSeatsValue === 1 ? "seat" : "seats"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditSeatsValue(Math.min(50, editSeatsValue + 1))}
+                className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
+                disabled={editSeatsValue >= 50}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {editSeatsValue > 1 && (
+              <p className="text-xs text-muted-foreground">
+                {editSeatsValue - 1} extra seat{editSeatsValue > 2 ? "s" : ""} × $1.99 = ${((editSeatsValue - 1) * 1.99).toFixed(2)}/mo additional
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditSeatsOpen(false)} disabled={editSeatsPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSeats} disabled={editSeatsPending}>
+              {editSeatsPending ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</>
+              ) : (
+                "Save seats"
               )}
             </Button>
           </DialogFooter>

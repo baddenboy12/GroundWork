@@ -155,7 +155,20 @@ export const applyKey = mutation({
       });
     }
 
-    // No member cap — just join
+    // Enforce member cap if set
+    if (key.maxMembers !== undefined && key.maxMembers !== null) {
+      const currentMemberships = await ctx.db
+        .query("keyMemberships")
+        .withIndex("by_key", (q) => q.eq("keyId", key._id))
+        .collect();
+      if (currentMemberships.length >= key.maxMembers) {
+        throw new ConvexError({
+          code: "BAD_REQUEST",
+          message: `This team has reached its seat limit (${key.maxMembers}). Ask the admin to increase the seat count.`,
+        });
+      }
+    }
+
     await ctx.db.insert("keyMemberships", {
       keyId: key._id,
       userId: user._id,
@@ -296,6 +309,7 @@ export const getMyKeyInfo = query({
       tier: key.tier,
       status: key.status,
       memberCount: memberships.length,
+      maxMembers: key.maxMembers ?? null,
       members,
       adminUserId: key.adminUserId ?? key.createdBy,
       isAdmin: (key.adminUserId ?? key.createdBy) === user._id,
@@ -306,9 +320,53 @@ export const getMyKeyInfo = query({
 
 // ── User: Self-service create a team key (requires active subscription) ───────
 
+export const updateMaxMembers = mutation({
+  args: {
+    keyId: v.id("licenseKeys"),
+    maxMembers: v.number(),
+  },
+  handler: async (ctx, args) => {
+    if (args.maxMembers < 1) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Minimum 1 seat required." });
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can update seat count" });
+    }
+
+    // Cannot reduce below current member count
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+    if (args.maxMembers < memberships.length) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: `Cannot reduce seats below current member count (${memberships.length}).`,
+      });
+    }
+
+    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
+  },
+});
+
 export const createSelfKey = mutation({
   args: {
     tier: v.union(v.literal("pro"), v.literal("business")),
+    maxMembers: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -340,6 +398,7 @@ export const createSelfKey = mutation({
       status: "active",
       note: `Team — ${user.name ?? user.email ?? "subscriber"}`,
       selfCreated: true,
+      maxMembers: args.maxMembers,
     });
 
     // Creator joins their own key automatically
