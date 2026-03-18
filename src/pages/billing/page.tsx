@@ -341,6 +341,22 @@ function BillingInner() {
 
   const [adminSwitchPending, setAdminSwitchPending] = useState<SubscriptionTier | null>(null);
 
+  // ── Team admin plan-change warning ─────────────────────────────────────────
+  // When a user is the admin of a team key and tries to change their plan,
+  // we warn them that the team key tier will not change automatically.
+  const [teamAdminWarnOpen, setTeamAdminWarnOpen] = useState(false);
+  const [pendingTierAction, setPendingTierAction] = useState<(() => void) | null>(null);
+
+  /** Wraps a tier-change action with a warning dialog when the user is a team admin */
+  const withTeamAdminWarning = (action: () => void) => {
+    if (myKeyInfo?.isAdmin) {
+      setPendingTierAction(() => action);
+      setTeamAdminWarnOpen(true);
+    } else {
+      action();
+    }
+  };
+
   const handleAdminSelect = async (newTier: SubscriptionTier) => {
     if (newTier === tier) return;
     setAdminSwitchPending(newTier);
@@ -534,7 +550,7 @@ function BillingInner() {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground text-xs"
-                onClick={() => setCancelDialogOpen(true)}
+                onClick={() => withTeamAdminWarning(() => setCancelDialogOpen(true))}
               >
                 Cancel subscription
               </Button>
@@ -719,7 +735,7 @@ function BillingInner() {
         </div>
 
         {/* ── Admin: Generate & manage keys ───────────────────────────── */}
-        {isAdmin && (
+        {isAdmin && myKeyInfo && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Key className="w-5 h-5 text-muted-foreground" />
@@ -1032,7 +1048,7 @@ function BillingInner() {
                       className="w-full"
                       variant={isCurrent ? "secondary" : cfg.highlight ? "default" : "secondary"}
                       disabled={isCurrent || adminSwitchPending !== null}
-                      onClick={() => handleAdminSelect(t)}
+                      onClick={() => withTeamAdminWarning(() => handleAdminSelect(t))}
                     >
                       {adminSwitchPending === t ? (
                         <>
@@ -1070,7 +1086,7 @@ function BillingInner() {
                       disabled={isCurrent || paypalPending !== null || switchPending}
                       onClick={() =>
                         hasActivePayPalSub && !isCurrent
-                          ? setSwitchTarget(t)
+                          ? withTeamAdminWarning(() => setSwitchTarget(t))
                           : handleSubscribeClick(t)
                       }
                     >
@@ -1375,6 +1391,46 @@ function BillingInner() {
               ) : (
                 "Transfer Admin"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Team admin plan-change warning dialog */}
+      <Dialog open={teamAdminWarnOpen} onOpenChange={(v) => { if (!v) { setTeamAdminWarnOpen(false); setPendingTierAction(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-500" />
+              You are a team admin
+            </DialogTitle>
+            <DialogDescription>
+              You are the admin of team key{" "}
+              <span className="font-mono font-bold text-foreground">{myKeyInfo?.code}</span>.
+              Changing your personal plan will <strong>not</strong> automatically change the team
+              key&apos;s tier ({myKeyInfo ? (TIER_CONFIG[myKeyInfo.tier as SubscriptionTier]?.name ?? myKeyInfo.tier) : ""}),
+              nor affect your team members&apos; access.
+              <br /><br />
+              If you intend to change the tier for the whole team, update the team&apos;s license
+              key separately after changing your plan. If you downgrade below the team key tier,
+              consider transferring admin to another member first.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => { setTeamAdminWarnOpen(false); setPendingTierAction(null); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setTeamAdminWarnOpen(false);
+                pendingTierAction?.();
+                setPendingTierAction(null);
+              }}
+            >
+              Continue anyway
             </Button>
           </DialogFooter>
         </DialogContent>
