@@ -40,6 +40,8 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const { isAtLeast } = useSubscription();
   const canExport = isAtLeast("pro");
+  const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
+  const isInTeam = !!myKeyInfo;
 
   // Offline queue — show pending entries even when offline
   const offlineQueue = useOfflineQueueState();
@@ -105,7 +107,9 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Your latest log entries across all sites
+            {isInTeam
+              ? "Latest log entries across your team's sites"
+              : "Your latest log entries across your personal sites"}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

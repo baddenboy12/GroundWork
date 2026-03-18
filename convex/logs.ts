@@ -60,11 +60,50 @@ export const listRecent = query({
       .unique();
     if (!user) return [];
 
-    const logs = await ctx.db
-      .query("logs")
-      .withIndex("by_author", (q) => q.eq("authorId", user._id))
-      .order("desc")
-      .take(args.limit ?? 12);
+    const limit = args.limit ?? 12;
+    const teamKeyId = user.appliedLicenseKeyId;
+
+    let logs;
+
+    if (teamKeyId) {
+      // Team mode: collect recent logs from all team sites (all authors)
+      const teamSites = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", teamKeyId))
+        .collect();
+
+      const perSiteLogs = await Promise.all(
+        teamSites.map((site) =>
+          ctx.db
+            .query("logs")
+            .withIndex("by_site", (q) => q.eq("siteId", site._id))
+            .order("desc")
+            .take(limit)
+        )
+      );
+
+      logs = perSiteLogs
+        .flat()
+        .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))
+        .slice(0, limit);
+    } else {
+      // Personal mode: user's own logs from personal (non-team) sites only
+      const ownedSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect();
+      const personalSiteIds = new Set(
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+      );
+
+      const rawLogs = await ctx.db
+        .query("logs")
+        .withIndex("by_author", (q) => q.eq("authorId", user._id))
+        .order("desc")
+        .take(limit * 5); // overfetch to compensate for site filtering
+
+      logs = rawLogs.filter((l) => personalSiteIds.has(l.siteId)).slice(0, limit);
+    }
 
     return await Promise.all(
       logs.map(async (log) => {
@@ -94,11 +133,49 @@ export const listRecentFiltered = query({
       .unique();
     if (!user) return [];
 
-    let logs = await ctx.db
-      .query("logs")
-      .withIndex("by_author", (q) => q.eq("authorId", user._id))
-      .order("desc")
-      .collect();
+    const limit = args.limit ?? 50;
+    const teamKeyId = user.appliedLicenseKeyId;
+
+    let logs;
+
+    if (teamKeyId) {
+      // Team mode: collect all logs from team sites (all authors)
+      const teamSites = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", teamKeyId))
+        .collect();
+
+      const perSiteLogs = await Promise.all(
+        teamSites.map((site) =>
+          ctx.db
+            .query("logs")
+            .withIndex("by_site", (q) => q.eq("siteId", site._id))
+            .order("desc")
+            .collect()
+        )
+      );
+
+      logs = perSiteLogs
+        .flat()
+        .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
+    } else {
+      // Personal mode: user's own logs from personal (non-team) sites only
+      const ownedSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect();
+      const personalSiteIds = new Set(
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+      );
+
+      const rawLogs = await ctx.db
+        .query("logs")
+        .withIndex("by_author", (q) => q.eq("authorId", user._id))
+        .order("desc")
+        .collect();
+
+      logs = rawLogs.filter((l) => personalSiteIds.has(l.siteId));
+    }
 
     if (args.category) {
       logs = logs.filter((l) => l.category === args.category);
@@ -112,7 +189,7 @@ export const listRecentFiltered = query({
       logs = logs.filter((l) => l.loggedAt <= to);
     }
 
-    logs = logs.slice(0, args.limit ?? 50);
+    logs = logs.slice(0, limit);
 
     return await Promise.all(
       logs.map(async (log) => {
@@ -142,13 +219,47 @@ export const searchAllLogs = query({
       .unique();
     if (!user) return [];
 
-    let results = await ctx.db
-      .query("logs")
-      .withSearchIndex("search_title_global", (q) => {
-        const base = q.search("title", args.query).eq("authorId", user._id);
-        return args.category ? base.eq("category", args.category) : base;
-      })
-      .take(100);
+    const teamKeyId = user.appliedLicenseKeyId;
+
+    let results;
+
+    if (teamKeyId) {
+      // Team mode: search without author restriction, filter by team site IDs
+      const teamSites = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", teamKeyId))
+        .collect();
+      const teamSiteIds = new Set(teamSites.map((s) => s._id));
+
+      const searchResults = await ctx.db
+        .query("logs")
+        .withSearchIndex("search_title_global", (q) => {
+          const base = q.search("title", args.query);
+          return args.category ? base.eq("category", args.category) : base;
+        })
+        .take(200);
+
+      results = searchResults.filter((l) => teamSiteIds.has(l.siteId));
+    } else {
+      // Personal mode: search within current user's logs, filter to personal sites
+      const ownedSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect();
+      const personalSiteIds = new Set(
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+      );
+
+      const searchResults = await ctx.db
+        .query("logs")
+        .withSearchIndex("search_title_global", (q) => {
+          const base = q.search("title", args.query).eq("authorId", user._id);
+          return args.category ? base.eq("category", args.category) : base;
+        })
+        .take(100);
+
+      results = searchResults.filter((l) => personalSiteIds.has(l.siteId));
+    }
 
     if (args.dateFrom) {
       const from = new Date(args.dateFrom).toISOString();
