@@ -192,12 +192,23 @@
   }
 }
 
-html {
+html, body {
   scroll-behavior: smooth;
-  /* 3:4 viewport cap — constrains to iPad-portrait proportions on phones.
-     Viewport meta height=1024 handles modern browsers; this is the fallback. */
-  max-height: min(100dvh, calc(100vw * 4 / 3));
+  height: 100%;
   overflow: hidden;
+}
+
+/* 3:4 viewport box — content fills the device width but caps height at 4/3 of width.
+   On a 390 px phone this gives a 390×520 px viewport (iPad-portrait ratio).
+   Any remaining screen space below is covered by the body background. */
+#root {
+  width: 100vw;
+  /* Portrait: height = 4/3 × width, but never taller than the actual screen */
+  height: min(100dvh, calc(100vw * 4 / 3));
+  max-height: min(100dvh, calc(100vw * 4 / 3));
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
 }
 
 /* Prevent iOS Safari from auto-zooming when tapping inputs with small font sizes */
