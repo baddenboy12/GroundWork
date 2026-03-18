@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Clock, User, ImageIcon } from "lucide-react";
+import { Clock, User, ImageIcon, MapPin } from "lucide-react";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
@@ -10,9 +10,11 @@ type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
 type Props = {
   log: LogWithAuthor;
+  /** When provided, renders a site name badge above the category tag */
+  siteName?: string;
 };
 
-export default function LogCard({ log }: Props) {
+export default function LogCard({ log, siteName }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const photos = log.photoUrls ?? [];
   const coverPhoto = photos[0];
@@ -43,8 +45,14 @@ export default function LogCard({ log }: Props) {
 
         {/* Summary */}
         <div className="p-4 space-y-2.5">
-          {/* Category + photo count */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Site badge + category */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {siteName && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                <MapPin className="w-3 h-3" />
+                {siteName}
+              </span>
+            )}
             <span
               className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
@@ -54,7 +62,7 @@ export default function LogCard({ log }: Props) {
               {CATEGORY_LABELS[log.category as LogCategory]}
             </span>
             {photos.length > 0 && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
                 <ImageIcon className="w-3 h-3" />
                 {photos.length}
               </span>

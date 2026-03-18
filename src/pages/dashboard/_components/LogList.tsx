@@ -269,7 +269,7 @@ export default function LogList({ siteId, onBack }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05, duration: 0.25, ease: "easeOut" }}
                 >
-                  <LogCard log={log} />
+                  <LogCard log={log} siteName={site?.name} />
                 </motion.div>
               ))}
             </div>
