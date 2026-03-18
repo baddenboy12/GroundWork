@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import {
-  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff, MoreVertical, Users,
+  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff, MoreVertical, Users, Vote,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +37,7 @@ import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
+import TeamDeleteVoteDialog from "./TeamDeleteVoteDialog.tsx";
 
 const PANEL_WIDTH = 320;
 
@@ -50,7 +51,6 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  // Map site._id → DOM element for scroll-to-selected
   const itemRefs = useRef<Map<string, HTMLElement>>(new Map());
 
   const sitesRaw = useQuery(api.sites.list, {});
@@ -58,6 +58,13 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const removeSite = useMutation(api.sites.remove);
   const { config } = useSubscription();
   const isOnline = useOnlineStatus();
+
+  // Active deletion votes for team sites (for in-progress badge)
+  const activeVotesRaw = useQuery(api.siteDeleteVotes.listActiveForTeam, {});
+  const activeVotesBySite = useMemo(() => {
+    if (!activeVotesRaw) return new Map<string, { voteId: Id<"siteDeleteVotes">; approvedCount: number }>();
+    return new Map(activeVotesRaw.map((v) => [v.siteId as string, v]));
+  }, [activeVotesRaw]);
 
   // Offline queue: find sites that only exist in the queue (not yet in DB)
   const offlineQueue = useOfflineQueueState();
@@ -76,7 +83,11 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
+  // Personal-site delete (immediate)
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
+  // Team-site delete (via vote dialog)
+  const [voteSiteId, setVoteSiteId] = useState<Id<"sites"> | null>(null);
+  const [voteSiteName, setVoteSiteName] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const siteCount = sites?.length ?? 0;
@@ -102,7 +113,6 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   // Scroll to selected site when panel opens
   useEffect(() => {
     if (!open || !selectedSiteId) return;
-    // Wait for panel to animate in (~120 ms)
     const id = setTimeout(() => {
       const el = itemRefs.current.get(selectedSiteId);
       if (el && listRef.current) {
@@ -125,7 +135,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
     }
   }, [atSiteLimit, isOnline]);
 
-  const handleDelete = async () => {
+  const handlePersonalDelete = async () => {
     if (!deleteSiteId) return;
     if (!isOnline) {
       toast.error("You're offline — deletion requires a connection");
@@ -265,6 +275,8 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                 <>
                   {sites.map((site, i) => {
                     const isSelected = selectedSiteId === site._id;
+                    const isTeamSite = !!site.teamKeyId;
+                    const activeVote = activeVotesBySite.get(site._id);
                     return (
                       <motion.div
                         key={site._id}
@@ -298,7 +310,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           {String(i + 1).padStart(2, "0")}
                         </span>
 
-                        {/* Site name + team indicator */}
+                        {/* Site name + owner hint */}
                         <div className="flex-1 min-w-0">
                           <span className="text-[15px] font-semibold truncate leading-tight block">
                             {site.name}
@@ -310,8 +322,16 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           )}
                         </div>
 
-                        {/* Team badge for shared sites */}
-                        {!site.isOwner && (
+                        {/* Vote-in-progress badge */}
+                        {activeVote && (
+                          <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                            <Vote className="w-2.5 h-2.5" />
+                            {activeVote.approvedCount} voted
+                          </span>
+                        )}
+
+                        {/* Team badge (no active vote) */}
+                        {isTeamSite && !activeVote && (
                           <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
                             <Users className="w-2.5 h-2.5" />
                             Team
@@ -328,7 +348,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           </motion.div>
                         )}
 
-                        {/* ⋮ actions menu — always visible for touch */}
+                        {/* ⋮ actions menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
@@ -344,7 +364,8 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-44">
+                            {/* Edit — owner only */}
                             <DropdownMenuItem
                               className={cn("py-2.5 text-sm cursor-pointer", (!isOnline || !site.isOwner) && "opacity-50")}
                               onClick={(e) => {
@@ -362,12 +383,25 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                             >
                               <Settings className="w-4 h-4 mr-2.5" /> Edit site
                             </DropdownMenuItem>
+
+                            {/* Delete — personal sites: immediate; team sites: vote */}
                             <DropdownMenuItem
-                              className={cn("py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive", (!isOnline || !site.isOwner) && "opacity-50")}
+                              className={cn(
+                                "py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive",
+                                !isOnline && "opacity-50",
+                                !isTeamSite && !site.isOwner && "opacity-50"
+                              )}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isOnline) {
                                   toast.error("You're offline — deletion requires a connection");
+                                  return;
+                                }
+                                if (isTeamSite) {
+                                  // Team site → open vote dialog
+                                  setVoteSiteId(site._id);
+                                  setVoteSiteName(site.name);
+                                  setOpen(false);
                                   return;
                                 }
                                 if (!site.isOwner) {
@@ -377,7 +411,14 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                                 setDeleteSiteId(site._id);
                               }}
                             >
-                              <Trash2 className="w-4 h-4 mr-2.5" /> Delete
+                              {isTeamSite ? (
+                                <>
+                                  <Vote className="w-4 h-4 mr-2.5" />
+                                  {activeVote ? `Vote in progress (${activeVote.approvedCount})` : "Propose deletion"}
+                                </>
+                              ) : (
+                                <><Trash2 className="w-4 h-4 mr-2.5" /> Delete</>
+                              )}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -423,6 +464,8 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
         featureName="More sites"
         featureDescription={`The ${config.name} plan allows up to ${config.maxSites} sites. Upgrade to add more.`}
       />
+
+      {/* Personal-site direct delete */}
       <AlertDialog open={!!deleteSiteId} onOpenChange={(v) => !v && setDeleteSiteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -435,13 +478,25 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={handleDelete}
+              onClick={handlePersonalDelete}
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Team-site vote dialog */}
+      <TeamDeleteVoteDialog
+        open={!!voteSiteId}
+        onClose={() => setVoteSiteId(null)}
+        siteId={voteSiteId}
+        siteName={voteSiteName}
+        onDeleted={(id) => {
+          onSiteDeleted?.(id);
+          setVoteSiteId(null);
+        }}
+      />
     </div>
   );
 }

@@ -236,6 +236,13 @@ export const remove = mutation({
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    // Team sites require unanimous team vote — use the siteDeleteVotes flow
+    if (site.teamKeyId) {
+      throw new ConvexError({
+        message: "Team sites must be deleted through the team voting process.",
+        code: "FORBIDDEN",
+      });
+    }
     if (site.ownerId !== user._id) throw new ConvexError({ message: "Only the site owner can delete it", code: "FORBIDDEN" });
     // Delete all logs for this site, cleaning up R2 photos and storage counters
     const logs = await ctx.db
@@ -396,3 +403,52 @@ export const _listByUserId = internalQuery({
 
 // Export helper for use in other Convex files
 export { canAccessSite };
+
+// ── Internal: delete a site by ID (used by team vote execution) ──────────────
+export const _deleteByIdInternal = internalMutation({
+  args: { siteId: v.id("sites") },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site) return; // Already deleted
+
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
+      .collect();
+
+    let totalFreedBytes = 0;
+    const allR2Keys: string[] = [];
+
+    for (const log of logs) {
+      if (log.photos?.length) {
+        for (const photo of log.photos) {
+          allR2Keys.push(photo.key);
+          totalFreedBytes += photo.bytes;
+        }
+      }
+      if (log.photoStorageIds?.length) {
+        for (const storageId of log.photoStorageIds) {
+          await ctx.storage.delete(storageId);
+        }
+      }
+      await ctx.db.delete(log._id);
+    }
+
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
+        keys: allR2Keys,
+      });
+    }
+
+    if (totalFreedBytes > 0) {
+      const owner = await ctx.db.get(site.ownerId);
+      if (owner) {
+        await ctx.db.patch(site.ownerId, {
+          storageUsedBytes: Math.max(0, (owner.storageUsedBytes ?? 0) - totalFreedBytes),
+        });
+      }
+    }
+
+    await ctx.db.delete(args.siteId);
+  },
+});

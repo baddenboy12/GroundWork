@@ -18,6 +18,7 @@ import type * as logs from "../logs.js";
 import type * as paypal_actions from "../paypal/actions.js";
 import type * as paypal_plans from "../paypal/plans.js";
 import type * as r2_storageActions from "../r2/storageActions.js";
+import type * as siteDeleteVotes from "../siteDeleteVotes.js";
 import type * as sites from "../sites.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   "paypal/actions": typeof paypal_actions;
   "paypal/plans": typeof paypal_plans;
   "r2/storageActions": typeof r2_storageActions;
+  siteDeleteVotes: typeof siteDeleteVotes;
   sites: typeof sites;
   storage: typeof storage;
   users: typeof users;

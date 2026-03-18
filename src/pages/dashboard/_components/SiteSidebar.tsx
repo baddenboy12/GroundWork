@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, Settings, Trash2, ChevronRight, Lock, Info, Users } from "lucide-react";
+import { Plus, Settings, Trash2, ChevronRight, Lock, Info, Users, Vote } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils.ts";
 import CreateSiteDialog from "./CreateSiteDialog.tsx";
 import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
+import TeamDeleteVoteDialog from "./TeamDeleteVoteDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 
@@ -56,7 +57,16 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   const [createOpen, setCreateOpen] = useState(false);
   const [editSite, setEditSite] = useState<Doc<"sites"> | null>(null);
   const [deleteSiteId, setDeleteSiteId] = useState<Id<"sites"> | null>(null);
+  const [voteSiteId, setVoteSiteId] = useState<Id<"sites"> | null>(null);
+  const [voteSiteName, setVoteSiteName] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  // Active deletion votes for team sites
+  const activeVotesRaw = useQuery(api.siteDeleteVotes.listActiveForTeam, {});
+  const activeVotesBySite = useMemo(() => {
+    if (!activeVotesRaw) return new Map<string, { voteId: Id<"siteDeleteVotes">; approvedCount: number }>();
+    return new Map(activeVotesRaw.map((v) => [v.siteId as string, v]));
+  }, [activeVotesRaw]);
 
   // Resizable sidebar width
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -147,7 +157,6 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
       toast.error("Failed to delete site");
     }
   };
-
   return (
     <aside
       className={cn(
@@ -235,7 +244,10 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
             </p>
           </div>
         ) : (
-          sites.map((site, i) => (
+          sites.map((site, i) => {
+            const isTeamSite = !!site.teamKeyId;
+            const activeVote = activeVotesBySite.get(site._id);
+            return (
             <motion.div
               key={site._id}
               initial={{ opacity: 0, x: -10 }}
@@ -259,9 +271,14 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                 {String(i + 1).padStart(2, "0")}
               </span>
               <span className="flex-1 text-sm font-semibold truncate">{site.name}</span>
-              {!site.isOwner && (
+              {/* Vote badge or team badge */}
+              {activeVote ? (
+                <span className="flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1 py-0.5 rounded shrink-0">
+                  <Vote className="w-2.5 h-2.5" />{activeVote.approvedCount}
+                </span>
+              ) : !site.isOwner ? (
                 <Users className="w-3 h-3 shrink-0 text-blue-500/70" aria-label={`Owned by ${site.ownerName}`} />
-              )}
+              ) : null}
               {selectedSiteId === site._id && (
                 <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
               )}
@@ -273,7 +290,8 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                     <Settings className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36">
+                <DropdownMenuContent align="end" className="w-44">
+                  {/* Edit — owner only */}
                   <DropdownMenuItem
                     className={cn((!isOnline || !site.isOwner) && "opacity-50")}
                     onClick={(e) => {
@@ -291,12 +309,22 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                   >
                     <Settings className="w-3.5 h-3.5 mr-2" /> Edit
                   </DropdownMenuItem>
+                  {/* Delete — personal: immediate; team: vote */}
                   <DropdownMenuItem
-                    className={cn("text-destructive focus:text-destructive", (!isOnline || !site.isOwner) && "opacity-50")}
+                    className={cn(
+                      "text-destructive focus:text-destructive",
+                      !isOnline && "opacity-50",
+                      !isTeamSite && !site.isOwner && "opacity-50"
+                    )}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isOnline) {
                         toast.error("You're offline — deletion requires a connection");
+                        return;
+                      }
+                      if (isTeamSite) {
+                        setVoteSiteId(site._id);
+                        setVoteSiteName(site.name);
                         return;
                       }
                       if (!site.isOwner) {
@@ -306,12 +334,17 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                       setDeleteSiteId(site._id);
                     }}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                    {isTeamSite ? (
+                      <><Vote className="w-3.5 h-3.5 mr-2" />{activeVote ? `Vote (${activeVote.approvedCount})` : "Propose deletion"}</>
+                    ) : (
+                      <><Trash2 className="w-3.5 h-3.5 mr-2" /> Delete</>
+                    )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </motion.div>
-          ))
+            );
+          })
         )}
       </div>
 

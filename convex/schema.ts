@@ -108,6 +108,26 @@ export default defineSchema({
     isActive: v.boolean(),
   }).index("by_user", ["userId"]),
 
+  // Tracks pending team-vote requests to delete a shared site
+  siteDeleteVotes: defineTable({
+    siteId: v.id("sites"),
+    teamKeyId: v.id("licenseKeys"),
+    proposedBy: v.id("users"),
+    proposedAt: v.string(),
+    // ISO-8601 UTC – vote expires 24 h after proposal
+    expiresAt: v.string(),
+    // IDs of members who have cast an "approve" vote
+    approvedBy: v.array(v.id("users")),
+    status: v.union(
+      v.literal("pending"),   // awaiting further votes
+      v.literal("approved"),  // unanimous – site deleted
+      v.literal("expired"),   // 24 h elapsed without unanimity
+      v.literal("cancelled")  // proposer cancelled
+    ),
+  })
+    .index("by_site", ["siteId"])
+    .index("by_team_key_and_status", ["teamKeyId", "status"]),
+
   logs: defineTable({
     siteId: v.id("sites"),
     title: v.string(),
