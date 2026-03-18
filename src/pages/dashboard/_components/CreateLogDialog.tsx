@@ -213,7 +213,6 @@ export default function CreateLogDialog({
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent
           className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
-          style={{ top: "4vh", transform: "translateX(-50%)" }}
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >

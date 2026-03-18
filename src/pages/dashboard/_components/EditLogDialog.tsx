@@ -191,7 +191,6 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent
         className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
-        style={{ top: "4vh", transform: "translateX(-50%)" }}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl">Edit log entry</DialogTitle>
