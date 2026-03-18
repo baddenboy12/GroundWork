@@ -11,8 +11,7 @@ import BillingPage from "./pages/billing/page.tsx";
 import IntegrationsPage from "./pages/integrations/page.tsx";
 import PayPalReturn from "./pages/paypal/return.tsx";
 
-// Register service worker at module level — completely outside the React
-// tree to avoid duplicate-React-instance / "Invalid hook call" errors.
+// Register service worker at module level — outside the React tree.
 registerServiceWorker();
 
 // In standalone PWA mode, intercept Android back-button / swipe-back gestures
