@@ -239,29 +239,29 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </p>
 
             {/* Meta */}
-            <div className="flex flex-col gap-y-3 pt-3 border-t border-border/50 text-lg text-muted-foreground">
+            <div className="flex flex-col gap-y-3 pt-3 border-t border-border/50 text-base text-muted-foreground">
               {/* Row 1: date + author */}
-              <div className="flex items-center gap-5">
-                <span className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 shrink-0" />
                   {format(new Date(log.loggedAt), "MMM d, yyyy 'at' h:mm a")}
                 </span>
-                <span className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
+                <span className="flex items-center gap-1.5">
+                  <User className="w-4 h-4 shrink-0" />
                   {log.authorName}
                 </span>
               </div>
               {/* Row 2: location + coordinates */}
               {(log.location || (log.latitude != null && log.longitude != null)) && (
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4 flex-wrap">
                   {log.location && (
-                    <span className="flex items-center gap-2">
-                      <MapPin className="w-5 h-5 shrink-0" />
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 shrink-0" />
                       {log.location}
                     </span>
                   )}
                   {log.latitude != null && log.longitude != null && (
-                    <span className="font-mono text-base text-muted-foreground/70 tabular-nums">
+                    <span className="font-mono text-sm text-muted-foreground/70 tabular-nums">
                       {log.latitude.toFixed(5)}, {log.longitude.toFixed(5)}
                     </span>
                   )}
@@ -269,8 +269,8 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
               )}
               {/* Row 3: photo count */}
               {photos.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5" />
+                <div className="flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4" />
                   {photos.length} photo{photos.length !== 1 ? "s" : ""}
                 </div>
               )}

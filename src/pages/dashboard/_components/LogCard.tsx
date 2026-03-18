@@ -47,38 +47,38 @@ export default function LogCard({ log }: Props) {
           <div className="flex items-center justify-between gap-2">
             <span
               className={cn(
-                "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border",
+                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
                 CATEGORY_COLORS[log.category as LogCategory]
               )}
             >
               {CATEGORY_LABELS[log.category as LogCategory]}
             </span>
             {photos.length > 0 && (
-              <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                <ImageIcon className="w-4 h-4" />
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ImageIcon className="w-3 h-3" />
                 {photos.length}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-4xl leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
             {log.title}
           </h3>
 
           {/* Excerpt */}
-          <p className="text-2xl text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
             {log.content}
           </p>
 
           {/* Footer meta */}
-          <div className="flex items-center gap-3 pt-1 text-xl text-muted-foreground/70">
-            <span className="flex items-center gap-2">
-              <Clock className="w-6 h-6" />
+          <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground/70">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
               {format(new Date(log.loggedAt), "MMM d, yyyy")}
             </span>
-            <span className="flex items-center gap-2 truncate">
-              <User className="w-6 h-6 shrink-0" />
+            <span className="flex items-center gap-1 truncate">
+              <User className="w-3 h-3 shrink-0" />
               <span className="truncate">{log.authorName}</span>
             </span>
           </div>
