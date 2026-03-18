@@ -113,7 +113,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               id="edit-log-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-2xl"
+              className="text-2xl h-14"
               required
             />
           </div>
@@ -183,7 +183,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={6}
-              className="text-2xl"
+              className="text-2xl h-14"
               required
             />
           </div>

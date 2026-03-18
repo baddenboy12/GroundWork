@@ -62,7 +62,7 @@ export default function LogCard({ log }: Props) {
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-3xl leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-4xl leading-snug line-clamp-2">
             {log.title}
           </h3>
 

@@ -386,7 +386,7 @@ export default function CreateLogDialog({
                 placeholder="Generator fuel level check"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-2xl"
+                className="text-2xl h-14"
                 required
               />
             </div>
@@ -442,7 +442,7 @@ export default function CreateLogDialog({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={5}
-                className="text-2xl"
+                className="text-2xl h-14"
                 required
               />
             </div>

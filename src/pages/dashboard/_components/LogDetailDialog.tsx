@@ -138,13 +138,13 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
               <div className="space-y-2">
                 <span
                   className={cn(
-                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                    "inline-flex items-center px-3 py-1 rounded-full text-base font-medium border",
                     CATEGORY_COLORS[log.category as LogCategory]
                   )}
                 >
                   {CATEGORY_LABELS[log.category as LogCategory]}
                 </span>
-                <h2 className="text-2xl font-semibold leading-snug text-foreground">{log.title}</h2>
+                <h2 className="text-4xl font-semibold leading-snug text-foreground">{log.title}</h2>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {/* Offline indicator */}
@@ -234,34 +234,34 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             </div>
 
             {/* Content */}
-            <p className="text-base text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {log.content}
             </p>
 
             {/* Meta */}
-            <div className="flex flex-wrap gap-x-5 gap-y-2 pt-3 border-t border-border/50 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
+            <div className="flex flex-wrap gap-x-5 gap-y-3 pt-3 border-t border-border/50 text-lg text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
                 {format(new Date(log.loggedAt), "MMM d, yyyy 'at' h:mm a")}
               </span>
-              <span className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-2">
+                <User className="w-5 h-5" />
                 {log.authorName}
               </span>
               {log.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 shrink-0" />
                   {log.location}
                 </span>
               )}
               {log.latitude != null && log.longitude != null && (
-                <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
+                <span className="font-mono text-base text-muted-foreground/70 tabular-nums">
                   {log.latitude.toFixed(5)}, {log.longitude.toFixed(5)}
                 </span>
               )}
               {photos.length > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5" />
+                <span className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5" />
                   {photos.length} photo{photos.length !== 1 ? "s" : ""}
                 </span>
               )}
