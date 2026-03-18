@@ -37,12 +37,8 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHENTICATED",
-        message: "Called getCurrentUser without authentication present",
-      });
-    }
+    // Return null instead of throwing so callers can handle unauthenticated state gracefully
+    if (!identity) return null;
     const user = await ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
