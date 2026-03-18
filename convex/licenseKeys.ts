@@ -415,6 +415,114 @@ export const transferAdmin = mutation({
   },
 });
 
+// ── Team admin: Remove (kick) a member from the team ──────────────────────────
+
+export const kickMember = mutation({
+  args: {
+    keyId: v.id("licenseKeys"),
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!caller) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    // Only the current admin can kick members
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== caller._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can remove members" });
+    }
+
+    // Cannot kick yourself — use removeKey for that
+    if (args.targetUserId === caller._id) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Use 'Leave team' to remove yourself" });
+    }
+
+    // Verify the target is actually a member
+    const membership = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_user", (q) => q.eq("userId", args.targetUserId))
+      .filter((q) => q.eq(q.field("keyId"), args.keyId))
+      .unique();
+    if (!membership) throw new ConvexError({ code: "NOT_FOUND", message: "User is not a member of this team" });
+
+    // Remove their membership
+    await ctx.db.delete(membership._id);
+
+    // Revert the user's tier / key link
+    const target = await ctx.db.get(args.targetUserId);
+    if (target && target.appliedLicenseKeyId === args.keyId) {
+      await ctx.db.patch(args.targetUserId, {
+        appliedLicenseKeyId: undefined,
+        subscriptionTier: "free",
+      });
+    }
+
+    // Detach team sites that belonged to this member
+    const memberSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.targetUserId))
+      .collect();
+    for (const site of memberSites) {
+      if (site.teamKeyId === args.keyId) {
+        await ctx.db.patch(site._id, { teamKeyId: undefined });
+      }
+    }
+  },
+});
+
+// ── Team admin: Update max member count ───────────────────────────────────────
+
+export const updateMaxMembers = mutation({
+  args: {
+    keyId: v.id("licenseKeys"),
+    maxMembers: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!caller) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== caller._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change team settings" });
+    }
+
+    // Prevent reducing below current member count
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+    if (args.maxMembers < memberships.length) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: `Cannot reduce to ${args.maxMembers} — you have ${memberships.length} active members.`,
+      });
+    }
+    if (args.maxMembers < 1) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Team must allow at least 1 member." });
+    }
+
+    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
+  },
+});
+
 // ── Internal: downgrade all members when a key expires (for PayPal webhook) ──
 
 export const _expireKey = internalMutation({

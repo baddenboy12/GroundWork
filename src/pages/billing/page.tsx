@@ -40,6 +40,8 @@ import {
   LogOut,
   Crown,
   ArrowRightLeft,
+  UserMinus,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -114,6 +116,8 @@ function BillingInner() {
   const updateKeyStatusMutation = useMutation(api.licenseKeys.updateStatus);
   const createSelfKeyMutation = useMutation(api.licenseKeys.createSelfKey);
   const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
+  const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
+  const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -132,6 +136,15 @@ function BillingInner() {
   const [transferAdminOpen, setTransferAdminOpen] = useState(false);
   const [transferAdminTarget, setTransferAdminTarget] = useState<Id<"users"> | null>(null);
   const [transferAdminPending, setTransferAdminPending] = useState(false);
+
+  // Kick member state
+  const [kickTarget, setKickTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
+  const [kickPending, setKickPending] = useState(false);
+
+  // Update max members (seat count)
+  const [editSeats, setEditSeats] = useState(false);
+  const [newMaxMembers, setNewMaxMembers] = useState(1);
+  const [updateSeatsPending, setUpdateSeatsPending] = useState(false);
 
   // Create team key manually (for users who subscribed as individual and want to add members later)
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
@@ -256,6 +269,44 @@ function BillingInner() {
       }
     } finally {
       setTransferAdminPending(false);
+    }
+  };
+
+  const handleKickMember = async () => {
+    if (!kickTarget || !myKeyInfo) return;
+    setKickPending(true);
+    try {
+      await kickMemberMutation({ keyId: myKeyInfo.keyId, targetUserId: kickTarget.userId });
+      toast.success(`${kickTarget.name} has been removed from the team.`);
+      setKickTarget(null);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to remove member");
+      } else {
+        toast.error("Failed to remove member");
+      }
+    } finally {
+      setKickPending(false);
+    }
+  };
+
+  const handleUpdateSeats = async () => {
+    if (!myKeyInfo) return;
+    setUpdateSeatsPending(true);
+    try {
+      await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: newMaxMembers });
+      toast.success(`Team capacity updated to ${newMaxMembers} member${newMaxMembers !== 1 ? "s" : ""}.`);
+      setEditSeats(false);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to update seat count");
+      } else {
+        toast.error("Failed to update seat count");
+      }
+    } finally {
+      setUpdateSeatsPending(false);
     }
   };
 
@@ -583,9 +634,57 @@ function BillingInner() {
                           <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                         )}
                       </div>
+                      {/* Admin kick button — only shown to admin, not for themselves */}
+                      {myKeyInfo.isAdmin && !m.isMe && (
+                        <button
+                          type="button"
+                          onClick={() => setKickTarget({ userId: m.userId as Id<"users">, name: m.name })}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                          title={`Remove ${m.name}`}
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
+
+                {/* Admin: edit seat count */}
+                {myKeyInfo.isAdmin && (
+                  <div className="pt-1">
+                    {editSeats ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground">Max seats:</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewMaxMembers((n) => Math.max(myKeyInfo.memberCount, n - 1))}
+                          className="w-7 h-7 rounded border border-border bg-background flex items-center justify-center text-sm hover:bg-accent"
+                        >−</button>
+                        <span className="text-sm font-bold w-6 text-center">{newMaxMembers}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewMaxMembers((n) => Math.min(100, n + 1))}
+                          className="w-7 h-7 rounded border border-border bg-background flex items-center justify-center text-sm hover:bg-accent"
+                        >+</button>
+                        <Button size="sm" onClick={handleUpdateSeats} disabled={updateSeatsPending} className="text-xs h-7 px-2.5 gap-1">
+                          {updateSeatsPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditSeats(false)} disabled={updateSeatsPending} className="text-xs h-7 px-2.5">
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setNewMaxMembers(myKeyInfo.maxMembers); setEditSeats(true); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Edit seat limit ({myKeyInfo.memberCount}/{myKeyInfo.maxMembers} used)
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1193,6 +1292,35 @@ function BillingInner() {
               disabled={cancelPending}
             >
               {cancelPending ? "Cancelling…" : "Yes, cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Kick member confirmation dialog */}
+      <Dialog open={!!kickTarget} onOpenChange={(v) => !v && setKickTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserMinus className="w-5 h-5 text-destructive" />
+              Remove {kickTarget?.name}?
+            </DialogTitle>
+            <DialogDescription>
+              <strong>{kickTarget?.name}</strong> will be removed from the team immediately.
+              Their account will revert to the free plan and their personal sites will be
+              unlinked from the team workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setKickTarget(null)} disabled={kickPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleKickMember} disabled={kickPending}>
+              {kickPending ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Removing…</>
+              ) : (
+                "Remove member"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
