@@ -210,6 +210,27 @@ export const removeKey = mutation({
       throw new ConvexError({ code: "BAD_REQUEST", message: "No license key applied" });
     }
 
+    const keyId = user.appliedLicenseKeyId;
+    const key = await ctx.db.get(keyId);
+
+    // ── Auto-transfer admin if the leaving user is the current admin ──────────
+    if (key) {
+      const currentAdmin = key.adminUserId ?? key.createdBy;
+      if (currentAdmin === user._id) {
+        const allMemberships = await ctx.db
+          .query("keyMemberships")
+          .withIndex("by_key", (q) => q.eq("keyId", keyId))
+          .collect();
+        const others = allMemberships.filter((m) => m.userId !== user._id);
+        if (others.length > 0) {
+          // Pick a random remaining member as the new admin
+          const newAdmin = others[Math.floor(Math.random() * others.length)];
+          await ctx.db.patch(keyId, { adminUserId: newAdmin.userId });
+        }
+        // If no other members remain, key will be left without an admin (stale key)
+      }
+    }
+
     // Remove membership record
     const membership = await ctx.db
       .query("keyMemberships")
@@ -223,7 +244,7 @@ export const removeKey = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
       .collect();
     for (const site of userSites) {
-      if (site.teamKeyId === user.appliedLicenseKeyId) {
+      if (site.teamKeyId === keyId) {
         await ctx.db.patch(site._id, { teamKeyId: undefined });
       }
     }
@@ -256,7 +277,6 @@ export const getMyKeyInfo = query({
     const key = await ctx.db.get(user.appliedLicenseKeyId);
     if (!key) return null;
 
-    // Fetch all team members
     const memberships = await ctx.db
       .query("keyMemberships")
       .withIndex("by_key", (q) => q.eq("keyId", key._id))
@@ -271,6 +291,7 @@ export const getMyKeyInfo = query({
           email: member?.email ?? null,
           joinedAt: m.joinedAt,
           isMe: m.userId === user._id,
+          isAdmin: key.adminUserId === m.userId,
         };
       })
     );
@@ -283,7 +304,114 @@ export const getMyKeyInfo = query({
       maxMembers: key.maxMembers,
       memberCount: memberships.length,
       members,
+      adminUserId: key.adminUserId ?? key.createdBy,
+      isAdmin: (key.adminUserId ?? key.createdBy) === user._id,
+      selfCreated: key.selfCreated ?? false,
     };
+  },
+});
+
+// ── User: Self-service create a team key (requires active subscription) ───────
+
+export const createSelfKey = mutation({
+  args: {
+    tier: v.union(v.literal("pro"), v.literal("business")),
+    maxMembers: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    if (user.appliedLicenseKeyId) {
+      throw new ConvexError({ code: "CONFLICT", message: "You already have a team key. Remove it first." });
+    }
+
+    if (args.maxMembers < 1) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Team must have at least 1 member." });
+    }
+
+    // Generate a unique code
+    let code = generateKeyCode();
+    const existing = await ctx.db
+      .query("licenseKeys")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .unique();
+    if (existing) code = generateKeyCode();
+
+    const keyId = await ctx.db.insert("licenseKeys", {
+      code,
+      createdBy: user._id,
+      adminUserId: user._id,
+      tier: args.tier,
+      status: "active",
+      maxMembers: args.maxMembers,
+      note: `Team — ${user.name ?? user.email ?? "subscriber"}`,
+      selfCreated: true,
+    });
+
+    // Creator joins their own key automatically
+    await ctx.db.insert("keyMemberships", {
+      keyId,
+      userId: user._id,
+      joinedAt: new Date().toISOString(),
+    });
+    await ctx.db.patch(user._id, { appliedLicenseKeyId: keyId });
+
+    // Tag all existing sites as team sites so new members see them immediately
+    const userSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+    for (const site of userSites) {
+      await ctx.db.patch(site._id, { teamKeyId: keyId });
+    }
+
+    return { keyId, code };
+  },
+});
+
+// ── Team admin: Transfer admin role to another member ─────────────────────────
+
+export const transferAdmin = mutation({
+  args: {
+    keyId: v.id("licenseKeys"),
+    newAdminUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can transfer admin rights" });
+    }
+
+    // New admin must be an active member of this team
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+    const isMember = memberships.some((m) => m.userId === args.newAdminUserId);
+    if (!isMember) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User is not a member of this team" });
+    }
+
+    await ctx.db.patch(args.keyId, { adminUserId: args.newAdminUserId });
   },
 });
 

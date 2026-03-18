@@ -30,7 +30,6 @@ import {
   ArrowLeft,
   Zap,
   CreditCard,
-  AlertTriangle,
   RefreshCw,
   Settings2,
   Trash2,
@@ -39,9 +38,13 @@ import {
   Plus,
   ShieldCheck,
   LogOut,
+  Crown,
+  ArrowRightLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
+import SubscriptionTypeDialog from "./_components/SubscriptionTypeDialog.tsx";
+import type { Id } from "@/convex/_generated/dataModel.d.ts";
 
 // Feature rows shown in the comparison table
 const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.pro }[] = [
@@ -109,6 +112,8 @@ function BillingInner() {
   const removeKeyMutation = useMutation(api.licenseKeys.removeKey);
   const generateKeyMutation = useMutation(api.licenseKeys.generate);
   const updateKeyStatusMutation = useMutation(api.licenseKeys.updateStatus);
+  const createSelfKeyMutation = useMutation(api.licenseKeys.createSelfKey);
+  const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -119,6 +124,19 @@ function BillingInner() {
   const [cleanupResult, setCleanupResult] = useState<{ deleted: number; checked: number } | null>(null);
   const [switchTarget, setSwitchTarget] = useState<SubscriptionTier | null>(null);
   const [switchPending, setSwitchPending] = useState(false);
+
+  // Subscription type dialog (individual vs team)
+  const [subTypeDialogTier, setSubTypeDialogTier] = useState<SubscriptionTier | null>(null);
+
+  // Admin transfer dialog
+  const [transferAdminOpen, setTransferAdminOpen] = useState(false);
+  const [transferAdminTarget, setTransferAdminTarget] = useState<Id<"users"> | null>(null);
+  const [transferAdminPending, setTransferAdminPending] = useState(false);
+
+  // Create team key manually (for users who subscribed as individual and want to add members later)
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [createTeamMembers, setCreateTeamMembers] = useState(1);
+  const [createTeamPending, setCreateTeamPending] = useState(false);
 
   // License key state
   const [keyInput, setKeyInput] = useState("");
@@ -143,9 +161,11 @@ function BillingInner() {
   useEffect(() => {
     const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
+    const teamMembersStr = sessionStorage.getItem("gw_sub_team_members");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
+    sessionStorage.removeItem("gw_sub_team_members");
 
     if (paypalCancelled === "1") {
       toast.info("PayPal subscription not completed — no changes made.");
@@ -155,10 +175,26 @@ function BillingInner() {
     if (subscriptionId) {
       setSyncPending(true);
       syncSubscriptionAction({ subscriptionId })
-        .then(({ tier: newTier }) => {
+        .then(async ({ tier: newTier }) => {
           const tierName =
             TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier;
           toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
+
+          // If the user chose team subscription, auto-create their team key
+          if (teamMembersStr) {
+            const additionalMembers = parseInt(teamMembersStr, 10);
+            if (!isNaN(additionalMembers) && additionalMembers > 0) {
+              try {
+                const { code } = await createSelfKeyMutation({
+                  tier: newTier as "pro" | "business",
+                  maxMembers: additionalMembers + 1, // +1 to include the admin
+                });
+                toast.success(`Team workspace created! Share key ${code} with your team members.`);
+              } catch {
+                toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
+              }
+            }
+          }
         })
         .catch((err: unknown) => {
           toast.error(extractErrorMessage(err));
@@ -168,10 +204,14 @@ function BillingInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePayPalSubscribe = async (newTier: SubscriptionTier) => {
+  const handlePayPalSubscribe = async (newTier: SubscriptionTier, additionalMembers = 0) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
     setPaypalPending(newTier);
     try {
+      // Store team member count in sessionStorage so the callback can create the key
+      if (additionalMembers > 0) {
+        sessionStorage.setItem("gw_sub_team_members", String(additionalMembers));
+      }
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
         tier: newTier as "pro" | "business",
@@ -181,7 +221,70 @@ function BillingInner() {
       window.location.href = approvalUrl;
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      sessionStorage.removeItem("gw_sub_team_members");
       setPaypalPending(null);
+    }
+  };
+
+  // Opens the individual vs team dialog before going to PayPal
+  const handleSubscribeClick = (newTier: SubscriptionTier) => {
+    if (newTier === "free" || newTier === "starter" || newTier === tier) return;
+    setSubTypeDialogTier(newTier);
+  };
+
+  const handleSubTypeConfirm = (additionalMembers: number) => {
+    if (!subTypeDialogTier) return;
+    const t = subTypeDialogTier;
+    setSubTypeDialogTier(null);
+    void handlePayPalSubscribe(t, additionalMembers);
+  };
+
+  const handleTransferAdmin = async () => {
+    if (!transferAdminTarget || !myKeyInfo) return;
+    setTransferAdminPending(true);
+    try {
+      await transferAdminMutation({ keyId: myKeyInfo.keyId, newAdminUserId: transferAdminTarget });
+      toast.success("Admin role transferred successfully.");
+      setTransferAdminOpen(false);
+      setTransferAdminTarget(null);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to transfer admin");
+      } else {
+        toast.error("Failed to transfer admin");
+      }
+    } finally {
+      setTransferAdminPending(false);
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!user) return;
+    setCreateTeamPending(true);
+    try {
+      const activeTier = (user.subscriptionTier === "pro" || user.subscriptionTier === "business")
+        ? user.subscriptionTier
+        : null;
+      if (!activeTier) {
+        toast.error("An active Pro or Business subscription is required to create a team.");
+        return;
+      }
+      const { code } = await createSelfKeyMutation({
+        tier: activeTier,
+        maxMembers: createTeamMembers + 1,
+      });
+      toast.success(`Team workspace created! Share this key with your team: ${code}`);
+      setCreateTeamOpen(false);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to create team");
+      } else {
+        toast.error("Failed to create team");
+      }
+    } finally {
+      setCreateTeamPending(false);
     }
   };
 
@@ -398,7 +501,7 @@ function BillingInner() {
           {myKeyInfo ? (
             /* Key is applied — show team info */
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <ShieldCheck className="w-4 h-4 text-primary" />
@@ -423,15 +526,29 @@ function BillingInner() {
                     {myKeyInfo.memberCount} / {myKeyInfo.maxMembers} members
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-muted-foreground hover:text-destructive text-xs gap-1.5"
-                  onClick={() => setRemoveKeyDialogOpen(true)}
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Leave team
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Transfer admin — only shown to current admin */}
+                  {myKeyInfo.isAdmin && myKeyInfo.members.filter(m => !m.isMe).length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground text-xs gap-1.5"
+                      onClick={() => setTransferAdminOpen(true)}
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      Transfer admin
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive text-xs gap-1.5"
+                    onClick={() => setRemoveKeyDialogOpen(true)}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Leave team
+                  </Button>
+                </div>
               </div>
 
               {/* Team members list */}
@@ -450,9 +567,18 @@ function BillingInner() {
                         {(m.name?.[0] ?? "?").toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {m.name}{m.isMe && <span className="ml-1.5 text-[10px] text-primary font-normal">(you)</span>}
-                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {m.name}
+                          </p>
+                          {m.isMe && <span className="text-[10px] text-primary font-normal">(you)</span>}
+                          {m.isAdmin && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                              <Crown className="w-2.5 h-2.5" />
+                              Admin
+                            </span>
+                          )}
+                        </div>
                         {m.email && (
                           <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                         )}
@@ -712,6 +838,7 @@ function BillingInner() {
                 tierOrder.indexOf(t) > tierOrder.indexOf(tier);
               const isPendingThis = paypalPending === t;
               const isFree = t === "free";
+              const isPaid = t === "pro" || t === "business";
 
               return (
                 <div
@@ -747,6 +874,7 @@ function BillingInner() {
 
                   <div>
                     <span className="text-3xl font-black text-foreground">{cfg.price}</span>
+                    {isPaid && <span className="text-primary font-bold text-lg">*</span>}
                     <span className="text-xs text-muted-foreground ml-1">{cfg.period}</span>
                   </div>
 
@@ -844,7 +972,7 @@ function BillingInner() {
                       onClick={() =>
                         hasActivePayPalSub && !isCurrent
                           ? setSwitchTarget(t)
-                          : handlePayPalSubscribe(t)
+                          : handleSubscribeClick(t)
                       }
                     >
                       {isPendingThis ? (
@@ -891,6 +1019,26 @@ function BillingInner() {
               Switching plans will cancel your current subscription and start a new one via PayPal.
             </p>
           )}
+
+          {/* Asterisk footnote + "Add Team" prompt for existing individual subscribers */}
+          <div className="mt-4 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              <span className="text-primary font-bold">*</span> $1.99 per additional team member / month.
+              Team workspaces share a single pool of sites and logs across all members.
+            </p>
+            {/* Prompt for current paid users who don't have a team yet */}
+            {!myKeyInfo && (tier === "pro" || tier === "business") && (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <Users className="w-4 h-4 text-primary shrink-0" />
+                <p className="text-sm text-muted-foreground flex-1">
+                  You are on an individual plan. Want to add team members?
+                </p>
+                <Button size="sm" variant="secondary" onClick={() => setCreateTeamOpen(true)}>
+                  Add Team
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Feature comparison table */}
@@ -1021,7 +1169,7 @@ function BillingInner() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <Zap className="w-5 h-5 text-amber-500" />
               Cancel subscription?
             </DialogTitle>
             <DialogDescription>
@@ -1049,6 +1197,127 @@ function BillingInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Transfer Admin dialog */}
+      <Dialog open={transferAdminOpen} onOpenChange={setTransferAdminOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-primary" />
+              Transfer Admin Role
+            </DialogTitle>
+            <DialogDescription>
+              Select a team member to become the new admin. You will remain a regular member
+              after the transfer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {myKeyInfo?.members.filter(m => !m.isMe).map((m) => (
+              <button
+                key={String(m.userId)}
+                type="button"
+                onClick={() => setTransferAdminTarget(m.userId as Id<"users">)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left",
+                  transferAdminTarget === m.userId
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card hover:border-primary/40"
+                )}
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  {(m.name?.[0] ?? "?").toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
+                  {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
+                </div>
+                {transferAdminTarget === m.userId && (
+                  <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setTransferAdminOpen(false); setTransferAdminTarget(null); }} disabled={transferAdminPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransferAdmin} disabled={!transferAdminTarget || transferAdminPending}>
+              {transferAdminPending ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Transferring…</>
+              ) : (
+                "Transfer Admin"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Team dialog (for existing individual subscribers) */}
+      <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Create Team Workspace
+            </DialogTitle>
+            <DialogDescription>
+              All your current sites and logs will become part of the shared team pool.
+              Team members will see and contribute to the same workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Additional members (beyond you)</Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreateTeamMembers((n) => Math.max(1, n - 1))}
+                  className="w-9 h-9 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
+                >
+                  −
+                </button>
+                <span className="text-lg font-bold text-foreground w-8 text-center">{createTeamMembers}</span>
+                <button
+                  type="button"
+                  onClick={() => setCreateTeamMembers((n) => Math.min(50, n + 1))}
+                  className="w-9 h-9 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
+                >
+                  +
+                </button>
+                <span className="text-xs text-muted-foreground">+${(createTeamMembers * 1.99).toFixed(2)}/mo</span>
+              </div>
+            </div>
+            <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-xs text-muted-foreground space-y-1">
+              <div className="flex justify-between">
+                <span>Max total members</span>
+                <span>{createTeamMembers + 1} (you + {createTeamMembers})</span>
+              </div>
+              <p className="text-[11px] pt-1">Additional member fees are billed separately at $1.99/member/month.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateTeamOpen(false)} disabled={createTeamPending}>Cancel</Button>
+            <Button onClick={handleCreateTeam} disabled={createTeamPending}>
+              {createTeamPending ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Creating…</>
+              ) : (
+                "Create Team"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription type dialog (individual vs team) */}
+      {subTypeDialogTier && (
+        <SubscriptionTypeDialog
+          open={!!subTypeDialogTier}
+          onClose={() => setSubTypeDialogTier(null)}
+          tier={subTypeDialogTier}
+          onConfirm={handleSubTypeConfirm}
+          isPending={paypalPending !== null}
+        />
+      )}
     </div>
   );
 }

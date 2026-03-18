@@ -30,6 +30,8 @@ export default defineSchema({
     code: v.string(),
     // Admin user who created this key
     createdBy: v.id("users"),
+    // Current team admin (may differ from createdBy after a transfer)
+    adminUserId: v.optional(v.id("users")),
     // Tier unlocked by this key
     tier: v.union(
       v.literal("pro"),
@@ -45,6 +47,8 @@ export default defineSchema({
     maxMembers: v.number(),
     // Optional admin label
     note: v.optional(v.string()),
+    // true when created via self-service by a subscriber (not super-admin)
+    selfCreated: v.optional(v.boolean()),
   })
     .index("by_code", ["code"])
     .index("by_creator", ["createdBy"]),
