@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
-import { useServiceWorker } from "@/hooks/use-service-worker.ts";
+import { registerServiceWorker } from "@/lib/register-sw.ts";
 import AuthCallback from "./pages/auth/Callback.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -10,6 +10,10 @@ import DashboardPage from "./pages/dashboard/page.tsx";
 import BillingPage from "./pages/billing/page.tsx";
 import IntegrationsPage from "./pages/integrations/page.tsx";
 import PayPalReturn from "./pages/paypal/return.tsx";
+
+// Register service worker at module level — completely outside the React
+// tree to avoid duplicate-React-instance / "Invalid hook call" errors.
+registerServiceWorker();
 
 // In standalone PWA mode, intercept Android back-button / swipe-back gestures
 // to prevent the user from leaving the app and hitting the auth provider's
@@ -86,7 +90,6 @@ function OidcErrorGuard() {
 }
 
 function AppInner() {
-  useServiceWorker();
   return (
     <>
       <PwaBackGuard />
