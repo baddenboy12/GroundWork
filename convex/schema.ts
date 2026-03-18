@@ -78,9 +78,12 @@ export default defineSchema({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     ownerId: v.id("users"),
+    // Set when the site is created by a team member — all team members can access it
+    teamKeyId: v.optional(v.id("licenseKeys")),
   })
     .index("by_owner", ["ownerId"])
-    .index("by_name", ["name"]),
+    .index("by_name", ["name"])
+    .index("by_team_key", ["teamKeyId"]),
 
   apiKeys: defineTable({
     userId: v.id("users"),

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, Settings, Trash2, ChevronRight, Lock, Info } from "lucide-react";
+import { Plus, Settings, Trash2, ChevronRight, Lock, Info, Users } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -116,7 +116,8 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
   }, []);
 
   const siteCount = sites?.length ?? 0;
-  const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
+  const ownSiteCount = sites?.filter((s) => s.isOwner).length ?? 0;
+  const atSiteLimit = config.maxSites !== null && ownSiteCount >= config.maxSites;
 
   const handleAddSite = () => {
     if (!isOnline) {
@@ -258,6 +259,9 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                 {String(i + 1).padStart(2, "0")}
               </span>
               <span className="flex-1 text-sm font-semibold truncate">{site.name}</span>
+              {!site.isOwner && (
+                <Users className="w-3 h-3 shrink-0 text-blue-500/70" aria-label={`Owned by ${site.ownerName}`} />
+              )}
               {selectedSiteId === site._id && (
                 <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />
               )}
@@ -271,11 +275,15 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-36">
                   <DropdownMenuItem
-                    className={cn(!isOnline && "opacity-50")}
+                    className={cn((!isOnline || !site.isOwner) && "opacity-50")}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isOnline) {
                         toast.error("You're offline — editing requires a connection");
+                        return;
+                      }
+                      if (!site.isOwner) {
+                        toast.error("Only the site owner can edit it");
                         return;
                       }
                       setEditSite(site);
@@ -284,11 +292,15 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
                     <Settings className="w-3.5 h-3.5 mr-2" /> Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className={cn("text-destructive focus:text-destructive", !isOnline && "opacity-50")}
+                    className={cn("text-destructive focus:text-destructive", (!isOnline || !site.isOwner) && "opacity-50")}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isOnline) {
                         toast.error("You're offline — deletion requires a connection");
+                        return;
+                      }
+                      if (!site.isOwner) {
+                        toast.error("Only the site owner can delete it");
                         return;
                       }
                       setDeleteSiteId(site._id);

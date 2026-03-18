@@ -297,6 +297,15 @@ export const create = mutation({
     const site = await ctx.db.get(args.siteId);
     if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
 
+    // Verify user can log on this site (owns it or is a team member with same key)
+    const canLog =
+      site.ownerId === user._id ||
+      (user.appliedLicenseKeyId !== undefined &&
+        site.teamKeyId === user.appliedLicenseKeyId);
+    if (!canLog) {
+      throw new ConvexError({ message: "You don't have access to this site", code: "FORBIDDEN" });
+    }
+
     // Enforce per-tier photo limit per entry
     const photoLimits: Record<string, number> = {
       free: 5,
@@ -461,8 +470,21 @@ export const listBySiteForExport = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+
     const site = await ctx.db.get(args.siteId);
     if (!site) return [];
+
+    // Verify user has access to this site (owner or team member)
+    const canAccess =
+      site.ownerId === user._id ||
+      (user.appliedLicenseKeyId !== undefined &&
+        site.teamKeyId === user.appliedLicenseKeyId);
+    if (!canAccess) return [];
 
     const all = await ctx.db
       .query("logs")
@@ -509,10 +531,23 @@ export const listForGlobalExport = query({
       .unique();
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
-    const allSites = await ctx.db
+    const ownSites = await ctx.db
       .query("sites")
       .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
       .collect();
+
+    // Include team sites if user is on a team
+    const allSites = [...ownSites];
+    if (user.appliedLicenseKeyId) {
+      const teamSiteDocs = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+        .collect();
+      const ownIds = new Set(ownSites.map((s) => s._id));
+      for (const s of teamSiteDocs) {
+        if (!ownIds.has(s._id)) allSites.push(s);
+      }
+    }
 
     const targetSites =
       args.siteIds && args.siteIds.length > 0
@@ -646,11 +681,21 @@ export const getStats = query({
     }
     const dailyActivity = Object.entries(dailyMap).map(([date, count]) => ({ date, count }));
 
-    const totalSites = await ctx.db
+    const ownSitesForStats = await ctx.db
       .query("sites")
       .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
       .collect()
       .then((s) => s.length);
+    // Include team sites in total count
+    let totalSites = ownSitesForStats;
+    if (user.appliedLicenseKeyId) {
+      const teamSiteDocs = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+        .collect();
+      const teamOnlySites = teamSiteDocs.filter((s) => s.ownerId !== user._id);
+      totalSites += teamOnlySites.length;
+    }
 
     const totalPhotos = allLogs.reduce(
       (sum, log) =>
@@ -695,14 +740,27 @@ export const listAllForOfflineCache = query({
       .unique();
     if (!user) return {};
 
-    const sites = await ctx.db
+    const ownSitesForCache = await ctx.db
       .query("sites")
       .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
       .collect();
 
+    // Include team sites if the user is on a team
+    const allSitesForCache = [...ownSitesForCache];
+    if (user.appliedLicenseKeyId) {
+      const teamSiteDocs = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+        .collect();
+      const ownIds = new Set(ownSitesForCache.map((s) => s._id));
+      for (const s of teamSiteDocs) {
+        if (!ownIds.has(s._id)) allSitesForCache.push(s);
+      }
+    }
+
     const result: Record<string, Array<ReturnType<typeof Object.assign>>> = {};
 
-    for (const site of sites) {
+    for (const site of allSitesForCache) {
       const logs = await ctx.db
         .query("logs")
         .withIndex("by_site", (q) => q.eq("siteId", site._id))
@@ -712,9 +770,13 @@ export const listAllForOfflineCache = query({
       result[site._id as string] = await Promise.all(
         logs.map(async (log) => {
           const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-          // All logs here belong to the authenticated user — reuse their name
-          // instead of doing a separate db.get per log to stay within query limits.
-          return { ...log, authorName: user.name ?? "Unknown", photoUrls };
+          // Resolve author name — may be a different team member
+          let authorName = user.name ?? "Unknown";
+          if (log.authorId !== user._id) {
+            const author = await ctx.db.get(log.authorId);
+            authorName = author?.name ?? "Teammate";
+          }
+          return { ...log, authorName, photoUrls };
         })
       );
     }

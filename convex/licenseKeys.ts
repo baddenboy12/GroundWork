@@ -113,6 +113,16 @@ export const updateStatus = mutation({
             subscriptionTier: "free",
             appliedLicenseKeyId: undefined,
           });
+          // Clear teamKeyId from all sites this member owns
+          const memberSites = await ctx.db
+            .query("sites")
+            .withIndex("by_owner", (q) => q.eq("ownerId", m.userId))
+            .collect();
+          for (const site of memberSites) {
+            if (site.teamKeyId === args.keyId) {
+              await ctx.db.patch(site._id, { teamKeyId: undefined });
+            }
+          }
         }
         await ctx.db.delete(m._id);
       }
@@ -206,6 +216,17 @@ export const removeKey = mutation({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
     if (membership) await ctx.db.delete(membership._id);
+
+    // Clear teamKeyId from all sites owned by this user for this key
+    const userSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+    for (const site of userSites) {
+      if (site.teamKeyId === user.appliedLicenseKeyId) {
+        await ctx.db.patch(site._id, { teamKeyId: undefined });
+      }
+    }
 
     // Revert tier — keep PayPal tier if still active
     const hasPayPal =

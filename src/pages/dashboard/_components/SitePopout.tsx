@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import {
-  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff, MoreVertical,
+  Plus, Settings, Trash2, ChevronRight, Lock, ChevronDown, LayoutList, Info, WifiOff, MoreVertical, Users,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,8 +80,9 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const siteCount = sites?.length ?? 0;
+  const ownSiteCount = sites?.filter((s) => s.isOwner).length ?? 0;
   const totalCount = siteCount + pendingNewSiteNames.length;
-  const atSiteLimit = config.maxSites !== null && siteCount >= config.maxSites;
+  const atSiteLimit = config.maxSites !== null && ownSiteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
   // Close when clicking outside the whole wrapper
@@ -297,10 +298,25 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           {String(i + 1).padStart(2, "0")}
                         </span>
 
-                        {/* Site name */}
-                        <span className="flex-1 text-[15px] font-semibold truncate leading-tight">
-                          {site.name}
-                        </span>
+                        {/* Site name + team indicator */}
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[15px] font-semibold truncate leading-tight block">
+                            {site.name}
+                          </span>
+                          {!site.isOwner && (
+                            <span className="text-[10px] text-muted-foreground truncate block leading-tight">
+                              {site.ownerName}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Team badge for shared sites */}
+                        {!site.isOwner && (
+                          <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
+                            <Users className="w-2.5 h-2.5" />
+                            Team
+                          </span>
+                        )}
 
                         {isSelected && (
                           <motion.div
@@ -330,11 +346,15 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem
-                              className={cn("py-2.5 text-sm cursor-pointer", !isOnline && "opacity-50")}
+                              className={cn("py-2.5 text-sm cursor-pointer", (!isOnline || !site.isOwner) && "opacity-50")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isOnline) {
                                   toast.error("You're offline — editing requires a connection");
+                                  return;
+                                }
+                                if (!site.isOwner) {
+                                  toast.error("Only the site owner can edit it");
                                   return;
                                 }
                                 setEditSite(site);
@@ -343,11 +363,15 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               <Settings className="w-4 h-4 mr-2.5" /> Edit site
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className={cn("py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive", !isOnline && "opacity-50")}
+                              className={cn("py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive", (!isOnline || !site.isOwner) && "opacity-50")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isOnline) {
                                   toast.error("You're offline — deletion requires a connection");
+                                  return;
+                                }
+                                if (!site.isOwner) {
+                                  toast.error("Only the site owner can delete it");
                                   return;
                                 }
                                 setDeleteSiteId(site._id);
