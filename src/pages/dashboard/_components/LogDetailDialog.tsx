@@ -14,7 +14,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import {
   Tooltip,
@@ -42,6 +41,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const isOnline = useOnlineStatus();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const photos = log.photoUrls ?? [];
 
@@ -182,36 +182,35 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     </TooltipContent>
                   )}
                 </Tooltip>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className={cn(
-                              "h-8 w-8 text-muted-foreground hover:text-destructive",
-                              !isOnline && "opacity-40 cursor-not-allowed"
-                            )}
-                            onClick={(e) => {
-                              if (!isOnline) {
-                                e.preventDefault();
-                                toast.error("You're offline — deletion requires a connection");
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!isOnline && (
-                        <TooltipContent side="bottom">
-                          <p>Deletion requires an internet connection</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </AlertDialogTrigger>
+                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={cn(
+                            "h-8 w-8 text-muted-foreground hover:text-destructive",
+                            !isOnline && "opacity-40 cursor-not-allowed"
+                          )}
+                          onClick={() => {
+                            if (!isOnline) {
+                              toast.error("You're offline — deletion requires a connection");
+                              return;
+                            }
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!isOnline && (
+                      <TooltipContent side="bottom">
+                        <p>Deletion requires an internet connection</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
