@@ -491,6 +491,31 @@ export const kickMember = mutation({
   },
 });
 
+// ── Admin: Delete an orphaned (0-member) license key ─────────────────────────
+
+export const deleteKey = mutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+
+    if (memberships.length > 0) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Cannot delete a key that still has members. Remove all members first.",
+      });
+    }
+
+    await ctx.db.delete(args.keyId);
+  },
+});
+
 // ── Internal: suspend key and remove all members (for PayPal payment failure) ─
 
 export const _expireKey = internalMutation({

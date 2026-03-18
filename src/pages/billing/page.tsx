@@ -117,6 +117,7 @@ function BillingInner() {
   const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
   const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
+  const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -147,6 +148,10 @@ function BillingInner() {
   // Change team tier dialog
   const [changeTeamTierOpen, setChangeTeamTierOpen] = useState(false);
   const [changeTeamTierPending, setChangeTeamTierPending] = useState(false);
+
+  // Delete key state (admin: remove orphaned 0-member keys)
+  const [deleteKeyTarget, setDeleteKeyTarget] = useState<{ keyId: Id<"licenseKeys">; code: string } | null>(null);
+  const [deleteKeyPending, setDeleteKeyPending] = useState(false);
 
   // License key state
   const [keyInput, setKeyInput] = useState("");
@@ -307,6 +312,20 @@ function BillingInner() {
       toast.error(extractErrorMessage(err));
     } finally {
       setChangeTeamTierPending(false);
+    }
+  };
+
+  const handleDeleteKey = async () => {
+    if (!deleteKeyTarget) return;
+    setDeleteKeyPending(true);
+    try {
+      await deleteKeyMutation({ keyId: deleteKeyTarget.keyId });
+      toast.success(`Key ${deleteKeyTarget.code} deleted.`);
+      setDeleteKeyTarget(null);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setDeleteKeyPending(false);
     }
   };
 
@@ -572,6 +591,35 @@ function BillingInner() {
                 </div>
               </div>
 
+              {/* Invite members — admin only */}
+              {myKeyInfo.isAdmin && (
+                <div className="rounded-xl border border-border bg-background/60 p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <Plus className="w-3.5 h-3.5" />
+                    Invite members
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Share this key with teammates. They enter it in the Team section to join.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-muted rounded-md px-3 py-1.5 font-mono text-sm font-bold text-foreground tracking-widest">
+                      {myKeyInfo.code}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="shrink-0 gap-1.5 text-xs"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(myKeyInfo.code);
+                        toast.success("Key copied to clipboard!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Team members list */}
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -738,19 +786,31 @@ function BillingInner() {
                         </td>
                         <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[120px] truncate">{k.note ?? "—"}</td>
                         <td className="px-3 py-2.5">
-                          <select
-                            value={k.status}
-                            onChange={async (e) => {
-                              try {
-                                await updateKeyStatusMutation({ keyId: k._id, status: e.target.value as "active" | "suspended" });
-                                toast.success("Key status updated");
-                              } catch { toast.error("Failed to update"); }
-                            }}
-                            className="text-xs rounded border border-input bg-background px-1.5 py-0.5"
-                          >
-                            <option value="active">Active</option>
-                            <option value="suspended">Suspended</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={k.status}
+                              onChange={async (e) => {
+                                try {
+                                  await updateKeyStatusMutation({ keyId: k._id, status: e.target.value as "active" | "suspended" });
+                                  toast.success("Key status updated");
+                                } catch { toast.error("Failed to update"); }
+                              }}
+                              className="text-xs rounded border border-input bg-background px-1.5 py-0.5"
+                            >
+                              <option value="active">Active</option>
+                              <option value="suspended">Suspended</option>
+                            </select>
+                            {k.memberCount === 0 && (
+                              <button
+                                type="button"
+                                title="Delete orphaned key"
+                                onClick={() => setDeleteKeyTarget({ keyId: k._id, code: k.code })}
+                                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1361,6 +1421,33 @@ function BillingInner() {
                 <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Creating…</>
               ) : (
                 "Create Team"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete orphaned key confirmation dialog */}
+      <Dialog open={!!deleteKeyTarget} onOpenChange={(v) => !v && setDeleteKeyTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              Delete key {deleteKeyTarget?.code}?
+            </DialogTitle>
+            <DialogDescription>
+              This key has no members and will be permanently deleted. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteKeyTarget(null)} disabled={deleteKeyPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteKey} disabled={deleteKeyPending}>
+              {deleteKeyPending ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Deleting…</>
+              ) : (
+                "Delete key"
               )}
             </Button>
           </DialogFooter>
