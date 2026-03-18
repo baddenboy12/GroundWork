@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -347,6 +347,33 @@ export const updateMaxMembers = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can update seat count" });
     }
 
+    // ── Billing enforcement for self-created (subscriber-owned) keys ──────────
+    // If the admin has an active PayPal subscription and is trying to INCREASE
+    // the seat count, we must ensure a PayPal billing revision was completed first.
+    // reviseSubscriptionSeats stores the approved count in key.pendingMaxMembers;
+    // direct increases without that approval are blocked to prevent billing bypass.
+    if (key.selfCreated) {
+      const currentMax = key.maxMembers ?? 1;
+      const isIncreasing = args.maxMembers > currentMax;
+      if (isIncreasing) {
+        const isPaypalActive =
+          user.paypalSubscriptionStatus === "ACTIVE" ||
+          user.paypalSubscriptionStatus === "APPROVED";
+        if (isPaypalActive) {
+          if (key.pendingMaxMembers !== args.maxMembers) {
+            throw new ConvexError({
+              code: "BAD_REQUEST",
+              message:
+                "Seat increases on an active PayPal subscription require billing approval. " +
+                "Use the 'Edit seats' button to go through the PayPal revision flow.",
+            });
+          }
+          // Pending revision matches — allow it and clear the pending marker
+          await ctx.db.patch(args.keyId, { pendingMaxMembers: undefined });
+        }
+      }
+    }
+
     // Cannot reduce below current member count
     const memberships = await ctx.db
       .query("keyMemberships")
@@ -380,6 +407,31 @@ export const createSelfKey = mutation({
 
     if (user.appliedLicenseKeyId) {
       throw new ConvexError({ code: "CONFLICT", message: "You already have a team key. Remove it first." });
+    }
+
+    // ── Billing enforcement for multi-seat team creation ──────────────────────
+    // If the user has an active PayPal subscription and wants > 1 seat, the seat
+    // count MUST have been pre-committed via storePendingTeamSeats before the
+    // PayPal payment. This prevents sessionStorage manipulation where a user could
+    // pay for 2 seats but inject maxMembers=50 into the frontend after approval.
+    const requestedSeats = args.maxMembers ?? 1;
+    if (requestedSeats > 1) {
+      const isPaypalActive =
+        user.paypalSubscriptionStatus === "ACTIVE" ||
+        user.paypalSubscriptionStatus === "APPROVED";
+      if (isPaypalActive) {
+        if (!user.pendingTeamSeats || user.pendingTeamSeats !== requestedSeats) {
+          throw new ConvexError({
+            code: "BAD_REQUEST",
+            message:
+              "Seat count mismatch. To create a team with multiple seats, the seat " +
+              "count must be committed to the server before PayPal payment. " +
+              "This prevents billing bypass via sessionStorage manipulation.",
+          });
+        }
+        // Clear the pending seat intent — it has now been consumed
+        await ctx.db.patch(user._id, { pendingTeamSeats: undefined });
+      }
     }
 
     // Generate a unique code
@@ -438,6 +490,29 @@ export const changeTierForTeam = mutation({
     const currentAdmin = key.adminUserId ?? key.createdBy;
     if (currentAdmin !== user._id) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change the team tier" });
+    }
+
+    // ── Billing enforcement: block tier upgrades when PayPal sub is active ──────
+    // Tier upgrades increase revenue owed. If the admin bypassed PayPal to upgrade
+    // from Pro → Business, all team members get Business features at Pro price.
+    // Downgrades are allowed (reduces cost, admin's loss).
+    if (key.selfCreated) {
+      const tierRank: Record<string, number> = { pro: 1, business: 2 };
+      const currentRank = tierRank[key.tier] ?? 0;
+      const newRank = tierRank[args.tier] ?? 0;
+      if (newRank > currentRank) {
+        const isPaypalActive =
+          user.paypalSubscriptionStatus === "ACTIVE" ||
+          user.paypalSubscriptionStatus === "APPROVED";
+        if (isPaypalActive) {
+          throw new ConvexError({
+            code: "BAD_REQUEST",
+            message:
+              "Tier upgrades are not allowed on an active PayPal subscription. " +
+              "To upgrade, please cancel your current subscription and subscribe to the new plan.",
+          });
+        }
+      }
     }
 
     // Update the key tier
@@ -577,10 +652,23 @@ export const deleteKey = mutation({
 
 // ── Internal: get a key by ID (used by PayPal actions) ───────────────────────
 
-export const _getKeyById = internalMutation({
+// Note: This is a read-only query exposed as internalQuery so Actions can use ctx.runQuery
+export const _getKeyById = internalQuery({
   args: { keyId: v.id("licenseKeys") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.keyId);
+  },
+});
+
+// ── Internal: store a pending seat count before PayPal approval redirect ──────
+// reviseSubscriptionSeats writes here so the seat count lives in the DB,
+// not in client-controlled sessionStorage.
+export const _setPendingMaxMembers = internalMutation({
+  args: { keyId: v.id("licenseKeys"), pendingMaxMembers: v.number() },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+    await ctx.db.patch(args.keyId, { pendingMaxMembers: args.pendingMaxMembers });
   },
 });
 
@@ -591,7 +679,8 @@ export const _applyPendingSeats = internalMutation({
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
-    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
+    // Apply seat count and clear the pending marker in one atomic write
+    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers, pendingMaxMembers: undefined });
   },
 });
 

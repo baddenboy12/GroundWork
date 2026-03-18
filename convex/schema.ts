@@ -22,6 +22,8 @@ export default defineSchema({
     storageUsedBytes: v.optional(v.number()),
     // Applied license key (if the user joined a team via a key)
     appliedLicenseKeyId: v.optional(v.id("licenseKeys")),
+    // Pending team seat count stored server-side before PayPal redirect (prevents sessionStorage tampering)
+    pendingTeamSeats: v.optional(v.number()),
   }).index("by_token", ["tokenIdentifier"]),
 
   // License keys — represent a team workspace group
@@ -48,6 +50,8 @@ export default defineSchema({
     note: v.optional(v.string()),
     // true when created via self-service by a subscriber (not super-admin)
     selfCreated: v.optional(v.boolean()),
+    // Pending seat count stored server-side by reviseSubscriptionSeats before PayPal approval
+    pendingMaxMembers: v.optional(v.number()),
   })
     .index("by_code", ["code"])
     .index("by_creator", ["createdBy"]),

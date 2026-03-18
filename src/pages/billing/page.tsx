@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation, useAction, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import {
@@ -110,6 +110,7 @@ function BillingInner() {
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
   const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
   const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
+  const applyPendingSeatsFromRevisionAction = useAction(api.paypal.actions.applyPendingSeatsFromRevision);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
   const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
   const removeKeyMutation = useMutation(api.licenseKeys.removeKey);
@@ -121,6 +122,9 @@ function BillingInner() {
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
   const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
+  const storePendingTeamSeatsMutation = useMutation(api.users.storePendingTeamSeats);
+
+  const convex = useConvex();
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -188,15 +192,13 @@ function BillingInner() {
     const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
     const wantsTeam = sessionStorage.getItem("gw_sub_team");
-    const seatsRaw = sessionStorage.getItem("gw_sub_seats");
-    const pendingSeatsRaw = sessionStorage.getItem("gw_pending_seats");
+    // NOTE: gw_sub_seats removed — seat count is now stored server-side via storePendingTeamSeats
     const pendingKeyId = sessionStorage.getItem("gw_pending_key_id");
+    // NOTE: gw_pending_seats removed — pending seat count is now in DB via reviseSubscriptionSeats
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
     sessionStorage.removeItem("gw_sub_team");
-    sessionStorage.removeItem("gw_sub_seats");
-    sessionStorage.removeItem("gw_pending_seats");
     sessionStorage.removeItem("gw_pending_key_id");
 
     if (paypalCancelled === "1") {
@@ -205,17 +207,21 @@ function BillingInner() {
     }
 
     // ── Seat revision return ──────────────────────────────────────────────────
-    if (subscriptionId && pendingSeatsRaw && pendingKeyId) {
-      const newSeats = parseInt(pendingSeatsRaw, 10);
+    // pendingKeyId is just the team key ID (not sensitive — backend verifies admin role).
+    // The actual seat count comes from the DB (key.pendingMaxMembers), NOT sessionStorage,
+    // so it cannot be manipulated by the user to gain more seats than they paid for.
+    if (subscriptionId && pendingKeyId) {
       setSyncPending(true);
       syncSubscriptionAction({ subscriptionId })
         .then(async () => {
-          // Apply the seat change now that PayPal approved the revised price
-          await updateMaxMembersMutation({
-            keyId: pendingKeyId as Parameters<typeof updateMaxMembersMutation>[0]["keyId"],
-            maxMembers: newSeats,
+          const { maxMembers } = await applyPendingSeatsFromRevisionAction({
+            keyId: pendingKeyId as Parameters<typeof applyPendingSeatsFromRevisionAction>[0]["keyId"],
           });
-          toast.success(`Billing updated — seat limit set to ${newSeats}.`);
+          if (maxMembers !== null) {
+            toast.success(`Billing updated — seat limit set to ${maxMembers}.`);
+          } else {
+            toast.success("Subscription synced. Seat limit unchanged.");
+          }
         })
         .catch((err: unknown) => {
           toast.error(extractErrorMessage(err));
@@ -233,10 +239,14 @@ function BillingInner() {
             TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier;
           toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
 
-          // If the user chose team subscription, auto-create their team key
+          // If the user chose team subscription, auto-create their team key.
+          // Seat count is read from the DB (user.pendingTeamSeats stored before
+          // PayPal redirect) instead of sessionStorage to prevent tampering.
           if (wantsTeam === "1") {
-            const maxMembers = seatsRaw ? parseInt(seatsRaw, 10) : undefined;
             try {
+              const latestUser = await convex.query(api.users.getCurrentUser, {});
+              // Use DB-stored pending seat count — NOT sessionStorage
+              const maxMembers = latestUser?.pendingTeamSeats ?? undefined;
               const { code } = await createSelfKeyMutation({
                 tier: newTier as "pro" | "business",
                 maxMembers: maxMembers && maxMembers > 0 ? maxMembers : undefined,
@@ -261,8 +271,14 @@ function BillingInner() {
     setPaypalPending(newTier);
     try {
       if (isTeam) {
+        // Store team flag in sessionStorage (boolean, not sensitive)
         sessionStorage.setItem("gw_sub_team", "1");
-        sessionStorage.setItem("gw_sub_seats", String(maxMembers));
+        // Store seat count SERVER-SIDE to prevent client tampering.
+        // Previously stored in sessionStorage (gw_sub_seats) which could be manipulated
+        // to get more seats than the user paid for after PayPal approval.
+        if (maxMembers > 1) {
+          await storePendingTeamSeatsMutation({ seats: maxMembers });
+        }
       }
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
@@ -274,7 +290,6 @@ function BillingInner() {
     } catch (err) {
       toast.error(extractErrorMessage(err));
       sessionStorage.removeItem("gw_sub_team");
-      sessionStorage.removeItem("gw_sub_seats");
       setPaypalPending(null);
     }
   };
@@ -356,8 +371,8 @@ function BillingInner() {
         user?.paypalSubscriptionStatus === "APPROVED";
 
       if (hasPayPalSub) {
-        // Store pending seat change so the billing page can apply it on return
-        sessionStorage.setItem("gw_pending_seats", String(editSeatsValue));
+        // Store only the keyId in sessionStorage (not the seat count — that is stored
+        // server-side by reviseSubscriptionSeats to prevent sessionStorage tampering)
         sessionStorage.setItem("gw_pending_key_id", myKeyInfo.keyId);
         const origin = window.location.origin;
         const { approvalUrl, applied } = await reviseSubscriptionSeatsAction({
@@ -369,12 +384,12 @@ function BillingInner() {
 
         if (applied) {
           // No approval needed — revision applied immediately (price decrease)
-          sessionStorage.removeItem("gw_pending_seats");
           sessionStorage.removeItem("gw_pending_key_id");
           toast.success(`Seat limit updated to ${editSeatsValue}.`);
           setEditSeatsOpen(false);
         } else if (approvalUrl) {
-          // Redirect to PayPal for subscriber approval (price increase)
+          // Redirect to PayPal for subscriber approval (price increase).
+          // Seat count is stored in DB (key.pendingMaxMembers) by reviseSubscriptionSeats.
           window.location.href = approvalUrl;
         }
       } else {
@@ -384,7 +399,6 @@ function BillingInner() {
         setEditSeatsOpen(false);
       }
     } catch (err) {
-      sessionStorage.removeItem("gw_pending_seats");
       sessionStorage.removeItem("gw_pending_key_id");
       toast.error(extractErrorMessage(err));
     } finally {

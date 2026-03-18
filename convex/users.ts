@@ -2,6 +2,30 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel.d.ts";
 
+// ── Pending team seat store (called BEFORE PayPal redirect to prevent tampering) ─
+
+/**
+ * Stores the intended team seat count in the DB before the user is redirected
+ * to PayPal. On return, createSelfKey reads this value from the DB instead of
+ * from sessionStorage (which is client-controlled and can be manipulated).
+ */
+export const storePendingTeamSeats = mutation({
+  args: { seats: v.number() },
+  handler: async (ctx, args) => {
+    if (args.seats < 1 || args.seats > 50) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Seat count must be between 1 and 50." });
+    }
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    await ctx.db.patch(user._id, { pendingTeamSeats: args.seats });
+  },
+});
+
 export const updateCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {

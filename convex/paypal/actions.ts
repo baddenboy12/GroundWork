@@ -421,7 +421,7 @@ export const reviseSubscriptionSeats = action({
     }
 
     // Fetch the license key and verify this user is the team admin
-    const key = await ctx.runMutation(internal.licenseKeys._getKeyById, {
+    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
       keyId: args.keyId,
     });
     if (!key) {
@@ -538,8 +538,65 @@ export const reviseSubscriptionSeats = action({
       return { approvalUrl: null, applied: true };
     }
 
-    // Subscriber needs to approve the price change via PayPal
+    // Subscriber needs to approve the price change via PayPal.
+    // Store the pending seat count in the DB — NOT in sessionStorage — so the
+    // frontend cannot manipulate it to get more seats than the user paid for.
+    await ctx.runMutation(internal.licenseKeys._setPendingMaxMembers, {
+      keyId: args.keyId,
+      pendingMaxMembers: args.maxMembers,
+    });
+
     return { approvalUrl: approvalLink.href, applied: false };
+  },
+});
+
+/**
+ * Called after the user returns from PayPal seat revision approval.
+ * Reads the pending seat count from the DB (set by reviseSubscriptionSeats)
+ * and applies it. Using the DB value instead of sessionStorage prevents
+ * client-side manipulation of the seat count.
+ */
+export const applyPendingSeatsFromRevision = action({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args): Promise<{ maxMembers: number | null }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+
+    const user = await ctx.runQuery(internal.users._getByToken, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+
+    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, { keyId: args.keyId });
+    if (!key) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+    }
+
+    // Security: verify the caller is the team admin — prevents an attacker from
+    // injecting another team's keyId to trigger an unintended seat change
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Only the team admin can apply billing revisions",
+      });
+    }
+
+    if (!key.pendingMaxMembers) {
+      // No pending revision in DB — nothing to apply (revision may have already been applied)
+      return { maxMembers: null };
+    }
+
+    await ctx.runMutation(internal.licenseKeys._applyPendingSeats, {
+      keyId: args.keyId,
+      maxMembers: key.pendingMaxMembers,
+    });
+
+    return { maxMembers: key.pendingMaxMembers };
   },
 });
 
