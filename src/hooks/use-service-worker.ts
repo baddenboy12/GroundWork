@@ -1,11 +1,26 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
+/**
+ * Registers the service worker in production only.
+ * In development the SW can cache stale Vite dependency chunks leading to
+ * duplicate React instances and "Invalid hook call" errors — so we skip it
+ * and proactively unregister any leftover dev-mode SW.
+ */
 export function useServiceWorker() {
   const toastShown = useRef(false);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
+    // Skip registration on the Vite dev server to avoid caching stale chunks
+    if (import.meta.env.DEV) {
+      // Unregister any leftover service worker from a previous session
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const r of regs) r.unregister();
+      });
+      return;
+    }
 
     const showUpdateToast = () => {
       if (toastShown.current) return;

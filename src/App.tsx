@@ -85,10 +85,10 @@ function OidcErrorGuard() {
   return null;
 }
 
-export default function App() {
+function AppInner() {
   useServiceWorker();
   return (
-    <DefaultProviders>
+    <>
       <PwaBackGuard />
       <OidcErrorGuard />
       <BrowserRouter>
@@ -103,6 +103,14 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <DefaultProviders>
+      <AppInner />
     </DefaultProviders>
   );
 }
