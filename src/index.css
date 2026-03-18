@@ -198,22 +198,13 @@ html, body {
   overflow: hidden;
 }
 
-/* Tablet-on-phone: render the app at 768 px logical width, then scale down
-   to fit the actual device screen.  On a 390 px phone the scale is 390/768 ≈ 0.508
-   so the content looks like an iPad portrait view at 50 % zoom.
-   On a real tablet or desktop (≥ 768 px) --app-scale is 1 and no scaling occurs. */
+/* With viewport width=768, the browser auto-scales the page to fit any screen.
+   #root just needs to fill the full viewport naturally. */
 #root {
-  /* Always 768 px wide so tablet breakpoints (md:) always fire */
-  width: 768px;
-  /* 3:4 ratio height (iPad portrait = 1024 px), capped to the real screen height
-     after compensating for the scale so it never overflows vertically */
-  height: min(calc(768px * 4 / 3), calc(100dvh * var(--app-scale-inv, 1)));
-  /* Scale the whole box down to fit the physical screen */
-  transform: scale(var(--app-scale, 1));
-  transform-origin: top left;
+  width: 100%;
+  min-height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative;
 }
 
 /* Prevent iOS Safari from auto-zooming when tapping inputs with small font sizes */

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=768, user-scalable=no, viewport-fit=cover" />
 
     <title>GroundWork</title>
     <meta name="description" content="" />
@@ -36,19 +36,6 @@
       rel="stylesheet"
       crossorigin
     />
-
-    <!-- Compute tablet scale: render at 768px logical width and scale down to fit the device -->
-    <script>
-      (function () {
-        function updateAppScale() {
-          var scale = Math.min(window.innerWidth / 768, 1);
-          document.documentElement.style.setProperty("--app-scale", String(scale));
-          document.documentElement.style.setProperty("--app-scale-inv", String(1 / scale));
-        }
-        updateAppScale();
-        window.addEventListener("resize", updateAppScale);
-      })();
-    </script>
 
     <!-- Detect dark mode preference and set the class before next-themes loads. This avoids a flash of unstyled content (FOUC) when the page loads. -->
     <script>
