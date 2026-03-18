@@ -30,7 +30,6 @@ async function requireAdmin(ctx: { auth: { getUserIdentity: () => Promise<{ toke
 export const generate = mutation({
   args: {
     tier: v.union(v.literal("pro"), v.literal("business")),
-    maxMembers: v.number(),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -54,7 +53,6 @@ export const generate = mutation({
       createdBy: user._id,
       tier: args.tier,
       status: "active",
-      maxMembers: args.maxMembers,
       note: args.note,
     });
     return { keyId, code };
@@ -87,50 +85,41 @@ export const listAll = query({
   },
 });
 
-// ── Admin: Update key status ──────────────────────────────────────────────────
+// ── Admin / Team member: Toggle key status (active ↔ suspended) ──────────────
 
 export const updateStatus = mutation({
   args: {
     keyId: v.id("licenseKeys"),
-    status: v.union(v.literal("active"), v.literal("expired"), v.literal("suspended")),
+    status: v.union(v.literal("active"), v.literal("suspended")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
     const key = await ctx.db.get(args.keyId);
     if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
-    await ctx.db.patch(args.keyId, { status: args.status });
 
-    // If suspending/expiring, downgrade all members back to free
-    if (args.status !== "active") {
-      const memberships = await ctx.db
-        .query("keyMemberships")
-        .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
-        .collect();
-      for (const m of memberships) {
-        const member = await ctx.db.get(m.userId);
-        if (member && member.appliedLicenseKeyId === args.keyId) {
-          await ctx.db.patch(m.userId, {
-            subscriptionTier: "free",
-            appliedLicenseKeyId: undefined,
-          });
-          // Clear teamKeyId from all sites this member owns
-          const memberSites = await ctx.db
-            .query("sites")
-            .withIndex("by_owner", (q) => q.eq("ownerId", m.userId))
-            .collect();
-          for (const site of memberSites) {
-            if (site.teamKeyId === args.keyId) {
-              await ctx.db.patch(site._id, { teamKeyId: undefined });
-            }
-          }
-        }
-        await ctx.db.delete(m._id);
-      }
+    // Allow super-admin or any team member to toggle status
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const isSuperAdmin = adminEmail && (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
+    const isTeamMember = user.appliedLicenseKeyId === args.keyId;
+
+    if (!isSuperAdmin && !isTeamMember) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only a team member or admin can change status" });
     }
+
+    // Simple toggle — members stay attached, no kicking
+    await ctx.db.patch(args.keyId, { status: args.status });
   },
 });
 
-// ── User: Apply a key to their account ───────────────────────────────────────
+// ── User: Apply a key to join a team ─────────────────────────────────────────
 
 export const applyKey = mutation({
   args: { code: v.string() },
@@ -166,19 +155,7 @@ export const applyKey = mutation({
       });
     }
 
-    // Check member capacity
-    const memberships = await ctx.db
-      .query("keyMemberships")
-      .withIndex("by_key", (q) => q.eq("keyId", key._id))
-      .collect();
-    if (memberships.length >= key.maxMembers) {
-      throw new ConvexError({
-        code: "FORBIDDEN",
-        message: "This key has reached its maximum number of members.",
-      });
-    }
-
-    // Apply
+    // No member cap — just join
     await ctx.db.insert("keyMemberships", {
       keyId: key._id,
       userId: user._id,
@@ -193,7 +170,7 @@ export const applyKey = mutation({
   },
 });
 
-// ── User: Remove their key ────────────────────────────────────────────────────
+// ── User: Remove their key (leave team) ──────────────────────────────────────
 
 export const removeKey = mutation({
   args: {},
@@ -213,41 +190,32 @@ export const removeKey = mutation({
     const keyId = user.appliedLicenseKeyId;
     const key = await ctx.db.get(keyId);
 
-    // ── Auto-transfer admin if the leaving user is the current admin ──────────
-    if (key) {
+    // Count remaining members (including the one about to leave)
+    const allMemberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", keyId))
+      .collect();
+
+    const isLastMember = allMemberships.length <= 1;
+
+    // ── Auto-transfer admin if not last member ─────────────────────────
+    if (!isLastMember && key) {
       const currentAdmin = key.adminUserId ?? key.createdBy;
       if (currentAdmin === user._id) {
-        const allMemberships = await ctx.db
-          .query("keyMemberships")
-          .withIndex("by_key", (q) => q.eq("keyId", keyId))
-          .collect();
         const others = allMemberships.filter((m) => m.userId !== user._id);
         if (others.length > 0) {
-          // Pick a random remaining member as the new admin
           const newAdmin = others[Math.floor(Math.random() * others.length)];
           await ctx.db.patch(keyId, { adminUserId: newAdmin.userId });
         }
-        // If no other members remain, key will be left without an admin (stale key)
       }
     }
 
-    // Remove membership record
+    // Remove this user's membership record
     const membership = await ctx.db
       .query("keyMemberships")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
     if (membership) await ctx.db.delete(membership._id);
-
-    // Clear teamKeyId from all sites owned by this user for this key
-    const userSites = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .collect();
-    for (const site of userSites) {
-      if (site.teamKeyId === keyId) {
-        await ctx.db.patch(site._id, { teamKeyId: undefined });
-      }
-    }
 
     // Revert tier — keep PayPal tier if still active
     const hasPayPal =
@@ -257,6 +225,32 @@ export const removeKey = mutation({
       appliedLicenseKeyId: undefined,
       subscriptionTier: hasPayPal ? user.subscriptionTier : "free",
     });
+
+    // ── Last member leaving: dissolve the team ────────────────────────
+    if (isLastMember && key) {
+      // Detach all team sites (they become personal to their respective owners)
+      const teamSites = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", keyId))
+        .collect();
+      for (const site of teamSites) {
+        await ctx.db.patch(site._id, { teamKeyId: undefined });
+      }
+
+      // Cancel any pending deletion votes for this team
+      const pendingVotes = await ctx.db
+        .query("siteDeleteVotes")
+        .withIndex("by_team_key_and_status", (q) =>
+          q.eq("teamKeyId", keyId).eq("status", "pending")
+        )
+        .collect();
+      for (const vote of pendingVotes) {
+        await ctx.db.patch(vote._id, { status: "cancelled" });
+      }
+
+      // Delete the license key itself
+      await ctx.db.delete(keyId);
+    }
   },
 });
 
@@ -291,7 +285,7 @@ export const getMyKeyInfo = query({
           email: member?.email ?? null,
           joinedAt: m.joinedAt,
           isMe: m.userId === user._id,
-          isAdmin: key.adminUserId === m.userId,
+          isAdmin: (key.adminUserId ?? key.createdBy) === m.userId,
         };
       })
     );
@@ -301,7 +295,6 @@ export const getMyKeyInfo = query({
       code: key.code,
       tier: key.tier,
       status: key.status,
-      maxMembers: key.maxMembers,
       memberCount: memberships.length,
       members,
       adminUserId: key.adminUserId ?? key.createdBy,
@@ -316,7 +309,6 @@ export const getMyKeyInfo = query({
 export const createSelfKey = mutation({
   args: {
     tier: v.union(v.literal("pro"), v.literal("business")),
-    maxMembers: v.number(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -330,10 +322,6 @@ export const createSelfKey = mutation({
 
     if (user.appliedLicenseKeyId) {
       throw new ConvexError({ code: "CONFLICT", message: "You already have a team key. Remove it first." });
-    }
-
-    if (args.maxMembers < 1) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Team must have at least 1 member." });
     }
 
     // Generate a unique code
@@ -350,7 +338,6 @@ export const createSelfKey = mutation({
       adminUserId: user._id,
       tier: args.tier,
       status: "active",
-      maxMembers: args.maxMembers,
       note: `Team — ${user.name ?? user.email ?? "subscriber"}`,
       selfCreated: true,
     });
@@ -363,16 +350,52 @@ export const createSelfKey = mutation({
     });
     await ctx.db.patch(user._id, { appliedLicenseKeyId: keyId });
 
-    // Tag all existing sites as team sites so new members see them immediately
-    const userSites = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .collect();
-    for (const site of userSites) {
-      await ctx.db.patch(site._id, { teamKeyId: keyId });
-    }
+    // Personal sites are NOT tagged — team starts with a clean site pool
 
     return { keyId, code };
+  },
+});
+
+// ── Team admin: Change team tier (propagates to all members) ─────────────────
+
+export const changeTierForTeam = mutation({
+  args: {
+    keyId: v.id("licenseKeys"),
+    tier: v.union(v.literal("pro"), v.literal("business")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change the team tier" });
+    }
+
+    // Update the key tier
+    await ctx.db.patch(args.keyId, { tier: args.tier });
+
+    // Propagate tier to all current members
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+
+    for (const m of memberships) {
+      const member = await ctx.db.get(m.userId);
+      if (member && member.appliedLicenseKeyId === args.keyId) {
+        await ctx.db.patch(m.userId, { subscriptionTier: args.tier });
+      }
+    }
   },
 });
 
@@ -465,72 +488,17 @@ export const kickMember = mutation({
         subscriptionTier: "free",
       });
     }
-
-    // Detach team sites that belonged to this member
-    const memberSites = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.targetUserId))
-      .collect();
-    for (const site of memberSites) {
-      if (site.teamKeyId === args.keyId) {
-        await ctx.db.patch(site._id, { teamKeyId: undefined });
-      }
-    }
   },
 });
 
-// ── Team admin: Update max member count ───────────────────────────────────────
-
-export const updateMaxMembers = mutation({
-  args: {
-    keyId: v.id("licenseKeys"),
-    maxMembers: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
-
-    const caller = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!caller) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-
-    const key = await ctx.db.get(args.keyId);
-    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
-
-    const currentAdmin = key.adminUserId ?? key.createdBy;
-    if (currentAdmin !== caller._id) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change team settings" });
-    }
-
-    // Prevent reducing below current member count
-    const memberships = await ctx.db
-      .query("keyMemberships")
-      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
-      .collect();
-    if (args.maxMembers < memberships.length) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: `Cannot reduce to ${args.maxMembers} — you have ${memberships.length} active members.`,
-      });
-    }
-    if (args.maxMembers < 1) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Team must allow at least 1 member." });
-    }
-
-    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
-  },
-});
-
-// ── Internal: downgrade all members when a key expires (for PayPal webhook) ──
+// ── Internal: suspend key and remove all members (for PayPal payment failure) ─
 
 export const _expireKey = internalMutation({
   args: { keyId: v.id("licenseKeys") },
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
-    await ctx.db.patch(args.keyId, { status: "expired" });
+    await ctx.db.patch(args.keyId, { status: "suspended" });
 
     const memberships = await ctx.db
       .query("keyMemberships")

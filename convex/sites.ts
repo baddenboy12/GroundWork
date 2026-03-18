@@ -29,43 +29,39 @@ export const list = query({
       .unique();
     if (!user) return [];
 
-    // Own sites
-    const ownSites = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .order("asc")
-      .collect();
-
-    const ownSitesWithMeta = ownSites.map((s) => ({
-      ...s,
-      isOwner: true,
-      ownerName: user.name ?? "You",
-    }));
-
-    // Team sites owned by other members
-    let teamSitesWithMeta: typeof ownSitesWithMeta = [];
     if (user.appliedLicenseKeyId) {
+      // ── Team mode: show ONLY sites tagged with this team key ──────────────
       const teamSiteDocs = await ctx.db
         .query("sites")
         .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
         .collect();
 
-      const ownIds = new Set(ownSites.map((s) => s._id));
-      const otherSites = teamSiteDocs.filter((s) => !ownIds.has(s._id));
-
-      teamSitesWithMeta = await Promise.all(
-        otherSites.map(async (s) => {
+      return await Promise.all(
+        teamSiteDocs.map(async (s) => {
           const owner = await ctx.db.get(s.ownerId);
           return {
             ...s,
-            isOwner: false,
-            ownerName: owner?.name ?? "Teammate",
+            isOwner: s.ownerId === user._id,
+            ownerName: s.ownerId === user._id ? (user.name ?? "You") : (owner?.name ?? "Teammate"),
           };
         })
       );
-    }
+    } else {
+      // ── Personal mode: show ONLY own sites that have no team tag ──────────
+      const ownSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .order("asc")
+        .collect();
 
-    return [...ownSitesWithMeta, ...teamSitesWithMeta];
+      return ownSites
+        .filter((s) => s.teamKeyId === undefined)
+        .map((s) => ({
+          ...s,
+          isOwner: true,
+          ownerName: user.name ?? "You",
+        }));
+    }
   },
 });
 
@@ -86,16 +82,25 @@ export const create = mutation({
       .unique();
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
-    // Enforce per-tier site limit (own sites only)
+    // Enforce per-tier site limit (mode-aware: team or personal)
     const tier = user.subscriptionTier ?? "free";
     const siteLimits: Record<string, number | null> = { free: 1, starter: 15, pro: 15, business: null };
     const siteLimit = tier in siteLimits ? siteLimits[tier] : 1;
     if (siteLimit !== null) {
-      const existingCount = await ctx.db
-        .query("sites")
-        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-        .collect()
-        .then((s) => s.length);
+      let existingCount = 0;
+      if (user.appliedLicenseKeyId) {
+        const teamSites = await ctx.db
+          .query("sites")
+          .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+          .collect();
+        existingCount = teamSites.length;
+      } else {
+        const ownSites = await ctx.db
+          .query("sites")
+          .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+          .collect();
+        existingCount = ownSites.filter((s) => s.teamKeyId === undefined).length;
+      }
       if (existingCount >= siteLimit) {
         throw new ConvexError({
           message: `Site limit reached for your plan. Upgrade to add more sites.`,
@@ -167,22 +172,22 @@ export const findOrCreate = mutation({
     const trimmedName = args.name.trim();
     if (!trimmedName) throw new ConvexError({ message: "Site name cannot be empty", code: "BAD_REQUEST" });
 
-    // Case-insensitive match against own sites
-    const allOwnSites = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .collect();
-    let existing: Doc<"sites"> | undefined = allOwnSites.find(
-      (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
-    );
+    let existing: Doc<"sites"> | undefined;
 
-    // Also check team sites if user is on a team
-    if (!existing && user.appliedLicenseKeyId) {
+    if (user.appliedLicenseKeyId) {
+      // Team mode: search only team sites
       const teamSites = await ctx.db
         .query("sites")
         .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
         .collect();
-      existing = teamSites.find(
+      existing = teamSites.find((s) => s.name.toLowerCase() === trimmedName.toLowerCase());
+    } else {
+      // Personal mode: search only personal sites (no teamKeyId)
+      const allOwnSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect();
+      existing = allOwnSites.filter((s) => s.teamKeyId === undefined).find(
         (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
       );
     }
@@ -197,7 +202,7 @@ export const findOrCreate = mutation({
       return existing._id;
     }
 
-    // Check tier limit before creating a new site (own sites only)
+    // Check tier limit before creating a new site
     const tier = user.subscriptionTier ?? "free";
     const limits: Record<string, number | null> = {
       free: 1,
@@ -206,11 +211,28 @@ export const findOrCreate = mutation({
       business: null,
     };
     const limit = tier in limits ? limits[tier] : 1;
-    if (limit !== null && allOwnSites.length >= limit) {
-      throw new ConvexError({
-        message: `Site limit reached for your plan. Upgrade to add more sites.`,
-        code: "FORBIDDEN",
-      });
+    if (limit !== null) {
+      // Count sites in the current mode (team or personal)
+      let currentCount = 0;
+      if (user.appliedLicenseKeyId) {
+        const teamSites = await ctx.db
+          .query("sites")
+          .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+          .collect();
+        currentCount = teamSites.length;
+      } else {
+        const ownSites = await ctx.db
+          .query("sites")
+          .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+          .collect();
+        currentCount = ownSites.filter((s) => s.teamKeyId === undefined).length;
+      }
+      if (currentCount >= limit) {
+        throw new ConvexError({
+          message: `Site limit reached for your plan. Upgrade to add more sites.`,
+          code: "FORBIDDEN",
+        });
+      }
     }
 
     return await ctx.db.insert("sites", {

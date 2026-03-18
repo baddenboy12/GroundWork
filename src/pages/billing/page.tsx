@@ -41,7 +41,6 @@ import {
   Crown,
   ArrowRightLeft,
   UserMinus,
-  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -117,7 +116,7 @@ function BillingInner() {
   const createSelfKeyMutation = useMutation(api.licenseKeys.createSelfKey);
   const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
   const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
-  const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
+  const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -141,15 +140,13 @@ function BillingInner() {
   const [kickTarget, setKickTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
   const [kickPending, setKickPending] = useState(false);
 
-  // Update max members (seat count)
-  const [editSeats, setEditSeats] = useState(false);
-  const [newMaxMembers, setNewMaxMembers] = useState(1);
-  const [updateSeatsPending, setUpdateSeatsPending] = useState(false);
-
-  // Create team key manually (for users who subscribed as individual and want to add members later)
+  // Create team key (for users who subscribed as individual and want to start a team)
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
-  const [createTeamMembers, setCreateTeamMembers] = useState(1);
   const [createTeamPending, setCreateTeamPending] = useState(false);
+
+  // Change team tier dialog
+  const [changeTeamTierOpen, setChangeTeamTierOpen] = useState(false);
+  const [changeTeamTierPending, setChangeTeamTierPending] = useState(false);
 
   // License key state
   const [keyInput, setKeyInput] = useState("");
@@ -158,7 +155,6 @@ function BillingInner() {
   const [removeKeyDialogOpen, setRemoveKeyDialogOpen] = useState(false);
   // Admin: generate key
   const [genTier, setGenTier] = useState<"pro" | "business">("business");
-  const [genMaxMembers, setGenMaxMembers] = useState("10");
   const [genNote, setGenNote] = useState("");
   const [genPending, setGenPending] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState<string | null>(null);
@@ -170,15 +166,18 @@ function BillingInner() {
     user?.paypalSubscriptionStatus === "ACTIVE" ||
     user?.paypalSubscriptionStatus === "APPROVED";
 
+  // Is the current user the last member of their team?
+  const isLastTeamMember = myKeyInfo?.memberCount === 1;
+
   // Handle return from PayPal approval or cancellation (via /paypal/return)
   useEffect(() => {
     const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
-    const teamMembersStr = sessionStorage.getItem("gw_sub_team_members");
+    const wantsTeam = sessionStorage.getItem("gw_sub_team");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
-    sessionStorage.removeItem("gw_sub_team_members");
+    sessionStorage.removeItem("gw_sub_team");
 
     if (paypalCancelled === "1") {
       toast.info("PayPal subscription not completed — no changes made.");
@@ -194,18 +193,14 @@ function BillingInner() {
           toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
 
           // If the user chose team subscription, auto-create their team key
-          if (teamMembersStr) {
-            const additionalMembers = parseInt(teamMembersStr, 10);
-            if (!isNaN(additionalMembers) && additionalMembers > 0) {
-              try {
-                const { code } = await createSelfKeyMutation({
-                  tier: newTier as "pro" | "business",
-                  maxMembers: additionalMembers + 1, // +1 to include the admin
-                });
-                toast.success(`Team workspace created! Share key ${code} with your team members.`);
-              } catch {
-                toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
-              }
+          if (wantsTeam === "1") {
+            try {
+              const { code } = await createSelfKeyMutation({
+                tier: newTier as "pro" | "business",
+              });
+              toast.success(`Team workspace created! Share key ${code} with your team members.`);
+            } catch {
+              toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
             }
           }
         })
@@ -217,13 +212,12 @@ function BillingInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePayPalSubscribe = async (newTier: SubscriptionTier, additionalMembers = 0) => {
+  const handlePayPalSubscribe = async (newTier: SubscriptionTier, isTeam: boolean) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
     setPaypalPending(newTier);
     try {
-      // Store team member count in sessionStorage so the callback can create the key
-      if (additionalMembers > 0) {
-        sessionStorage.setItem("gw_sub_team_members", String(additionalMembers));
+      if (isTeam) {
+        sessionStorage.setItem("gw_sub_team", "1");
       }
       const origin = window.location.origin;
       const { approvalUrl } = await createSubscriptionAction({
@@ -234,7 +228,7 @@ function BillingInner() {
       window.location.href = approvalUrl;
     } catch (err) {
       toast.error(extractErrorMessage(err));
-      sessionStorage.removeItem("gw_sub_team_members");
+      sessionStorage.removeItem("gw_sub_team");
       setPaypalPending(null);
     }
   };
@@ -245,11 +239,11 @@ function BillingInner() {
     setSubTypeDialogTier(newTier);
   };
 
-  const handleSubTypeConfirm = (additionalMembers: number) => {
+  const handleSubTypeConfirm = (isTeam: boolean) => {
     if (!subTypeDialogTier) return;
     const t = subTypeDialogTier;
     setSubTypeDialogTier(null);
-    void handlePayPalSubscribe(t, additionalMembers);
+    void handlePayPalSubscribe(t, isTeam);
   };
 
   const handleTransferAdmin = async () => {
@@ -261,12 +255,7 @@ function BillingInner() {
       setTransferAdminOpen(false);
       setTransferAdminTarget(null);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to transfer admin");
-      } else {
-        toast.error("Failed to transfer admin");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setTransferAdminPending(false);
     }
@@ -280,33 +269,9 @@ function BillingInner() {
       toast.success(`${kickTarget.name} has been removed from the team.`);
       setKickTarget(null);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to remove member");
-      } else {
-        toast.error("Failed to remove member");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setKickPending(false);
-    }
-  };
-
-  const handleUpdateSeats = async () => {
-    if (!myKeyInfo) return;
-    setUpdateSeatsPending(true);
-    try {
-      await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: newMaxMembers });
-      toast.success(`Team capacity updated to ${newMaxMembers} member${newMaxMembers !== 1 ? "s" : ""}.`);
-      setEditSeats(false);
-    } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to update seat count");
-      } else {
-        toast.error("Failed to update seat count");
-      }
-    } finally {
-      setUpdateSeatsPending(false);
     }
   };
 
@@ -321,41 +286,31 @@ function BillingInner() {
         toast.error("An active Pro or Business subscription is required to create a team.");
         return;
       }
-      const { code } = await createSelfKeyMutation({
-        tier: activeTier,
-        maxMembers: createTeamMembers + 1,
-      });
+      const { code } = await createSelfKeyMutation({ tier: activeTier });
       toast.success(`Team workspace created! Share this key with your team: ${code}`);
       setCreateTeamOpen(false);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to create team");
-      } else {
-        toast.error("Failed to create team");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setCreateTeamPending(false);
     }
   };
 
-  const [adminSwitchPending, setAdminSwitchPending] = useState<SubscriptionTier | null>(null);
-
-  // ── Team admin plan-change warning ─────────────────────────────────────────
-  // When a user is the admin of a team key and tries to change their plan,
-  // we warn them that the team key tier will not change automatically.
-  const [teamAdminWarnOpen, setTeamAdminWarnOpen] = useState(false);
-  const [pendingTierAction, setPendingTierAction] = useState<(() => void) | null>(null);
-
-  /** Wraps a tier-change action with a warning dialog when the user is a team admin */
-  const withTeamAdminWarning = (action: () => void) => {
-    if (myKeyInfo?.isAdmin) {
-      setPendingTierAction(() => action);
-      setTeamAdminWarnOpen(true);
-    } else {
-      action();
+  const handleChangeTeamTier = async (newTier: "pro" | "business") => {
+    if (!myKeyInfo) return;
+    setChangeTeamTierPending(true);
+    try {
+      await changeTierForTeamMutation({ keyId: myKeyInfo.keyId, tier: newTier });
+      toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
+      setChangeTeamTierOpen(false);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setChangeTeamTierPending(false);
     }
   };
+
+  const [adminSwitchPending, setAdminSwitchPending] = useState<SubscriptionTier | null>(null);
 
   const handleAdminSelect = async (newTier: SubscriptionTier) => {
     if (newTier === tier) return;
@@ -443,12 +398,7 @@ function BillingInner() {
       toast.success(`License key applied — you now have ${TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier} access!`);
       setKeyInput("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to apply key");
-      } else {
-        toast.error("Failed to apply key");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setKeyApplyPending(false);
     }
@@ -458,15 +408,14 @@ function BillingInner() {
     setKeyRemovePending(true);
     try {
       await removeKeyMutation();
-      toast.success("License key removed — you have been returned to your individual account.");
+      toast.success(
+        isLastTeamMember
+          ? "Team workspace dissolved. You have returned to your individual account."
+          : "You have left the team and returned to your individual account."
+      );
       setRemoveKeyDialogOpen(false);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to remove key");
-      } else {
-        toast.error("Failed to remove key");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setKeyRemovePending(false);
     }
@@ -474,21 +423,14 @@ function BillingInner() {
 
   const handleGenerateKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    const max = parseInt(genMaxMembers, 10);
-    if (isNaN(max) || max < 1) { toast.error("Max members must be at least 1"); return; }
     setGenPending(true);
     try {
-      const { code } = await generateKeyMutation({ tier: genTier, maxMembers: max, note: genNote || undefined });
+      const { code } = await generateKeyMutation({ tier: genTier, note: genNote || undefined });
       setLastGeneratedCode(code);
       toast.success(`Key generated: ${code}`);
       setGenNote("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const d = err.data as { message?: string } | undefined;
-        toast.error(d?.message ?? "Failed to generate key");
-      } else {
-        toast.error("Failed to generate key");
-      }
+      toast.error(extractErrorMessage(err));
     } finally {
       setGenPending(false);
     }
@@ -550,7 +492,7 @@ function BillingInner() {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground text-xs"
-                onClick={() => withTeamAdminWarning(() => setCancelDialogOpen(true))}
+                onClick={() => setCancelDialogOpen(true)}
               >
                 Cancel subscription
               </Button>
@@ -558,11 +500,11 @@ function BillingInner() {
           </div>
         )}
 
-        {/* ── License Key Section ─────────────────────────────────────── */}
+        {/* ── License Key / Team Section ─────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Key className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold text-foreground">License Key</h2>
+            <h2 className="text-lg font-bold text-foreground">Team</h2>
           </div>
 
           {myKeyInfo ? (
@@ -590,10 +532,22 @@ function BillingInner() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {myKeyInfo.memberCount} / {myKeyInfo.maxMembers} members
+                    {myKeyInfo.memberCount} member{myKeyInfo.memberCount !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Change team tier — only for admin */}
+                  {myKeyInfo.isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground text-xs gap-1.5"
+                      onClick={() => setChangeTeamTierOpen(true)}
+                    >
+                      <Settings2 className="w-3.5 h-3.5" />
+                      Change tier
+                    </Button>
+                  )}
                   {/* Transfer admin — only shown to current admin */}
                   {myKeyInfo.isAdmin && myKeyInfo.members.filter(m => !m.isMe).length > 0 && (
                     <Button
@@ -664,52 +618,14 @@ function BillingInner() {
                     </div>
                   ))}
                 </div>
-
-                {/* Admin: edit seat count */}
-                {myKeyInfo.isAdmin && (
-                  <div className="pt-1">
-                    {editSeats ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground">Max seats:</span>
-                        <button
-                          type="button"
-                          onClick={() => setNewMaxMembers((n) => Math.max(myKeyInfo.memberCount, n - 1))}
-                          className="w-7 h-7 rounded border border-border bg-background flex items-center justify-center text-sm hover:bg-accent"
-                        >−</button>
-                        <span className="text-sm font-bold w-6 text-center">{newMaxMembers}</span>
-                        <button
-                          type="button"
-                          onClick={() => setNewMaxMembers((n) => Math.min(100, n + 1))}
-                          className="w-7 h-7 rounded border border-border bg-background flex items-center justify-center text-sm hover:bg-accent"
-                        >+</button>
-                        <Button size="sm" onClick={handleUpdateSeats} disabled={updateSeatsPending} className="text-xs h-7 px-2.5 gap-1">
-                          {updateSeatsPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
-                          Save
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditSeats(false)} disabled={updateSeatsPending} className="text-xs h-7 px-2.5">
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setNewMaxMembers(myKeyInfo.maxMembers); setEditSeats(true); }}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Edit seat limit ({myKeyInfo.memberCount}/{myKeyInfo.maxMembers} used)
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           ) : (
             /* No key — show input form */
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter a license key to join a team workspace. All members sharing a key will
-                have access to the same sites and logs, and the key tier will be applied to
-                your account.
+                Enter a license key to join a team workspace. Team sites are separate
+                from your personal sites. The team tier will be applied to your account.
               </p>
               <form onSubmit={handleApplyKey} className="flex gap-2">
                 <Input
@@ -746,33 +662,21 @@ function BillingInner() {
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
               <p className="text-sm font-semibold text-foreground">Generate a new key</p>
               <form onSubmit={handleGenerateKey} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Tier</Label>
-                    <select
-                      value={genTier}
-                      onChange={(e) => setGenTier(e.target.value as "pro" | "business")}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="pro">Pro</option>
-                      <option value="business">Business</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Max members</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={genMaxMembers}
-                      onChange={(e) => setGenMaxMembers(e.target.value)}
-                      className="h-9 text-sm"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tier</Label>
+                  <select
+                    value={genTier}
+                    onChange={(e) => setGenTier(e.target.value as "pro" | "business")}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="pro">Pro</option>
+                    <option value="business">Business</option>
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Note (optional)</Label>
                   <Input
-                    placeholder="e.g. Acme Corp — Business 10-seat"
+                    placeholder="e.g. Acme Corp — Business team"
                     value={genNote}
                     onChange={(e) => setGenNote(e.target.value)}
                     className="h-9 text-sm"
@@ -822,13 +726,12 @@ function BillingInner() {
                       <tr key={k._id} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
                         <td className="px-4 py-2.5 font-mono text-xs font-bold text-foreground">{k.code}</td>
                         <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">{k.tier}</td>
-                        <td className="px-3 py-2.5 text-xs text-center text-muted-foreground">{k.memberCount}/{k.maxMembers}</td>
+                        <td className="px-3 py-2.5 text-xs text-center text-muted-foreground">{k.memberCount}</td>
                         <td className="px-3 py-2.5">
                           <span className={cn(
                             "inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium",
                             k.status === "active" ? "bg-green-500/15 text-green-600 dark:text-green-400" :
-                            k.status === "expired" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-                            "bg-red-500/15 text-red-600 dark:text-red-400"
+                            "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                           )}>
                             {k.status}
                           </span>
@@ -839,14 +742,13 @@ function BillingInner() {
                             value={k.status}
                             onChange={async (e) => {
                               try {
-                                await updateKeyStatusMutation({ keyId: k._id, status: e.target.value as "active" | "expired" | "suspended" });
+                                await updateKeyStatusMutation({ keyId: k._id, status: e.target.value as "active" | "suspended" });
                                 toast.success("Key status updated");
                               } catch { toast.error("Failed to update"); }
                             }}
                             className="text-xs rounded border border-input bg-background px-1.5 py-0.5"
                           >
                             <option value="active">Active</option>
-                            <option value="expired">Expired</option>
                             <option value="suspended">Suspended</option>
                           </select>
                         </td>
@@ -953,7 +855,6 @@ function BillingInner() {
                 tierOrder.indexOf(t) > tierOrder.indexOf(tier);
               const isPendingThis = paypalPending === t;
               const isFree = t === "free";
-              const isPaid = t === "pro" || t === "business";
 
               return (
                 <div
@@ -989,7 +890,6 @@ function BillingInner() {
 
                   <div>
                     <span className="text-3xl font-black text-foreground">{cfg.price}</span>
-                    {isPaid && <span className="text-primary font-bold text-lg">*</span>}
                     <span className="text-xs text-muted-foreground ml-1">{cfg.period}</span>
                   </div>
 
@@ -1048,7 +948,7 @@ function BillingInner() {
                       className="w-full"
                       variant={isCurrent ? "secondary" : cfg.highlight ? "default" : "secondary"}
                       disabled={isCurrent || adminSwitchPending !== null}
-                      onClick={() => withTeamAdminWarning(() => handleAdminSelect(t))}
+                      onClick={() => handleAdminSelect(t)}
                     >
                       {adminSwitchPending === t ? (
                         <>
@@ -1086,7 +986,7 @@ function BillingInner() {
                       disabled={isCurrent || paypalPending !== null || switchPending}
                       onClick={() =>
                         hasActivePayPalSub && !isCurrent
-                          ? withTeamAdminWarning(() => setSwitchTarget(t))
+                          ? setSwitchTarget(t)
                           : handleSubscribeClick(t)
                       }
                     >
@@ -1135,25 +1035,18 @@ function BillingInner() {
             </p>
           )}
 
-          {/* Asterisk footnote + "Add Team" prompt for existing individual subscribers */}
-          <div className="mt-4 space-y-2">
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary font-bold">*</span> $1.99 per additional team member / month.
-              Team workspaces share a single pool of sites and logs across all members.
-            </p>
-            {/* Prompt for current paid users who don't have a team yet */}
-            {!myKeyInfo && (tier === "pro" || tier === "business") && (
-              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-                <Users className="w-4 h-4 text-primary shrink-0" />
-                <p className="text-sm text-muted-foreground flex-1">
-                  You are on an individual plan. Want to add team members?
-                </p>
-                <Button size="sm" variant="secondary" onClick={() => setCreateTeamOpen(true)}>
-                  Add Team
-                </Button>
-              </div>
-            )}
-          </div>
+          {/* Prompt for current paid users who don't have a team yet */}
+          {!myKeyInfo && (tier === "pro" || tier === "business") && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+              <Users className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm text-muted-foreground flex-1">
+                You are on an individual plan. Want to create a team workspace?
+              </p>
+              <Button size="sm" variant="secondary" onClick={() => setCreateTeamOpen(true)}>
+                Create Team
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Feature comparison table */}
@@ -1224,12 +1117,12 @@ function BillingInner() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <LogOut className="w-5 h-5 text-amber-500" />
-              Leave team?
+              {isLastTeamMember ? "Dissolve team?" : "Leave team?"}
             </DialogTitle>
             <DialogDescription>
-              Your license key will be removed from your account. You will return to your
-              individual account with a free plan. Your personal sites and logs will remain
-              intact and are not affected.
+              {isLastTeamMember
+                ? "You are the last member of this team. Leaving will permanently dissolve the team workspace. Any team sites will be returned to their individual owners as personal sites."
+                : "You will leave the team and return to your individual account with a free plan. Team sites you created will remain accessible to other team members. Your personal sites are not affected."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1237,7 +1130,7 @@ function BillingInner() {
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleRemoveKey} disabled={keyRemovePending}>
-              {keyRemovePending ? "Leaving…" : "Leave team"}
+              {keyRemovePending ? "Leaving…" : isLastTeamMember ? "Dissolve team" : "Leave team"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1323,8 +1216,7 @@ function BillingInner() {
             </DialogTitle>
             <DialogDescription>
               <strong>{kickTarget?.name}</strong> will be removed from the team immediately.
-              Their account will revert to the free plan and their personal sites will be
-              unlinked from the team workspace.
+              Their account will revert to the free plan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1396,41 +1288,53 @@ function BillingInner() {
         </DialogContent>
       </Dialog>
 
-      {/* Team admin plan-change warning dialog */}
-      <Dialog open={teamAdminWarnOpen} onOpenChange={(v) => { if (!v) { setTeamAdminWarnOpen(false); setPendingTierAction(null); } }}>
+      {/* Change team tier dialog */}
+      <Dialog open={changeTeamTierOpen} onOpenChange={setChangeTeamTierOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-500" />
-              You are a team admin
+              <Zap className="w-5 h-5 text-primary" />
+              Change Team Tier
             </DialogTitle>
             <DialogDescription>
-              You are the admin of team key{" "}
-              <span className="font-mono font-bold text-foreground">{myKeyInfo?.code}</span>.
-              Changing your personal plan will <strong>not</strong> automatically change the team
-              key&apos;s tier ({myKeyInfo ? (TIER_CONFIG[myKeyInfo.tier as SubscriptionTier]?.name ?? myKeyInfo.tier) : ""}),
-              nor affect your team members&apos; access.
-              <br /><br />
-              If you intend to change the tier for the whole team, update the team&apos;s license
-              key separately after changing your plan. If you downgrade below the team key tier,
-              consider transferring admin to another member first.
+              Changing the team tier will immediately update the plan for all{" "}
+              <strong>{myKeyInfo?.memberCount ?? 0}</strong> team member{(myKeyInfo?.memberCount ?? 0) !== 1 ? "s" : ""}.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2 py-2">
+            {(["pro", "business"] as const).map((t) => {
+              const cfg = TIER_CONFIG[t];
+              const isCurrent = myKeyInfo?.tier === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={isCurrent || changeTeamTierPending}
+                  onClick={() => handleChangeTeamTier(t)}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border transition-colors text-left",
+                    isCurrent
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card hover:border-primary/40"
+                  )}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{cfg.name}</p>
+                    <p className="text-xs text-muted-foreground">{cfg.tagline}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-foreground">{cfg.price}/mo</p>
+                    {isCurrent && (
+                      <span className="text-[10px] text-primary font-medium">current</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => { setTeamAdminWarnOpen(false); setPendingTierAction(null); }}
-            >
+            <Button variant="ghost" onClick={() => setChangeTeamTierOpen(false)} disabled={changeTeamTierPending}>
               Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setTeamAdminWarnOpen(false);
-                pendingTierAction?.();
-                setPendingTierAction(null);
-              }}
-            >
-              Continue anyway
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1445,40 +1349,11 @@ function BillingInner() {
               Create Team Workspace
             </DialogTitle>
             <DialogDescription>
-              All your current sites and logs will become part of the shared team pool.
-              Team members will see and contribute to the same workspace.
+              This will create a new team workspace separate from your personal sites.
+              You will be the admin and can invite members by sharing your team key.
+              Members can be added or removed at any time.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Additional members (beyond you)</Label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCreateTeamMembers((n) => Math.max(1, n - 1))}
-                  className="w-9 h-9 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
-                >
-                  −
-                </button>
-                <span className="text-lg font-bold text-foreground w-8 text-center">{createTeamMembers}</span>
-                <button
-                  type="button"
-                  onClick={() => setCreateTeamMembers((n) => Math.min(50, n + 1))}
-                  className="w-9 h-9 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
-                >
-                  +
-                </button>
-                <span className="text-xs text-muted-foreground">+${(createTeamMembers * 1.99).toFixed(2)}/mo</span>
-              </div>
-            </div>
-            <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-xs text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>Max total members</span>
-                <span>{createTeamMembers + 1} (you + {createTeamMembers})</span>
-              </div>
-              <p className="text-[11px] pt-1">Additional member fees are billed separately at $1.99/member/month.</p>
-            </div>
-          </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateTeamOpen(false)} disabled={createTeamPending}>Cancel</Button>
             <Button onClick={handleCreateTeam} disabled={createTeamPending}>
