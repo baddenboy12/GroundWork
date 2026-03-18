@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as emails_queries from "../emails/queries.js";
+import type * as emails_teamNotifications from "../emails/teamNotifications.js";
 import type * as http from "../http.js";
 import type * as integrations_apiKeys from "../integrations/apiKeys.js";
 import type * as integrations_apiKeysActions from "../integrations/apiKeysActions.js";
@@ -30,6 +32,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "emails/queries": typeof emails_queries;
+  "emails/teamNotifications": typeof emails_teamNotifications;
   http: typeof http;
   "integrations/apiKeys": typeof integrations_apiKeys;
   "integrations/apiKeysActions": typeof integrations_apiKeysActions;

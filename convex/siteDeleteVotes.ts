@@ -6,6 +6,11 @@ import type { Id } from "./_generated/dataModel.d.ts";
 // 24 hours in milliseconds
 const VOTE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// App URL used in email links — falls back to prod URL if env not set
+function getAppUrl(): string {
+  return process.env.GROUNDWORK_APP_URL ?? "https://groundwork.onhercules.app/dashboard";
+}
+
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 /**
@@ -184,6 +189,15 @@ export const propose = mutation({
       { voteId }
     );
 
+    // Notify all OTHER team members by email
+    await ctx.scheduler.runAfter(0, internal.siteDeleteVotes._notifyVoteProposed, {
+      voteId,
+      teamKeyId: site.teamKeyId,
+      proposerId: user._id,
+      siteName: site.name,
+      expiresAt,
+    });
+
     return { immediate: false, voteId };
   },
 });
@@ -234,16 +248,35 @@ export const castVote = mutation({
       .collect();
     const memberCount = memberships.length;
 
+    const siteName = site?.name ?? "Unknown site";
+
     if (newApprovedBy.length >= memberCount) {
       // Unanimous – mark approved and schedule deletion
       await ctx.db.patch(args.voteId, { approvedBy: newApprovedBy, status: "approved" });
       await ctx.scheduler.runAfter(0, internal.sites._deleteByIdInternal, {
         siteId: vote.siteId,
       });
+      // Notify all team members that the site was deleted
+      await ctx.scheduler.runAfter(0, internal.siteDeleteVotes._notifySiteDeleted, {
+        teamKeyId: vote.teamKeyId,
+        siteName,
+      });
       return { deleted: true };
     }
 
     await ctx.db.patch(args.voteId, { approvedBy: newApprovedBy });
+
+    // Notify the proposer (and optionally all members) of the new vote
+    await ctx.scheduler.runAfter(0, internal.siteDeleteVotes._notifyVoteCast, {
+      voteId: args.voteId,
+      teamKeyId: vote.teamKeyId,
+      voterId: user._id,
+      voterName: user.name ?? "Teammate",
+      siteName,
+      approvedCount: newApprovedBy.length,
+      memberCount,
+    });
+
     return { deleted: false };
   },
 });
@@ -274,10 +307,22 @@ export const cancel = mutation({
     }
 
     await ctx.db.patch(args.voteId, { status: "cancelled" });
+
+    // Look up site name for the notification
+    const site = await ctx.db.get(vote.siteId);
+    const siteName = site?.name ?? "Unknown site";
+
+    // Notify all other team members that the vote was cancelled
+    await ctx.scheduler.runAfter(0, internal.siteDeleteVotes._notifyVoteCancelled, {
+      teamKeyId: vote.teamKeyId,
+      cancellerId: user._id,
+      cancellerName: user.name ?? "Teammate",
+      siteName,
+    });
   },
 });
 
-// ── Internal ──────────────────────────────────────────────────────────────────
+// ── Internal mutations ────────────────────────────────────────────────────────
 
 /** Scheduled: expire a vote once 24 h has passed. */
 export const _expireVote = internalMutation({
@@ -286,5 +331,187 @@ export const _expireVote = internalMutation({
     const vote = await ctx.db.get(args.voteId);
     if (!vote || vote.status !== "pending") return;
     await ctx.db.patch(args.voteId, { status: "expired" });
+
+    // Look up site name for the notification
+    const site = await ctx.db.get(vote.siteId);
+    const siteName = site?.name ?? "Unknown site";
+
+    // Notify all team members that the vote expired
+    await ctx.scheduler.runAfter(0, internal.siteDeleteVotes._notifyVoteExpired, {
+      teamKeyId: vote.teamKeyId,
+      siteName,
+      approvedCount: vote.approvedBy.length,
+    });
+  },
+});
+
+// ── Internal email dispatcher stubs ──────────────────────────────────────────
+// These internal mutations collect the needed data then hand off to Node actions.
+
+export const _notifyVoteProposed = internalMutation({
+  args: {
+    voteId: v.id("siteDeleteVotes"),
+    teamKeyId: v.id("licenseKeys"),
+    proposerId: v.id("users"),
+    siteName: v.string(),
+    expiresAt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Collect all team-member emails excluding the proposer
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.teamKeyId))
+      .collect();
+
+    const recipients: string[] = [];
+    let proposerName = "Teammate";
+
+    for (const m of memberships) {
+      const u = await ctx.db.get(m.userId);
+      if (!u) continue;
+      if (m.userId === args.proposerId) {
+        if (u.name) proposerName = u.name;
+        continue; // Don't email the proposer
+      }
+      if (u.email) recipients.push(u.email);
+    }
+
+    if (recipients.length === 0) return;
+
+    await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendVoteProposed, {
+      to: recipients,
+      siteName: args.siteName,
+      proposerName,
+      expiresAt: args.expiresAt,
+      appUrl: getAppUrl(),
+    });
+  },
+});
+
+export const _notifyVoteCast = internalMutation({
+  args: {
+    voteId: v.id("siteDeleteVotes"),
+    teamKeyId: v.id("licenseKeys"),
+    voterId: v.id("users"),
+    voterName: v.string(),
+    siteName: v.string(),
+    approvedCount: v.number(),
+    memberCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Notify all OTHER team members (everyone except the voter)
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.teamKeyId))
+      .collect();
+
+    const recipients: string[] = [];
+    for (const m of memberships) {
+      if (m.userId === args.voterId) continue;
+      const u = await ctx.db.get(m.userId);
+      if (u?.email) recipients.push(u.email);
+    }
+
+    if (recipients.length === 0) return;
+
+    await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendVoteCast, {
+      to: recipients,
+      siteName: args.siteName,
+      voterName: args.voterName,
+      approvedCount: args.approvedCount,
+      memberCount: args.memberCount,
+      appUrl: getAppUrl(),
+    });
+  },
+});
+
+export const _notifySiteDeleted = internalMutation({
+  args: {
+    teamKeyId: v.id("licenseKeys"),
+    siteName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.teamKeyId))
+      .collect();
+
+    const recipients: string[] = [];
+    for (const m of memberships) {
+      const u = await ctx.db.get(m.userId);
+      if (u?.email) recipients.push(u.email);
+    }
+
+    if (recipients.length === 0) return;
+
+    await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendSiteDeleted, {
+      to: recipients,
+      siteName: args.siteName,
+      appUrl: getAppUrl(),
+    });
+  },
+});
+
+export const _notifyVoteExpired = internalMutation({
+  args: {
+    teamKeyId: v.id("licenseKeys"),
+    siteName: v.string(),
+    approvedCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.teamKeyId))
+      .collect();
+
+    const recipients: string[] = [];
+    for (const m of memberships) {
+      const u = await ctx.db.get(m.userId);
+      if (u?.email) recipients.push(u.email);
+    }
+
+    if (recipients.length === 0) return;
+
+    // We need total member count as well
+    const memberCount = memberships.length;
+
+    await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendVoteExpired, {
+      to: recipients,
+      siteName: args.siteName,
+      approvedCount: args.approvedCount,
+      memberCount,
+      appUrl: getAppUrl(),
+    });
+  },
+});
+
+export const _notifyVoteCancelled = internalMutation({
+  args: {
+    teamKeyId: v.id("licenseKeys"),
+    cancellerId: v.id("users"),
+    cancellerName: v.string(),
+    siteName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.teamKeyId))
+      .collect();
+
+    const recipients: string[] = [];
+    for (const m of memberships) {
+      if (m.userId === args.cancellerId) continue;
+      const u = await ctx.db.get(m.userId);
+      if (u?.email) recipients.push(u.email);
+    }
+
+    if (recipients.length === 0) return;
+
+    await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendVoteCancelled, {
+      to: recipients,
+      siteName: args.siteName,
+      cancellerName: args.cancellerName,
+      appUrl: getAppUrl(),
+    });
   },
 });
