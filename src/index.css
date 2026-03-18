@@ -199,10 +199,11 @@ html, body {
 }
 
 /* With viewport width=768, the browser auto-scales the page to fit any screen.
-   #root just needs to fill the full viewport naturally. */
+   #root is a fixed-height scroll container — tall pages (billing, integrations)
+   scroll inside it; the dashboard manages its own internal overflow. */
 #root {
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
 }
