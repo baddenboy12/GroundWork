@@ -36,29 +36,29 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
   const isMobile = useIsMobile();
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+    <header className="h-20 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
       {/* Left: hamburger (mobile) + logo */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
         {isMobile && onMenuClick && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-11 w-11 shrink-0"
+            className="h-12 w-12 shrink-0"
             onClick={onMenuClick}
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-6 h-6" />
           </Button>
         )}
         <button
-          className="flex items-center gap-2"
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           onClick={() => navigate("/")}
         >
           <img
             src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
             alt="GroundWork"
-            className="w-8 h-8 rounded-md"
+            className="w-12 h-12 rounded-lg"
           />
-          <span className="font-bold text-foreground hidden sm:block">
+          <span className="font-bold text-xl text-foreground hidden sm:block">
             Ground<span className="text-primary">Work</span>
           </span>
         </button>
@@ -66,44 +66,33 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
 
       {/* Right controls */}
       <div className="flex items-center gap-2 ml-auto">
-        {/* Plan badge — desktop only */}
+        {/* Plan badge */}
         <button
           onClick={() => navigate("/billing")}
           className={cn(
-            "hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-opacity hover:opacity-80",
+            "hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition-opacity hover:opacity-80",
             TIER_BADGE_STYLE[tier] ?? TIER_BADGE_STYLE.free
           )}
         >
-          <Zap className="w-3 h-3" />
+          <Zap className="w-3.5 h-3.5" />
           {config.name}
         </button>
-
-        {/* Stats button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11"
-          onClick={onStats}
-          title="Statistics"
-        >
-          <BarChart2 className="w-5 h-5" />
-        </Button>
 
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 h-11 px-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-primary" />
+            <Button variant="ghost" className="gap-3 h-14 px-3 rounded-xl">
+              <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-sm text-muted-foreground max-w-28 truncate hidden md:block">
+              <span className="text-base text-muted-foreground max-w-36 truncate hidden md:block">
                 {user?.profile.name ?? user?.profile.email ?? "Account"}
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <div className="px-4 py-3">
-              <p className="text-base font-semibold text-foreground truncate">
+          <DropdownMenuContent align="end" className="w-72">
+            <div className="px-4 py-4">
+              <p className="text-lg font-semibold text-foreground truncate">
                 {user?.profile.name ?? "User"}
               </p>
               <p className="text-sm text-muted-foreground truncate">{user?.profile.email}</p>
@@ -118,15 +107,18 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
               </Badge>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-base py-3 gap-3" onClick={() => navigate("/billing")}>
+            <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={() => navigate("/billing")}>
               <CreditCard className="w-5 h-5" /> Subscription
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-base py-3 gap-3" onClick={() => navigate("/integrations")}>
+            <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={onStats}>
+              <BarChart2 className="w-5 h-5" /> Statistics
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={() => navigate("/integrations")}>
               <Plug className="w-5 h-5" /> Integrations & API
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-base py-3 gap-3 text-destructive focus:text-destructive"
+              className="text-base py-3.5 gap-3 text-destructive focus:text-destructive"
               onClick={async () => {
                 // Clear all locally-cached query data before signing out so
                 // a different user on this device doesn't see stale data.
@@ -141,7 +133,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
               <LogOut className="w-5 h-5" /> Sign out
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <div className="px-4 py-2 flex items-center justify-between">
+            <div className="px-4 py-2.5 flex items-center justify-between">
               <span className="text-xs text-muted-foreground/50">Version</span>
               <span className="text-xs font-mono text-muted-foreground/50">v{APP_VERSION}</span>
             </div>
