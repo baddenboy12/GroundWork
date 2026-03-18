@@ -219,7 +219,7 @@ export default function CreateLogDialog({
           <DialogHeader>
             <DialogTitle>New log entry</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-lg">
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-xl">
 
             {/* Offline notice */}
             {!isOnline && (
@@ -386,7 +386,7 @@ export default function CreateLogDialog({
                 placeholder="Generator fuel level check"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-lg"
+                className="text-xl"
                 required
               />
             </div>
@@ -442,7 +442,7 @@ export default function CreateLogDialog({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={5}
-                className="text-lg"
+                className="text-xl"
                 required
               />
             </div>

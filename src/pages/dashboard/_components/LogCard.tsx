@@ -62,23 +62,23 @@ export default function LogCard({ log }: Props) {
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-lg leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-2xl leading-snug line-clamp-2">
             {log.title}
           </h3>
 
           {/* Excerpt */}
-          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-xl text-muted-foreground leading-relaxed line-clamp-2">
             {log.content}
           </p>
 
           {/* Footer meta */}
-          <div className="flex items-center gap-3 pt-1 text-sm text-muted-foreground/70">
+          <div className="flex items-center gap-3 pt-1 text-lg text-muted-foreground/70">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
+              <Clock className="w-5 h-5" />
               {format(new Date(log.loggedAt), "MMM d, yyyy")}
             </span>
             <span className="flex items-center gap-1.5 truncate">
-              <User className="w-4 h-4 shrink-0" />
+              <User className="w-5 h-5 shrink-0" />
               <span className="truncate">{log.authorName}</span>
             </span>
           </div>

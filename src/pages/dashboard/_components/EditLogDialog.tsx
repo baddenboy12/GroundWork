@@ -106,14 +106,14 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
         <DialogHeader>
           <DialogTitle>Edit log entry</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-lg">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-xl">
           <div className="space-y-1.5">
             <Label htmlFor="edit-log-title">Title *</Label>
             <Input
               id="edit-log-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-lg"
+              className="text-xl"
               required
             />
           </div>
@@ -183,7 +183,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={6}
-              className="text-lg"
+              className="text-xl"
               required
             />
           </div>
