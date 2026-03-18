@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import { LogOut, User, CreditCard, Zap, Menu, Plug, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
+import { APP_VERSION } from "@/lib/version.ts";
 
 const TIER_BADGE_STYLE: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
@@ -139,6 +140,11 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
             >
               <LogOut className="w-5 h-5" /> Sign out
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <div className="px-4 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground/50">Version</span>
+              <span className="text-xs font-mono text-muted-foreground/50">v{APP_VERSION}</span>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
