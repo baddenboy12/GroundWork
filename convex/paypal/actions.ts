@@ -53,6 +53,15 @@ const PLAN_CONFIG = {
 type PaidTier = keyof typeof PLAN_CONFIG;
 type SubscriptionTier = "free" | PaidTier;
 
+const EXTRA_SEAT_PRICE = 1.99;
+
+/** Calculates the total monthly price string given a tier and seat count */
+function calcTotalPrice(tier: "pro" | "business", maxMembers: number): string {
+  const base = tier === "pro" ? 8.99 : 19.99;
+  const total = base + Math.max(0, maxMembers - 1) * EXTRA_SEAT_PRICE;
+  return total.toFixed(2);
+}
+
 // ── Public actions ────────────────────────────────────────────────────────────
 
 /**
@@ -309,8 +318,10 @@ export const syncSubscription = action({
     });
 
     const isActive = sub.status === "ACTIVE" || sub.status === "APPROVED";
+    // For revised subscriptions the plan may be a dynamic one not in our table.
+    // Preserve the user's existing tier if the plan is unknown.
     const tier: SubscriptionTier = isActive
-      ? ((plan?.tier ?? "free") as SubscriptionTier)
+      ? ((plan?.tier ?? user.subscriptionTier ?? "free") as SubscriptionTier)
       : "free";
 
     await ctx.runMutation(internal.users._setPaypalSubscription, {
@@ -370,6 +381,165 @@ export const cancelSubscription = action({
       paypalSubscriptionStatus: "CANCELLED",
       subscriptionTier: "free",
     });
+  },
+});
+
+/**
+ * Revises a team's PayPal subscription to reflect a new seat count.
+ * Creates a new PayPal plan priced at (base + extra_seats × $1.99) and submits
+ * a subscription revision request. Returns an approval URL if subscriber
+ * re-approval is required (price increase), or null if applied immediately
+ * (price decrease or unchanged).
+ */
+export const reviseSubscriptionSeats = action({
+  args: {
+    keyId: v.id("licenseKeys"),
+    maxMembers: v.number(),
+    returnUrl: v.string(),
+    cancelUrl: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ approvalUrl: string | null; applied: boolean }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+
+    const user = await ctx.runQuery(internal.users._getByToken, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+    if (!user.paypalSubscriptionId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "No active PayPal subscription to revise.",
+      });
+    }
+
+    // Fetch the license key and verify this user is the team admin
+    const key = await ctx.runMutation(internal.licenseKeys._getKeyById, {
+      keyId: args.keyId,
+    });
+    if (!key) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+    }
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
+    }
+
+    const tier = key.tier as "pro" | "business";
+    const newPrice = calcTotalPrice(tier, args.maxMembers);
+    const tierLabel = tier === "pro" ? "Pro" : "Business";
+    const seatLabel = `${args.maxMembers} seat${args.maxMembers !== 1 ? "s" : ""}`;
+
+    const token = await getToken();
+    const base = getBaseUrl();
+
+    // Get the product ID from any existing plan so we can create a new plan
+    const existingPlans = await ctx.runQuery(internal.paypal.plans._getAllPlans);
+    const productId = existingPlans[0]?.productId;
+    if (!productId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "PayPal plans not initialized. Please initialize PayPal first.",
+      });
+    }
+
+    // Create a new plan with the seat-adjusted price
+    const planRes = await fetch(`${base}/v1/billing/plans`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `gw-plan-${tier}-${args.maxMembers}seats-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        product_id: productId,
+        name: `GroundWork ${tierLabel} — ${seatLabel}`,
+        description: `GroundWork ${tierLabel} team subscription with ${seatLabel}`,
+        status: "ACTIVE",
+        billing_cycles: [
+          {
+            frequency: { interval_unit: "MONTH", interval_count: 1 },
+            tenure_type: "REGULAR",
+            sequence: 1,
+            total_cycles: 0,
+            pricing_scheme: {
+              fixed_price: { value: newPrice, currency_code: "USD" },
+            },
+          },
+        ],
+        payment_preferences: {
+          auto_bill_outstanding: true,
+          setup_fee_failure_action: "CONTINUE",
+          payment_failure_threshold: 3,
+        },
+      }),
+    });
+
+    if (!planRes.ok) {
+      const txt = await planRes.text();
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to create revised PayPal plan: ${txt}`,
+      });
+    }
+    const newPlan = (await planRes.json()) as { id: string };
+
+    // Submit subscription revision request
+    const reviseRes = await fetch(
+      `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}/revise`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plan_id: newPlan.id,
+          application_context: {
+            brand_name: "GroundWork",
+            locale: "en-US",
+            shipping_preference: "NO_SHIPPING",
+            user_action: "SUBSCRIBE_NOW",
+            return_url: args.returnUrl,
+            cancel_url: args.cancelUrl,
+          },
+        }),
+      }
+    );
+
+    if (!reviseRes.ok) {
+      const txt = await reviseRes.text();
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to revise subscription: ${txt}`,
+      });
+    }
+
+    const revision = (await reviseRes.json()) as {
+      plan_overridden?: boolean;
+      links?: Array<{ href: string; rel: string }>;
+    };
+
+    const approvalLink = revision.links?.find((l) => l.rel === "approve");
+
+    if (!approvalLink) {
+      // Applied immediately (e.g. price decrease) — update seat count right away
+      await ctx.runMutation(internal.licenseKeys._applyPendingSeats, {
+        keyId: args.keyId,
+        maxMembers: args.maxMembers,
+      });
+      return { approvalUrl: null, applied: true };
+    }
+
+    // Subscriber needs to approve the price change via PayPal
+    return { approvalUrl: approvalLink.href, applied: false };
   },
 });
 

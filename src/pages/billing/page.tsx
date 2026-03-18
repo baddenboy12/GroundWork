@@ -109,6 +109,7 @@ function BillingInner() {
   const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
   const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
+  const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
   const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
   const removeKeyMutation = useMutation(api.licenseKeys.removeKey);
@@ -188,17 +189,42 @@ function BillingInner() {
     const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
     const wantsTeam = sessionStorage.getItem("gw_sub_team");
     const seatsRaw = sessionStorage.getItem("gw_sub_seats");
+    const pendingSeatsRaw = sessionStorage.getItem("gw_pending_seats");
+    const pendingKeyId = sessionStorage.getItem("gw_pending_key_id");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
     sessionStorage.removeItem("gw_sub_team");
     sessionStorage.removeItem("gw_sub_seats");
+    sessionStorage.removeItem("gw_pending_seats");
+    sessionStorage.removeItem("gw_pending_key_id");
 
     if (paypalCancelled === "1") {
-      toast.info("PayPal subscription not completed — no changes made.");
+      toast.info("PayPal update not completed — no changes made.");
       return;
     }
 
+    // ── Seat revision return ──────────────────────────────────────────────────
+    if (subscriptionId && pendingSeatsRaw && pendingKeyId) {
+      const newSeats = parseInt(pendingSeatsRaw, 10);
+      setSyncPending(true);
+      syncSubscriptionAction({ subscriptionId })
+        .then(async () => {
+          // Apply the seat change now that PayPal approved the revised price
+          await updateMaxMembersMutation({
+            keyId: pendingKeyId as Parameters<typeof updateMaxMembersMutation>[0]["keyId"],
+            maxMembers: newSeats,
+          });
+          toast.success(`Billing updated — seat limit set to ${newSeats}.`);
+        })
+        .catch((err: unknown) => {
+          toast.error(extractErrorMessage(err));
+        })
+        .finally(() => setSyncPending(false));
+      return;
+    }
+
+    // ── New subscription return ───────────────────────────────────────────────
     if (subscriptionId) {
       setSyncPending(true);
       syncSubscriptionAction({ subscriptionId })
@@ -325,10 +351,41 @@ function BillingInner() {
     if (!myKeyInfo) return;
     setEditSeatsPending(true);
     try {
-      await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: editSeatsValue });
-      toast.success(`Seat limit updated to ${editSeatsValue}.`);
-      setEditSeatsOpen(false);
+      const hasPayPalSub =
+        user?.paypalSubscriptionStatus === "ACTIVE" ||
+        user?.paypalSubscriptionStatus === "APPROVED";
+
+      if (hasPayPalSub) {
+        // Store pending seat change so the billing page can apply it on return
+        sessionStorage.setItem("gw_pending_seats", String(editSeatsValue));
+        sessionStorage.setItem("gw_pending_key_id", myKeyInfo.keyId);
+        const origin = window.location.origin;
+        const { approvalUrl, applied } = await reviseSubscriptionSeatsAction({
+          keyId: myKeyInfo.keyId,
+          maxMembers: editSeatsValue,
+          returnUrl: `${origin}/paypal/return`,
+          cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+        });
+
+        if (applied) {
+          // No approval needed — revision applied immediately (price decrease)
+          sessionStorage.removeItem("gw_pending_seats");
+          sessionStorage.removeItem("gw_pending_key_id");
+          toast.success(`Seat limit updated to ${editSeatsValue}.`);
+          setEditSeatsOpen(false);
+        } else if (approvalUrl) {
+          // Redirect to PayPal for subscriber approval (price increase)
+          window.location.href = approvalUrl;
+        }
+      } else {
+        // No PayPal subscription — update seat count directly
+        await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: editSeatsValue });
+        toast.success(`Seat limit updated to ${editSeatsValue}.`);
+        setEditSeatsOpen(false);
+      }
     } catch (err) {
+      sessionStorage.removeItem("gw_pending_seats");
+      sessionStorage.removeItem("gw_pending_key_id");
       toast.error(extractErrorMessage(err));
     } finally {
       setEditSeatsPending(false);
@@ -1600,7 +1657,12 @@ function BillingInner() {
             </Button>
             <Button onClick={handleEditSeats} disabled={editSeatsPending}>
               {editSeatsPending ? (
-                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</>
+                <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
+              ) : hasActivePayPalSub && editSeatsValue !== (myKeyInfo?.maxMembers ?? null) ? (
+                <>
+                  <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                  Save &amp; approve in PayPal
+                </>
               ) : (
                 "Save seats"
               )}

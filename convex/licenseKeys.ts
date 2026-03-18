@@ -575,6 +575,26 @@ export const deleteKey = mutation({
   },
 });
 
+// ── Internal: get a key by ID (used by PayPal actions) ───────────────────────
+
+export const _getKeyById = internalMutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.keyId);
+  },
+});
+
+// ── Internal: update maxMembers directly (used by PayPal revise flow) ─────────
+
+export const _applyPendingSeats = internalMutation({
+  args: { keyId: v.id("licenseKeys"), maxMembers: v.number() },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
+  },
+});
+
 // ── Internal: suspend key and remove all members (for PayPal payment failure) ─
 
 export const _expireKey = internalMutation({
