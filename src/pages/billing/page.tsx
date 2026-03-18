@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,11 @@ import {
   RefreshCw,
   Settings2,
   Trash2,
+  Key,
+  Users,
+  Plus,
+  ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -89,6 +96,8 @@ function BillingInner() {
   const user = useQuery(api.users.getCurrentUser, {});
   const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
   const isAdmin = useQuery(api.users.getIsAdmin, {});
+  const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
+  const allKeys = useQuery(api.licenseKeys.listAll, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
   const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
@@ -96,6 +105,10 @@ function BillingInner() {
   const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
   const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
+  const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
+  const removeKeyMutation = useMutation(api.licenseKeys.removeKey);
+  const generateKeyMutation = useMutation(api.licenseKeys.generate);
+  const updateKeyStatusMutation = useMutation(api.licenseKeys.updateStatus);
 
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -104,9 +117,21 @@ function BillingInner() {
   const [initPending, setInitPending] = useState(false);
   const [cleanupPending, setCleanupPending] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<{ deleted: number; checked: number } | null>(null);
-  // "Switch plan" flow: cancel current sub then start new PayPal subscription
   const [switchTarget, setSwitchTarget] = useState<SubscriptionTier | null>(null);
   const [switchPending, setSwitchPending] = useState(false);
+
+  // License key state
+  const [keyInput, setKeyInput] = useState("");
+  const [keyApplyPending, setKeyApplyPending] = useState(false);
+  const [keyRemovePending, setKeyRemovePending] = useState(false);
+  const [removeKeyDialogOpen, setRemoveKeyDialogOpen] = useState(false);
+  // Admin: generate key
+  const [genTier, setGenTier] = useState<"pro" | "business">("business");
+  const [genMaxMembers, setGenMaxMembers] = useState("10");
+  const [genNote, setGenNote] = useState("");
+  const [genPending, setGenPending] = useState(false);
+  const [lastGeneratedCode, setLastGeneratedCode] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
   const isPayPalConfigured = paypalStatus?.isInitialized ?? false;
@@ -239,6 +264,66 @@ function BillingInner() {
     }
   };
 
+  const handleApplyKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyInput.trim()) return;
+    setKeyApplyPending(true);
+    try {
+      const { tier: newTier } = await applyKeyMutation({ code: keyInput.trim() });
+      toast.success(`License key applied — you now have ${TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier} access!`);
+      setKeyInput("");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to apply key");
+      } else {
+        toast.error("Failed to apply key");
+      }
+    } finally {
+      setKeyApplyPending(false);
+    }
+  };
+
+  const handleRemoveKey = async () => {
+    setKeyRemovePending(true);
+    try {
+      await removeKeyMutation();
+      toast.success("License key removed — you have been returned to your individual account.");
+      setRemoveKeyDialogOpen(false);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to remove key");
+      } else {
+        toast.error("Failed to remove key");
+      }
+    } finally {
+      setKeyRemovePending(false);
+    }
+  };
+
+  const handleGenerateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const max = parseInt(genMaxMembers, 10);
+    if (isNaN(max) || max < 1) { toast.error("Max members must be at least 1"); return; }
+    setGenPending(true);
+    try {
+      const { code } = await generateKeyMutation({ tier: genTier, maxMembers: max, note: genNote || undefined });
+      setLastGeneratedCode(code);
+      toast.success(`Key generated: ${code}`);
+      setGenNote("");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const d = err.data as { message?: string } | undefined;
+        toast.error(d?.message ?? "Failed to generate key");
+      } else {
+        toast.error("Failed to generate key");
+      }
+    } finally {
+      setGenPending(false);
+    }
+  };
+
   // Tier order for comparison (use index from full order)
   const tierOrder: SubscriptionTier[] = ["free", "pro", "business"];
 
@@ -303,7 +388,235 @@ function BillingInner() {
           </div>
         )}
 
-        {/* PayPal setup panel — admin only */}
+        {/* ── License Key Section ─────────────────────────────────────── */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Key className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">License Key</h2>
+          </div>
+
+          {myKeyInfo ? (
+            /* Key is applied — show team info */
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <span className="font-mono font-bold text-foreground tracking-widest">
+                      {myKeyInfo.code}
+                    </span>
+                    <Badge
+                      className={cn(
+                        "text-[10px]",
+                        myKeyInfo.status === "active"
+                          ? "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      )}
+                    >
+                      {myKeyInfo.status}
+                    </Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {TIER_CONFIG[myKeyInfo.tier as SubscriptionTier]?.name ?? myKeyInfo.tier}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {myKeyInfo.memberCount} / {myKeyInfo.maxMembers} members
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive text-xs gap-1.5"
+                  onClick={() => setRemoveKeyDialogOpen(true)}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Leave team
+                </Button>
+              </div>
+
+              {/* Team members list */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Users className="w-3.5 h-3.5" />
+                  Team members
+                </div>
+                <div className="space-y-1.5">
+                  {myKeyInfo.members.map((m) => (
+                    <div
+                      key={String(m.userId)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background/60 border border-border/50"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                        {(m.name?.[0] ?? "?").toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {m.name}{m.isMe && <span className="ml-1.5 text-[10px] text-primary font-normal">(you)</span>}
+                        </p>
+                        {m.email && (
+                          <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* No key — show input form */
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter a license key to join a team workspace. All members sharing a key will
+                have access to the same sites and logs, and the key tier will be applied to
+                your account.
+              </p>
+              <form onSubmit={handleApplyKey} className="flex gap-2">
+                <Input
+                  placeholder="GW-XXXX-XXXX-XXXX"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value.toUpperCase())}
+                  className="font-mono flex-1"
+                  maxLength={15}
+                />
+                <Button type="submit" disabled={keyApplyPending || !keyInput.trim()}>
+                  {keyApplyPending ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Apply"
+                  )}
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground">
+                Keys are provided by your team administrator or subscription owner.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Admin: Generate & manage keys ───────────────────────────── */}
+        {isAdmin && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Key className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-bold text-foreground">Admin — License Keys</h2>
+            </div>
+
+            {/* Generate new key form */}
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <p className="text-sm font-semibold text-foreground">Generate a new key</p>
+              <form onSubmit={handleGenerateKey} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tier</Label>
+                    <select
+                      value={genTier}
+                      onChange={(e) => setGenTier(e.target.value as "pro" | "business")}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="pro">Pro</option>
+                      <option value="business">Business</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Max members</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={genMaxMembers}
+                      onChange={(e) => setGenMaxMembers(e.target.value)}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Note (optional)</Label>
+                  <Input
+                    placeholder="e.g. Acme Corp — Business 10-seat"
+                    value={genNote}
+                    onChange={(e) => setGenNote(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                {lastGeneratedCode && (
+                  <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+                    <Key className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="font-mono font-bold text-foreground tracking-widest text-sm">
+                      {lastGeneratedCode}
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-auto text-xs text-primary hover:underline"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(lastGeneratedCode);
+                        toast.success("Copied!");
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
+                <Button type="submit" size="sm" disabled={genPending} className="gap-1.5">
+                  {genPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Generate key
+                </Button>
+              </form>
+            </div>
+
+            {/* All keys table */}
+            {allKeys && allKeys.length > 0 && (
+              <div className="rounded-2xl border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Code</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Tier</th>
+                      <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Members</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Status</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Note</th>
+                      <th className="px-3 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allKeys.map((k, i) => (
+                      <tr key={k._id} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
+                        <td className="px-4 py-2.5 font-mono text-xs font-bold text-foreground">{k.code}</td>
+                        <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">{k.tier}</td>
+                        <td className="px-3 py-2.5 text-xs text-center text-muted-foreground">{k.memberCount}/{k.maxMembers}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn(
+                            "inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium",
+                            k.status === "active" ? "bg-green-500/15 text-green-600 dark:text-green-400" :
+                            k.status === "expired" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
+                            "bg-red-500/15 text-red-600 dark:text-red-400"
+                          )}>
+                            {k.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[120px] truncate">{k.note ?? "—"}</td>
+                        <td className="px-3 py-2.5">
+                          <select
+                            value={k.status}
+                            onChange={async (e) => {
+                              try {
+                                await updateKeyStatusMutation({ keyId: k._id, status: e.target.value as "active" | "expired" | "suspended" });
+                                toast.success("Key status updated");
+                              } catch { toast.error("Failed to update"); }
+                            }}
+                            className="text-xs rounded border border-input bg-background px-1.5 py-0.5"
+                          >
+                            <option value="active">Active</option>
+                            <option value="expired">Expired</option>
+                            <option value="suspended">Suspended</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
         {isAdmin && (
           <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
             isPayPalConfigured
@@ -641,6 +954,31 @@ function BillingInner() {
           </a>
         </p>
       </div>
+
+      {/* Leave team confirmation dialog */}
+      <Dialog open={removeKeyDialogOpen} onOpenChange={setRemoveKeyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogOut className="w-5 h-5 text-amber-500" />
+              Leave team?
+            </DialogTitle>
+            <DialogDescription>
+              Your license key will be removed from your account. You will return to your
+              individual account with a free plan. Your personal sites and logs will remain
+              intact and are not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveKeyDialogOpen(false)} disabled={keyRemovePending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRemoveKey} disabled={keyRemovePending}>
+              {keyRemovePending ? "Leaving…" : "Leave team"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Switch plan confirmation dialog */}
       <Dialog open={!!switchTarget} onOpenChange={(v) => !v && setSwitchTarget(null)}>

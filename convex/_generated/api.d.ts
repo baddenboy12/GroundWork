@@ -13,6 +13,7 @@ import type * as integrations_apiKeys from "../integrations/apiKeys.js";
 import type * as integrations_apiKeysActions from "../integrations/apiKeysActions.js";
 import type * as integrations_webhookActions from "../integrations/webhookActions.js";
 import type * as integrations_webhooks from "../integrations/webhooks.js";
+import type * as licenseKeys from "../licenseKeys.js";
 import type * as logs from "../logs.js";
 import type * as paypal_actions from "../paypal/actions.js";
 import type * as paypal_plans from "../paypal/plans.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/apiKeysActions": typeof integrations_apiKeysActions;
   "integrations/webhookActions": typeof integrations_webhookActions;
   "integrations/webhooks": typeof integrations_webhooks;
+  licenseKeys: typeof licenseKeys;
   logs: typeof logs;
   "paypal/actions": typeof paypal_actions;
   "paypal/plans": typeof paypal_plans;
