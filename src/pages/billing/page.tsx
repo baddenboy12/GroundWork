@@ -824,7 +824,7 @@ function BillingInner() {
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value.toUpperCase())}
                   className="font-mono flex-1"
-                  maxLength={15}
+                  maxLength={17}
                 />
                 <Button type="submit" disabled={keyApplyPending || !keyInput.trim()}>
                   {keyApplyPending ? (
