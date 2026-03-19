@@ -25,6 +25,11 @@ const BYPASS = [
 // rapid navigations but still keeps the cache fresh on longer sessions).
 const REFRESH_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
+// Key used to store the photo URL manifest inside Cache Storage.
+// Written by the app (use-background-cache-sync.ts) whenever it syncs.
+// Read by the periodicSync handler to re-cache photos in the background.
+const PHOTO_MANIFEST_KEY = "/__gw-photo-manifest";
+
 // ── Offline fallback page ─────────────────────────────────────────────────────
 // Shown when the app shell is not yet cached (e.g. first ever launch offline).
 const OFFLINE_HTML = `<!doctype html>
@@ -117,6 +122,41 @@ async function refreshCache(force = false) {
   }
 }
 
+// ── Photo manifest caching ────────────────────────────────────────────────────
+// The app writes all known photo URLs to PHOTO_MANIFEST_KEY in Cache Storage
+// whenever it syncs with Convex. This function reads that manifest and fetches
+// any URLs not already cached — used by the periodicSync handler so photos are
+// kept fresh even when the app is fully closed (Android/Chrome PWA).
+
+async function cachePhotosFromManifest() {
+  try {
+    const cache = await caches.open(CACHE);
+    const manifestRes = await cache.match(PHOTO_MANIFEST_KEY);
+    if (!manifestRes) return;
+
+    const urls = await manifestRes.json();
+    if (!Array.isArray(urls) || urls.length === 0) return;
+
+    for (const url of urls) {
+      try {
+        // Skip photos that are already cached — no wasted bandwidth
+        const hit = await cache.match(url);
+        if (hit) continue;
+
+        const res = await fetch(url);
+        if (res.ok) await cache.put(url, res.clone());
+
+        // Small throttle to avoid hammering the CDN
+        await new Promise((r) => setTimeout(r, 250));
+      } catch {
+        // Network error or individual photo unavailable — skip and continue
+      }
+    }
+  } catch {
+    // Cache API unavailable — silently skip
+  }
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 self.addEventListener("install", (event) => {
@@ -133,6 +173,19 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// ── Periodic Background Sync ──────────────────────────────────────────────────
+// Fires periodically on Android/Chrome when the PWA is installed.
+// Refreshes both the app shell and all known photo URLs in the background
+// even when the app is completely closed.
+
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === "photo-cache-refresh") {
+    event.waitUntil(
+      Promise.all([refreshCache(true), cachePhotosFromManifest()])
+    );
+  }
+});
+
 // ── Fetch strategy ────────────────────────────────────────────────────────────
 
 self.addEventListener("fetch", (event) => {
@@ -142,6 +195,10 @@ self.addEventListener("fetch", (event) => {
 
   // Skip caching for external APIs and the OIDC auth server.
   if (BYPASS.some((h) => url.hostname.includes(h))) return;
+
+  // Never intercept the internal photo manifest key — it is only accessed
+  // programmatically via caches.match/put, never via a real fetch().
+  if (url.pathname === PHOTO_MANIFEST_KEY) return;
 
   // ── Vite content-hashed bundles: cache-first (immutable filenames) ──────
   // If a chunk is in cache serve it instantly; otherwise fetch, cache, return.
