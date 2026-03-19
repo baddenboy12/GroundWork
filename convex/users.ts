@@ -52,8 +52,10 @@ export const updateCurrentUser = mutation({
 
     if (user !== null) {
       // Always keep name, email, and role fresh on every login
+      // Trim and skip empty strings (some providers like Microsoft return "")
       const updates: Record<string, string | undefined> = {};
-      if (identity.name && identity.name !== user.name) updates.name = identity.name;
+      const freshName = identity.name?.trim() || undefined;
+      if (freshName && freshName !== user.name) updates.name = freshName;
       if (identity.email && identity.email !== user.email) updates.email = identity.email;
       const expectedRole = isSuperAdmin ? "super_admin" : "user";
       if (user.role !== expectedRole) updates.role = expectedRole;
@@ -64,8 +66,9 @@ export const updateCurrentUser = mutation({
     }
 
     // New user – create with free tier, createdAt timestamp, and role
+    const insertName = identity.name?.trim() || undefined;
     return await ctx.db.insert("users", {
-      name: identity.name,
+      name: insertName,
       email: identity.email,
       tokenIdentifier: identity.tokenIdentifier,
       subscriptionTier: "free",
