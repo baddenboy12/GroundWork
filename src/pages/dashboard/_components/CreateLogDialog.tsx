@@ -215,6 +215,7 @@ export default function CreateLogDialog({
           className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="text-2xl">New log entry</DialogTitle>
