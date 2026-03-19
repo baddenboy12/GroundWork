@@ -54,7 +54,8 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const sites = useQuery(api.sites.list, {});
   const isOnline = useOnlineStatus();
   const { isAtLeast, config } = useSubscription();
-  const canAttachPhotos = isAtLeast("pro");
+  // Photos are available on all tiers
+  const canAttachPhotos = true;
   const maxPhotosPerEntry = config.maxPhotosPerEntry ?? 15;
 
   const [title, setTitle] = useState(log.title);
@@ -278,39 +279,16 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             />
           </div>
 
-          {/* Photos — editable on Pro+; read-only thumbnails on lower tiers */}
+          {/* Photos — available on all tiers */}
           <div className="space-y-2">
             <Label className="text-base flex items-center gap-2">
               Photos
-              {!canAttachPhotos && (
-                <span className="text-xs font-normal text-muted-foreground border border-border rounded-full px-2 py-0.5 flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> View only
-                </span>
-              )}
             </Label>
-            {canAttachPhotos ? (
-              <PhotoUploader
-                photos={photos}
-                onChange={handlePhotosChange}
-                maxPhotos={maxPhotosPerEntry}
-              />
-            ) : (
-              // Read-only thumbnail strip for non-Pro users
-              photos.length > 0 ? (
-                <div className="flex gap-2 flex-wrap">
-                  {photos.map((p, i) => (
-                    <img
-                      key={p.previewUrl}
-                      src={p.previewUrl}
-                      alt={`Photo ${i + 1}`}
-                      className="w-20 h-20 rounded-lg object-cover border border-border"
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No photos attached.</p>
-              )
-            )}
+            <PhotoUploader
+              photos={photos}
+              onChange={handlePhotosChange}
+              maxPhotos={maxPhotosPerEntry}
+            />
           </div>
 
           <DialogFooter>

@@ -55,7 +55,8 @@ export default function CreateLogDialog({
   const deleteOrphanedPhotos = useAction(api.r2.storageActions.deleteOrphanedPhotos);
   const sites = useQuery(api.sites.list, {});
   const { isAtLeast, config } = useSubscription();
-  const canAttachPhotos = isAtLeast("pro");
+  // Photos are available on all tiers
+  const canAttachPhotos = true;
   const maxPhotosPerEntry = config.maxPhotosPerEntry ?? 15;
 
   const [siteName, setSiteName] = useState(initialSiteName ?? "");
@@ -70,7 +71,6 @@ export default function CreateLogDialog({
   const [photos, setPhotos] = useState<R2Photo[]>([]);
   const [offlinePhotos, setOfflinePhotos] = useState<OfflinePhoto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [photoUpgradeOpen, setPhotoUpgradeOpen] = useState(false);
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
 
   const siteInputRef = useRef<HTMLInputElement>(null);
@@ -449,35 +449,20 @@ export default function CreateLogDialog({
               />
             </div>
 
-            {/* Photos — gated behind Pro plan; offline uploader shown when offline */}
+            {/* Photos — available on all tiers; offline uploader shown when offline */}
             <div className="space-y-2">
               <Label className={cn("text-base flex items-center gap-2")}>
                 Photos
-                {!canAttachPhotos && (
-                  <span className="text-xs font-normal text-muted-foreground border border-border rounded-full px-2 py-0.5 flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Starter+
-                  </span>
-                )}
-                {canAttachPhotos && !isOnline && (
+                {!isOnline && (
                   <span className="text-xs font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5 flex items-center gap-1">
                     <WifiOff className="w-3 h-3" /> Storing locally
                   </span>
                 )}
               </Label>
-              {canAttachPhotos && isOnline ? (
+              {isOnline ? (
                 <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={maxPhotosPerEntry} />
-              ) : canAttachPhotos && !isOnline ? (
-                <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} maxPhotos={maxPhotosPerEntry} />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setPhotoUpgradeOpen(true)}
-                  className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-                >
-                  <Lock className="w-6 h-6" />
-                  <span className="text-base font-medium">Photo attachments require Pro or higher</span>
-                  <span className="text-sm">Click to upgrade</span>
-                </button>
+                <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} maxPhotos={maxPhotosPerEntry} />
               )}
             </div>
 
@@ -497,13 +482,6 @@ export default function CreateLogDialog({
         </DialogContent>
       </Dialog>
 
-      <UpgradeDialog
-        open={photoUpgradeOpen}
-        onClose={() => setPhotoUpgradeOpen(false)}
-        requiredTier="pro"
-        featureName="Photo attachments"
-        featureDescription="Attach photos to log entries on the Pro plan and above."
-      />
       <UpgradeDialog
         open={siteUpgradeOpen}
         onClose={() => setSiteUpgradeOpen(false)}
