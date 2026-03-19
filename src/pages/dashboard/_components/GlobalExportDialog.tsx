@@ -370,16 +370,14 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[380px] p-3" align="start" sideOffset={4}>
+                    <PopoverContent className="w-[420px] p-3 overflow-hidden" align="start" sideOffset={4}>
                       <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
                         Choose a theme — {selectedTheme.name}
                       </p>
-                      <div className="max-h-72 overflow-y-auto">
-                        <ThemePicker
-                          value={selectedTheme.id}
-                          onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
-                        />
-                      </div>
+                      <ThemePicker
+                        value={selectedTheme.id}
+                        onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
+                      />
                     </PopoverContent>
                   </Popover>
 

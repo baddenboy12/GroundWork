@@ -13,7 +13,7 @@ function rgb(r: number, g: number, b: number): string {
 
 export default function ThemePicker({ value, onChange }: Props) {
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-2 overflow-hidden">
       {THEMES.map((theme) => {
         const isSelected = theme.id === value;
         const [cr, cg, cb] = theme.coverBg;
