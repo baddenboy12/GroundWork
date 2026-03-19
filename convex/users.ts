@@ -127,6 +127,24 @@ export const setSubscriptionTier = mutation({
   },
 });
 
+/** Allows the signed-in user to set or update their own display name. */
+export const updateName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const trimmed = args.name.trim();
+    if (!trimmed) throw new ConvexError({ code: "BAD_REQUEST", message: "Name cannot be empty." });
+    if (trimmed.length > 100) throw new ConvexError({ code: "BAD_REQUEST", message: "Name is too long." });
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    await ctx.db.patch(user._id, { name: trimmed });
+  },
+});
+
 /**
  * Recalculates storageUsedBytes by summing photo bytes across all of the
  * user's logs. Fixes drift caused by deletions that happened before the
