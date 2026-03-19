@@ -7,4 +7,4 @@
  *   MINOR — new features / milestones
  *   PATCH — bug fixes
  */
-export const APP_VERSION = "230";
+export const APP_VERSION = "231";

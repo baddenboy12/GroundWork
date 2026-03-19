@@ -1072,7 +1072,21 @@ function BillingInner() {
           </div>
         )}
 
-        {/* Plans grid */}
+        {/* Plans grid — hidden while user is on a team (non-super-admins must leave first) */}
+        {myKeyInfo && !isAdmin ? (
+          <div className="rounded-2xl border border-border bg-card p-6 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground text-sm">Plan managed by your team</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your subscription tier is set by your team workspace. To manage your own plan
+                independently, leave the team first.
+              </p>
+            </div>
+          </div>
+        ) : (
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Choose your plan</h2>
           <p className="text-muted-foreground mb-8 text-sm">
@@ -1282,6 +1296,7 @@ function BillingInner() {
             </div>
           )}
         </div>
+        )}
 
         {/* Feature comparison table */}
         <div>
