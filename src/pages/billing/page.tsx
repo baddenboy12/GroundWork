@@ -52,7 +52,6 @@ import type { Id } from "@/convex/_generated/dataModel.d.ts";
 const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.pro }[] = [
   { label: "Sites", key: "maxSites" },
   { label: "Logs per site", key: "maxLogsPerSite" },
-  { label: "Photo attachments", key: "photoAttachments" },
   { label: "Photos per entry", key: "maxPhotosPerEntry" },
   { label: "PDF, Excel & CSV export", key: "export" },
   { label: "Integrations & API", key: "integrations" },

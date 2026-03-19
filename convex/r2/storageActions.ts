@@ -72,16 +72,6 @@ export const getUploadUrl = action({
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
 
-    // Verify user has a plan that supports photo attachments
-    const tier = user.subscriptionTier ?? "free";
-    const photoPlanAllowed = tier === "pro" || tier === "business" || tier === "starter";
-    if (!photoPlanAllowed) {
-      throw new ConvexError({
-        code: "FORBIDDEN",
-        message: "Photo attachments require a Pro or Business subscription.",
-      });
-    }
-
     const bucket = requireEnv("CLOUDFLARE_R2_BUCKET_NAME");
     const key = `${user._id}/${Date.now()}-${sanitizeName(args.fileName)}`;
 

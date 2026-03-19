@@ -12,10 +12,8 @@ export type TierConfig = {
   maxSites: number | null;
   /** Max logs per site (null = unlimited) */
   maxLogsPerSite: number | null;
-  /** Photo attachments on log entries */
-  photoAttachments: boolean;
-  /** Max photos per log entry (null = plan doesn't support photos) */
-  maxPhotosPerEntry: number | null;
+  /** Max photos per log entry */
+  maxPhotosPerEntry: number;
   /** PDF/CSV export */
   export: boolean;
   /** Third-party integrations (API, webhooks) */
@@ -33,7 +31,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     period: "forever",
     maxSites: 1,
     maxLogsPerSite: 1,
-    photoAttachments: true,
     maxPhotosPerEntry: 5,
     export: false,
     integrations: false,
@@ -46,7 +43,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     period: "per month",
     maxSites: 15,
     maxLogsPerSite: null,
-    photoAttachments: true,
     maxPhotosPerEntry: 5,
     export: false,
     integrations: false,
@@ -59,7 +55,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     period: "per month",
     maxSites: 15,
     maxLogsPerSite: null,
-    photoAttachments: true,
     maxPhotosPerEntry: 5,
     export: false,
     integrations: false,
@@ -72,7 +67,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     period: "per month",
     maxSites: null,
     maxLogsPerSite: null,
-    photoAttachments: true,
     maxPhotosPerEntry: 20,
     export: true,
     integrations: true,
