@@ -6,6 +6,10 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
+    // ISO 8601 UTC timestamp of when the user first signed up
+    createdAt: v.optional(v.string()),
+    // Role: "super_admin" for the app owner, "user" for everyone else
+    role: v.optional(v.string()),
     // Subscription tier – defaults to "free" if absent
     subscriptionTier: v.optional(
       v.union(

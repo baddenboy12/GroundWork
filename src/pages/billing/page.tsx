@@ -112,6 +112,7 @@ function BillingInner() {
   const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
   const applyPendingSeatsFromRevisionAction = useAction(api.paypal.actions.applyPendingSeatsFromRevision);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
+  const backfillUserMetadataMutation = useMutation(api.users.backfillUserMetadata);
   const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
   const removeKeyMutation = useMutation(api.licenseKeys.removeKey);
   const generateKeyMutation = useMutation(api.licenseKeys.generate);
@@ -510,6 +511,19 @@ function BillingInner() {
       toast.error(extractErrorMessage(err));
     } finally {
       setCleanupPending(false);
+    }
+  };
+
+  const [backfillPending, setBackfillPending] = useState(false);
+  const handleBackfillUserMetadata = async () => {
+    setBackfillPending(true);
+    try {
+      const result = await backfillUserMetadataMutation();
+      toast.success(`Backfill complete — updated ${result.updated} user${result.updated !== 1 ? "s" : ""}.`);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setBackfillPending(false);
     }
   };
 
@@ -1018,6 +1032,37 @@ function BillingInner() {
                 </>
               ) : (
                 "Run cleanup"
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Backfill user metadata — admin only */}
+        {isAdmin && (
+          <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">Backfill user metadata</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Stamps <code>createdAt</code> and <code>role</code> on existing users missing those fields. Run once after upgrading.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={backfillPending}
+              onClick={handleBackfillUserMetadata}
+              className="shrink-0"
+            >
+              {backfillPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Running…
+                </>
+              ) : (
+                "Run backfill"
               )}
             </Button>
           </div>

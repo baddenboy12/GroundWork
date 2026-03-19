@@ -37,6 +37,11 @@ export const updateCurrentUser = mutation({
       });
     }
 
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const isSuperAdmin =
+      !!adminEmail &&
+      (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
+
     // Check if we've already stored this identity before.
     const user = await ctx.db
       .query("users")
@@ -44,15 +49,28 @@ export const updateCurrentUser = mutation({
         q.eq("tokenIdentifier", identity.tokenIdentifier),
       )
       .unique();
+
     if (user !== null) {
+      // Always keep name, email, and role fresh on every login
+      const updates: Record<string, string | undefined> = {};
+      if (identity.name && identity.name !== user.name) updates.name = identity.name;
+      if (identity.email && identity.email !== user.email) updates.email = identity.email;
+      const expectedRole = isSuperAdmin ? "super_admin" : "user";
+      if (user.role !== expectedRole) updates.role = expectedRole;
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(user._id, updates);
+      }
       return user._id;
     }
-    // If it's a new identity, create a new User with free tier.
+
+    // New user – create with free tier, createdAt timestamp, and role
     return await ctx.db.insert("users", {
       name: identity.name,
       email: identity.email,
       tokenIdentifier: identity.tokenIdentifier,
       subscriptionTier: "free",
+      createdAt: new Date().toISOString(),
+      role: isSuperAdmin ? "super_admin" : "user",
     });
   },
 });
@@ -153,6 +171,42 @@ export const getIsAdmin = query({
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return false;
     return (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
+  },
+});
+
+/**
+ * One-time backfill: stamps createdAt and role on all existing users that
+ * are missing those fields. Only the super-admin can call this.
+ */
+export const backfillUserMetadata = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+    let updated = 0;
+    for (const user of allUsers) {
+      const patches: Record<string, string> = {};
+      if (!user.createdAt) {
+        // Fall back to _creationTime (ms epoch → ISO string)
+        patches.createdAt = new Date(user._creationTime).toISOString();
+      }
+      if (!user.role) {
+        const isSuperAdmin =
+          !!adminEmail && (user.email ?? "").toLowerCase() === adminEmail.toLowerCase();
+        patches.role = isSuperAdmin ? "super_admin" : "user";
+      }
+      if (Object.keys(patches).length > 0) {
+        await ctx.db.patch(user._id, patches);
+        updated++;
+      }
+    }
+    return { updated };
   },
 });
 
