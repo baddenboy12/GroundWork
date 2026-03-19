@@ -15,7 +15,7 @@ let updateToastShown = false;
 
 // How often the browser should attempt a background photo-cache refresh.
 // The browser may fire less often depending on device usage patterns.
-const PERIODIC_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000; // every 12 hours
+const PERIODIC_SYNC_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes (browser may cap higher)
 const PERIODIC_SYNC_TAG = "photo-cache-refresh";
 
 /**
@@ -36,7 +36,7 @@ async function requestPersistentStorage() {
 
 /**
  * Registers a Periodic Background Sync so the service worker can refresh
- * the photo cache roughly every 12 hours even when the app is fully closed.
+ * the photo cache as frequently as every 15 minutes even when the app is fully closed.
  *
  * Requirements (all must be true for this to work):
  *  - Browser: Chrome/Edge on Android (not iOS Safari — Apple doesn't allow it)
@@ -65,9 +65,7 @@ async function registerPeriodicSync(registration: ServiceWorkerRegistration) {
       };
     };
 
-    const existingTags = await ps.periodicSync.getTags();
-    if (existingTags.includes(PERIODIC_SYNC_TAG)) return; // already registered
-
+    // Always re-register to pick up any interval changes
     await ps.periodicSync.register(PERIODIC_SYNC_TAG, {
       minInterval: PERIODIC_SYNC_INTERVAL_MS,
     });
