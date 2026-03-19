@@ -347,6 +347,11 @@ function BillingInner() {
         toast.error("An active Pro or Business subscription is required to create a team.");
         return;
       }
+      // Pre-commit seat count server-side before createSelfKey so the backend
+      // can verify it wasn't tampered with (matches the PayPal subscribe flow).
+      if (createTeamSeats > 1) {
+        await storePendingTeamSeatsMutation({ seats: createTeamSeats });
+      }
       const { code } = await createSelfKeyMutation({
         tier: activeTier,
         maxMembers: createTeamSeats > 0 ? createTeamSeats : undefined,
