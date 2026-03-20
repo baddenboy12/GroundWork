@@ -12,19 +12,19 @@ import {
 // Show all 3 tiers on the marketing page
 const DISPLAYED_TIERS: SubscriptionTier[] = ["free", "pro", "business"];
 
-type FeatureRow = { label: string; free: boolean; starter: boolean; pro: boolean; business: boolean; skipFor?: SubscriptionTier[] };
+type FeatureRow = { label: string; free: boolean; pro: boolean; business: boolean; skipFor?: SubscriptionTier[] };
 
 const FEATURE_ROWS: FeatureRow[] = [
-  { label: "1 site", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
-  { label: "Up to 15 sites", free: false, starter: true, pro: true, business: false, skipFor: ["free", "business"] },
-  { label: "Unlimited sites", free: false, starter: false, pro: false, business: true, skipFor: ["free", "pro", "starter"] },
-  { label: "1 log per site", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
-  { label: "Unlimited logs/site", free: false, starter: true, pro: true, business: true, skipFor: ["free"] },
-  { label: "Up to 5 photos/entry", free: true, starter: false, pro: false, business: false, skipFor: ["pro", "starter", "business"] },
-  { label: "Up to 5 photos/entry", free: false, starter: true, pro: true, business: false, skipFor: ["free", "business"] },
-  { label: "Up to 20 photos/entry", free: false, starter: false, pro: false, business: true, skipFor: ["free", "pro", "starter"] },
-  { label: "PDF, Excel & CSV export", free: false, starter: false, pro: false, business: true },
-  { label: "Integrations & API", free: false, starter: false, pro: false, business: true },
+  { label: "1 site", free: true, pro: false, business: false, skipFor: ["pro", "business"] },
+  { label: "Up to 15 sites", free: false, pro: true, business: false, skipFor: ["free", "business"] },
+  { label: "Unlimited sites", free: false, pro: false, business: true, skipFor: ["free", "pro"] },
+  { label: "1 log per site", free: true, pro: false, business: false, skipFor: ["pro", "business"] },
+  { label: "Unlimited logs/site", free: false, pro: true, business: true, skipFor: ["free"] },
+  { label: "Up to 5 photos/entry", free: true, pro: false, business: false, skipFor: ["pro", "business"] },
+  { label: "Up to 5 photos/entry", free: false, pro: true, business: false, skipFor: ["free", "business"] },
+  { label: "Up to 20 photos/entry", free: false, pro: false, business: true, skipFor: ["free", "pro"] },
+  { label: "PDF, Excel & CSV export", free: false, pro: false, business: true },
+  { label: "Integrations & API", free: false, pro: false, business: true },
 ];
 
 export default function Pricing() {
@@ -86,7 +86,7 @@ export default function Pricing() {
 
                 <ul className="space-y-2.5 mb-8">
                   {FEATURE_ROWS.filter((row) => !row.skipFor?.includes(tier)).map((row) => {
-                    const included = row[tier as "free" | "starter" | "pro" | "business"];
+                    const included = row[tier as "free" | "pro" | "business"];
                     return (
                       <li
                         key={row.label}

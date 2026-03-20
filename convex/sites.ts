@@ -3,19 +3,6 @@ import { mutation, query, internalQuery, internalMutation } from "./_generated/s
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel.d.ts";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Checks whether a user can access a given site (owns it or is on the same team). */
-function canAccessSite(
-  site: Doc<"sites">,
-  userId: Id<"users">,
-  teamKeyId: Id<"licenseKeys"> | undefined
-): boolean {
-  if (site.ownerId === userId) return true;
-  if (teamKeyId && site.teamKeyId === teamKeyId) return true;
-  return false;
-}
-
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 export const list = query({
@@ -36,7 +23,7 @@ export const list = query({
         .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
         .collect();
 
-      return await Promise.all(
+      const enriched = await Promise.all(
         teamSiteDocs.map(async (s) => {
           const owner = await ctx.db.get(s.ownerId);
           return {
@@ -46,6 +33,7 @@ export const list = query({
           };
         })
       );
+      return enriched.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     } else {
       // ── Personal mode: show ONLY own sites that have no team tag ──────────
       const ownSites = await ctx.db
@@ -56,6 +44,7 @@ export const list = query({
 
       return ownSites
         .filter((s) => s.teamKeyId === undefined)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
         .map((s) => ({
           ...s,
           isOwner: true,
@@ -84,7 +73,7 @@ export const create = mutation({
 
     // Enforce per-tier site limit (mode-aware: team or personal)
     const tier = user.subscriptionTier ?? "free";
-    const siteLimits: Record<string, number | null> = { free: 1, starter: 15, pro: 15, business: null };
+    const siteLimits: Record<string, number | null> = { free: 1, pro: 15, business: null };
     const siteLimit = tier in siteLimits ? siteLimits[tier] : 1;
     if (siteLimit !== null) {
       let existingCount = 0;
@@ -206,7 +195,6 @@ export const findOrCreate = mutation({
     const tier = user.subscriptionTier ?? "free";
     const limits: Record<string, number | null> = {
       free: 1,
-      starter: 15,
       pro: 15,
       business: null,
     };
@@ -422,9 +410,6 @@ export const _listByUserId = internalQuery({
       .collect();
   },
 });
-
-// Export helper for use in other Convex files
-export { canAccessSite };
 
 // ── Internal: delete a site by ID (used by team vote execution) ──────────────
 export const _deleteByIdInternal = internalMutation({

@@ -1,17 +1,18 @@
 "use node";
 
 import escapeHtml from "escape-html";
-import { Hercules } from "@usehercules/sdk";
+import { Resend } from "resend";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 
-const hercules = new Hercules({
-  apiKey: process.env.HERCULES_API_KEY!,
-  apiVersion: "2025-12-09",
-});
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY!);
+  return _resend;
+}
 
-// Sender address — must be verified in Hercules Emails settings
-const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "notifications@groundworkapp.com";
+// Sender address — must be verified in Resend dashboard
+const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "noreply@groundwork.teezfpo.com";
 
 // ── Shared HTML template helpers ──────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ export const sendVoteProposed = internalAction({
       </div>
       ${ctaButton("Review the vote", appUrl)}
     `;
-    await hercules.email.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote started for "${siteName}"`,
@@ -139,7 +140,7 @@ export const sendVoteCast = internalAction({
       </p>
       ${ctaButton("View vote status", appUrl)}
     `;
-    await hercules.email.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `[GroundWork] Vote update: "${siteName}" — ${approvedCount}/${memberCount} approved`,
@@ -172,7 +173,7 @@ export const sendSiteDeleted = internalAction({
       </div>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await hercules.email.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `[GroundWork] Site "${siteName}" has been deleted`,
@@ -207,7 +208,7 @@ export const sendVoteExpired = internalAction({
       </p>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await hercules.email.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote for "${siteName}" expired`,
@@ -217,6 +218,44 @@ export const sendVoteExpired = internalAction({
 });
 
 // ── Email 5: Vote cancelled ────────────────────────────────────────────────────
+
+// ── Email 6: Welcome — new user registration ─────────────────────────────────
+
+export const sendWelcome = internalAction({
+  args: {
+    to: v.string(),
+    userName: v.string(),
+    appUrl: v.string(),
+  },
+  handler: async (_ctx, { to, userName, appUrl }) => {
+    if (!to) return;
+    const greeting = userName ? escapeHtml(userName) : "there";
+    const body = `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f4f0e8;">
+        Welcome to GroundWork
+      </h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#888;line-height:1.6;">
+        Hey <strong style="color:#f4f0e8;">${greeting}</strong>, your account is all set up.
+        You're on the <strong style="color:#f4f0e8;">Free</strong> plan to start.
+      </p>
+      <p style="margin:0 0 4px;font-size:13px;color:#888;line-height:1.6;">
+        Here's what you can do next:
+      </p>
+      <ul style="margin:12px 0 0;padding-left:20px;font-size:13px;color:#888;line-height:1.8;">
+        <li>Create your first <strong style="color:#f4f0e8;">site</strong> to start logging</li>
+        <li>Add <strong style="color:#f4f0e8;">photos</strong> and notes to each log entry</li>
+        <li>Invite <strong style="color:#f4f0e8;">team members</strong> to collaborate</li>
+      </ul>
+      ${ctaButton("Go to dashboard", appUrl)}
+    `;
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: "Welcome to GroundWork",
+      html: baseTemplate("Welcome to GroundWork", body),
+    });
+  },
+});
 
 export const sendVoteCancelled = internalAction({
   args: {
@@ -238,7 +277,7 @@ export const sendVoteCancelled = internalAction({
       </p>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await hercules.email.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote for "${siteName}" was cancelled`,

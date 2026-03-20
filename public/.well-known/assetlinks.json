@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.teezfpo.groundwork",
+      "sha256_cert_fingerprints": [
+        "8D:1D:18:AF:FF:B3:32:5C:9F:F5:65:A9:21:BC:39:CB:82:6F:E6:EE:B9:EA:D7:27:2D:19:53:20:63:D0:FA:63"
+      ]
+    }
+  }
+]

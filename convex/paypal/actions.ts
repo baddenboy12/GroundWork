@@ -45,7 +45,6 @@ async function getToken(): Promise<string> {
 }
 
 const PLAN_CONFIG = {
-  starter: { name: "Starter", price: "3.99" },
   pro: { name: "Pro", price: "8.99" },
   business: { name: "Business", price: "19.99" },
 } as const;
@@ -80,7 +79,7 @@ export const initializePayPalPlans = action({
 
     // Return existing plan IDs if already initialized
     const existing = await ctx.runQuery(internal.paypal.plans._getAllPlans);
-    if (existing.length === 3) {
+    if (existing.length === 2) {
       const planIds: Record<string, string> = {};
       let productId = "";
       for (const p of existing) {
@@ -112,7 +111,7 @@ export const initializePayPalPlans = action({
     const productId = product.id;
 
     const planIds: Record<string, string> = {};
-    for (const tier of ["starter", "pro", "business"] as PaidTier[]) {
+    for (const tier of ["pro", "business"] as PaidTier[]) {
       const { name, price } = PLAN_CONFIG[tier];
       const planRes = await fetch(`${base}/v1/billing/plans`, {
         method: "POST",
@@ -165,7 +164,6 @@ export const initializePayPalPlans = action({
 export const createSubscription = action({
   args: {
     tier: v.union(
-      v.literal("starter"),
       v.literal("pro"),
       v.literal("business")
     ),

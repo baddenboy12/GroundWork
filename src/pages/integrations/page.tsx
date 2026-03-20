@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
+import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -118,7 +120,27 @@ function IntegrationsInner() {
   );
 }
 
+function IntegrationsSessionGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !hasStoredOidcSession()) {
+      window.location.replace("/");
+    }
+  }, [isAuthenticated, isLoading]);
+
+  return <>{children}</>;
+}
+
 export default function IntegrationsPage() {
+  if (hasStoredOidcSession()) {
+    return (
+      <IntegrationsSessionGuard>
+        <IntegrationsInner />
+      </IntegrationsSessionGuard>
+    );
+  }
+
   return (
     <>
       <Unauthenticated>

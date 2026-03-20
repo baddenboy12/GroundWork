@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel.d.ts";
 
 // ── Pending team seat store (called BEFORE PayPal redirect to prevent tampering) ─
@@ -67,7 +68,7 @@ export const updateCurrentUser = mutation({
 
     // New user – create with free tier, createdAt timestamp, and role
     const insertName = identity.name?.trim() || undefined;
-    return await ctx.db.insert("users", {
+    const newUserId = await ctx.db.insert("users", {
       name: insertName,
       email: identity.email,
       tokenIdentifier: identity.tokenIdentifier,
@@ -75,6 +76,18 @@ export const updateCurrentUser = mutation({
       createdAt: new Date().toISOString(),
       role: isSuperAdmin ? "super_admin" : "user",
     });
+
+    // Send welcome email (fire-and-forget)
+    if (identity.email) {
+      const appUrl = process.env.GROUNDWORK_APP_URL ?? "https://groundwork.teezfpo.com/dashboard";
+      await ctx.scheduler.runAfter(0, internal.emails.teamNotifications.sendWelcome, {
+        to: identity.email,
+        userName: insertName ?? "",
+        appUrl,
+      });
+    }
+
+    return newUserId;
   },
 });
 
@@ -123,7 +136,12 @@ export const setSubscriptionTier = mutation({
     if (!user) {
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
-    await ctx.db.patch(user._id, { subscriptionTier: args.tier });
+    await ctx.db.patch(user._id, {
+      subscriptionTier: args.tier,
+      adminGrantedTier: true,
+      paypalSubscriptionId: undefined,
+      paypalSubscriptionStatus: undefined,
+    });
   },
 });
 
@@ -231,6 +249,27 @@ export const backfillUserMetadata = mutation({
   },
 });
 
+/** Internal: set admin-granted tier on a user (used by CLI tooling). */
+export const _setAdminGrantedTier = internalMutation({
+  args: {
+    userId: v.id("users"),
+    tier: v.union(
+      v.literal("free"),
+      v.literal("starter"),
+      v.literal("pro"),
+      v.literal("business")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      subscriptionTier: args.tier,
+      adminGrantedTier: true,
+      paypalSubscriptionId: undefined,
+      paypalSubscriptionStatus: undefined,
+    });
+  },
+});
+
 // ── Internal helpers used by integrations backend ────────────────────────────
 
 export const _getByToken = internalQuery({
@@ -313,11 +352,13 @@ export const _setPaypalSubscription = internalMutation({
         paypalSubscriptionId: args.paypalSubscriptionId,
         paypalSubscriptionStatus: args.paypalSubscriptionStatus,
         subscriptionTier: args.subscriptionTier,
+        adminGrantedTier: undefined,
       });
     } else {
       await ctx.db.patch(userId, {
         paypalSubscriptionId: args.paypalSubscriptionId,
         paypalSubscriptionStatus: args.paypalSubscriptionStatus,
+        adminGrantedTier: undefined,
       });
     }
   },

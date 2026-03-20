@@ -19,6 +19,8 @@ export default defineSchema({
         v.literal("business")
       )
     ),
+    // true when tier was set directly by super_admin (no PayPal subscription)
+    adminGrantedTier: v.optional(v.boolean()),
     // PayPal subscription tracking
     paypalSubscriptionId: v.optional(v.string()),
     paypalSubscriptionStatus: v.optional(v.string()),
@@ -72,7 +74,6 @@ export default defineSchema({
   // Stores PayPal product + plan IDs created via initializePayPalPlans
   paypalPlans: defineTable({
     tier: v.union(
-      v.literal("starter"),
       v.literal("pro"),
       v.literal("business")
     ),

@@ -1,18 +1,20 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel.d.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Generates a random license key like "GW-A3K9-BX2M-7YNP" */
 function generateKeyCode(): string {
-  // Avoids visually ambiguous characters (0/O, 1/I/l)
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const seg = () =>
-    Array.from({ length: 4 }, () =>
-      chars[Math.floor(Math.random() * chars.length)]
+  const rng = new Uint32Array(12);
+  crypto.getRandomValues(rng);
+  const seg = (offset: number) =>
+    Array.from({ length: 4 }, (_, j) =>
+      chars[rng[offset + j] % chars.length]
     ).join("");
-  return `GW-${seg()}-${seg()}-${seg()}`;
+  return `GW-${seg(0)}-${seg(4)}-${seg(8)}`;
 }
 
 async function requireAdmin(ctx: { auth: { getUserIdentity: () => Promise<{ tokenIdentifier: string; email?: string } | null> } }) {
@@ -105,13 +107,13 @@ export const updateStatus = mutation({
     const key = await ctx.db.get(args.keyId);
     if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
 
-    // Allow super-admin or any team member to toggle status
+    // Allow super-admin or team admin only
     const adminEmail = process.env.ADMIN_EMAIL;
     const isSuperAdmin = adminEmail && (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
-    const isTeamMember = user.appliedLicenseKeyId === args.keyId;
+    const isTeamAdmin = key.adminUserId === user._id || key.createdBy === user._id;
 
-    if (!isSuperAdmin && !isTeamMember) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Only a team member or admin can change status" });
+    if (!isSuperAdmin && !isTeamAdmin) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change key status" });
     }
 
     // Simple toggle — members stay attached, no kicking
@@ -241,13 +243,34 @@ export const removeKey = mutation({
 
     // ── Last member leaving: dissolve the team ────────────────────────
     if (isLastMember && key) {
-      // Detach all team sites (they become personal to their respective owners)
+      // Delete all team sites, their logs, and clean up R2 photos
       const teamSites = await ctx.db
         .query("sites")
         .withIndex("by_team_key", (q) => q.eq("teamKeyId", keyId))
         .collect();
+      const allR2Keys: string[] = [];
       for (const site of teamSites) {
-        await ctx.db.patch(site._id, { teamKeyId: undefined });
+        const logs = await ctx.db
+          .query("logs")
+          .withIndex("by_site", (q) => q.eq("siteId", site._id))
+          .collect();
+        for (const log of logs) {
+          if (log.photos?.length) {
+            for (const photo of log.photos) {
+              allR2Keys.push(photo.key);
+            }
+          }
+          if (log.photoStorageIds?.length) {
+            for (const storageId of log.photoStorageIds) {
+              await ctx.storage.delete(storageId);
+            }
+          }
+          await ctx.db.delete(log._id);
+        }
+        await ctx.db.delete(site._id);
+      }
+      if (allR2Keys.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: allR2Keys });
       }
 
       // Cancel any pending deletion votes for this team
@@ -434,13 +457,17 @@ export const createSelfKey = mutation({
       }
     }
 
-    // Generate a unique code
-    let code = generateKeyCode();
-    const existing = await ctx.db
-      .query("licenseKeys")
-      .withIndex("by_code", (q) => q.eq("code", code))
-      .unique();
-    if (existing) code = generateKeyCode();
+    // Generate a unique code (retry up to 5 times on collision)
+    let code = "";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      code = generateKeyCode();
+      const existing = await ctx.db
+        .query("licenseKeys")
+        .withIndex("by_code", (q) => q.eq("code", code))
+        .unique();
+      if (!existing) break;
+      if (attempt === 4) throw new ConvexError({ code: "INTERNAL", message: "Failed to generate unique key code" });
+    }
 
     const keyId = await ctx.db.insert("licenseKeys", {
       code,

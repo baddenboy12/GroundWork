@@ -18,7 +18,12 @@ const corsHeaders = {
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...corsHeaders },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      ...corsHeaders,
+    },
   });
 }
 
@@ -45,25 +50,22 @@ async function verifyApiKey(
 ): Promise<{ userId: Id<"users"> } | Response> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return err(
-      'Missing Authorization header. Use: Authorization: Bearer lv_<key>',
-      401
-    );
+    return err("Unauthorized", 401);
   }
 
   const key = authHeader.slice(7).trim();
   if (!key.startsWith("lv_")) {
-    return err("Invalid API key format. Keys must start with lv_", 401);
+    return err("Unauthorized", 401);
   }
 
   const keyHash = await hashApiKey(key);
   const apiKey = await ctx.runQuery(internal.integrations.apiKeys._getByHash, { keyHash });
   if (!apiKey?.isActive) {
-    return err("Invalid or revoked API key", 401);
+    return err("Unauthorized", 401);
   }
 
   const user = await ctx.runQuery(internal.users._getById, { userId: apiKey.userId });
-  if (!user) return err("User not found", 401);
+  if (!user) return err("Unauthorized", 401);
   if ((user.subscriptionTier ?? "free") !== "business") {
     return err("A Business plan is required to use the GroundWork REST API", 403);
   }
@@ -418,6 +420,13 @@ http.route({
 // ── GET /photo-proxy?url=<encoded-url> ───────────────────────────────────────
 // Fetches a photo server-side and re-serves it with CORS headers so the browser
 // can read the bytes for PDF generation (avoids R2 CORS restrictions).
+// SECURITY: Only allows fetching from whitelisted domains (R2 public URLs).
+const PHOTO_PROXY_ALLOWED_HOSTS = [
+  ".r2.dev",
+  ".cloudflarestorage.com",
+  ".r2.cloudflarestorage.com",
+];
+
 http.route({
   path: "/photo-proxy",
   method: "GET",
@@ -426,6 +435,25 @@ http.route({
     if (!photoUrl) {
       return new Response("Missing url parameter", { status: 400 });
     }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(photoUrl);
+    } catch {
+      return new Response("Invalid URL", { status: 400 });
+    }
+
+    if (parsed.protocol !== "https:") {
+      return new Response("Only HTTPS URLs are allowed", { status: 400 });
+    }
+
+    const isAllowed = PHOTO_PROXY_ALLOWED_HOSTS.some((h) =>
+      parsed.hostname.endsWith(h)
+    );
+    if (!isAllowed) {
+      return new Response("URL domain not allowed", { status: 403 });
+    }
+
     try {
       const upstream = await fetch(photoUrl);
       if (!upstream.ok) {

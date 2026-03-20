@@ -108,7 +108,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
             onClick={() => navigate("/")}
           >
             <img
-              src="https://cdn.hercules.app/file_Ntyxh5KPFwMSNtrnKtE21IB8"
+              src="/icon/icon-192.png"
               alt="GroundWork"
               className="w-12 h-12 rounded-lg"
             />

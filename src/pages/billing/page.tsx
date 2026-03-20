@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
+import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import { useQuery, useMutation, useAction, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { useSubscription } from "@/hooks/use-subscription.ts";
@@ -91,6 +92,15 @@ function PayPalBadge({ status }: { status: string }) {
     >
       <CreditCard className="w-2.5 h-2.5" />
       PayPal {isActive ? "Active" : status}
+    </span>
+  );
+}
+
+function AdminGrantedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+      <ShieldCheck className="w-2.5 h-2.5" />
+      Admin granted
     </span>
   );
 }
@@ -622,10 +632,12 @@ function BillingInner() {
                   <p className="font-bold text-foreground text-lg">
                     {tier === "free" ? "No active subscription" : TIER_CONFIG[tier].name}
                   </p>
-                  {(user?.paypalSubscriptionStatus === "ACTIVE" ||
-                    user?.paypalSubscriptionStatus === "APPROVED") && (
+                  {user?.adminGrantedTier ? (
+                    <AdminGrantedBadge />
+                  ) : (user?.paypalSubscriptionStatus === "ACTIVE" ||
+                    user?.paypalSubscriptionStatus === "APPROVED") ? (
                     <PayPalBadge status={user.paypalSubscriptionStatus} />
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1354,8 +1366,8 @@ function BillingInner() {
           Payments are processed securely via PayPal.
           <br />
           Questions? Contact us at{" "}
-          <a href="mailto:info@teezfpo.com" className="text-primary hover:underline">
-            info@teezfpo.com
+          <a href="mailto:groundwork@teezfpo.com" className="text-primary hover:underline">
+            groundwork@teezfpo.com
           </a>
         </p>
       </div>
@@ -1370,7 +1382,7 @@ function BillingInner() {
             </DialogTitle>
             <DialogDescription>
               {isLastTeamMember
-                ? "You are the last member of this team. Leaving will permanently dissolve the team workspace. Any team sites will be returned to their individual owners as personal sites."
+                ? "You are the last member of this team. Leaving will permanently dissolve the team workspace. All team sites and their logs will be permanently deleted."
                 : "You will leave the team and return to your individual account with a free plan. Team sites you created will remain accessible to other team members. Your personal sites are not affected."}
             </DialogDescription>
           </DialogHeader>
@@ -1763,7 +1775,27 @@ function BillingInner() {
   );
 }
 
+function BillingSessionGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !hasStoredOidcSession()) {
+      window.location.replace("/");
+    }
+  }, [isAuthenticated, isLoading]);
+
+  return <>{children}</>;
+}
+
 export default function BillingPage() {
+  if (hasStoredOidcSession()) {
+    return (
+      <BillingSessionGuard>
+        <BillingInner />
+      </BillingSessionGuard>
+    );
+  }
+
   return (
     <>
       <AuthLoading>

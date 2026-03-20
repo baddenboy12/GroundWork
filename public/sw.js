@@ -10,15 +10,11 @@ const BYPASS = [
   "r2.cloudflarestorage.com",
   // r2.dev is intentionally NOT bypassed so that R2 photo URLs are cached
   // offline via the fetch handler below. Public R2 bucket CORS is required.
-  "cdn.hercules.app",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
   "paypal.com",
   "sandbox.paypal.com",
   "paypalobjects.com",
-  // NOTE: do NOT add "hercules.app" here — it would also match the app's own
-  // subdomain (*.onhercules.app) and bypass caching for all app requests.
-  // OIDC requests to hercules.app are cross-origin so the SW never sees them.
 ];
 
 // Minimum ms between background asset refreshes (avoids hammering the CDN on

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const MOBILE_BREAKPOINT = 0;
+const MOBILE_BREAKPOINT = 768;
 
 /**
  * Checks if the screen is mobile (equivalent to md in tailwind)

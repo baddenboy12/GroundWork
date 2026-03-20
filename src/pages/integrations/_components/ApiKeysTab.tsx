@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import { Key, Plus, Trash2, ShieldOff, Copy, Eye, EyeOff, Check } from "lucide-react";
+import { Key, Plus, Trash2, ShieldOff, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";

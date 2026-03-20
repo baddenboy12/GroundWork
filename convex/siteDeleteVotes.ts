@@ -8,7 +8,7 @@ const VOTE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // App URL used in email links — falls back to prod URL if env not set
 function getAppUrl(): string {
-  return process.env.GROUNDWORK_APP_URL ?? "https://groundwork.onhercules.app/dashboard";
+  return process.env.GROUNDWORK_APP_URL ?? "https://groundwork.teezfpo.com/dashboard";
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────

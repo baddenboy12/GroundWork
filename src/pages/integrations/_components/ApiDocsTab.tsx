@@ -105,7 +105,7 @@ export default function ApiDocsTab() {
         <p className="text-xs text-muted-foreground">
           Find the exact URL under{" "}
           <span className="text-foreground font-medium">More → Backend → HTTP Actions URL</span>{" "}
-          in your Hercules dashboard.
+          in your Convex dashboard.
         </p>
       </Section>
 

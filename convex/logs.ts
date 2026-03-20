@@ -420,7 +420,6 @@ export const create = mutation({
     // Enforce per-tier photo limit per entry
     const photoLimits: Record<string, number> = {
       free: 5,
-      starter: 5,
       pro: 5,
       business: 20,
     };
@@ -435,7 +434,6 @@ export const create = mutation({
     // Enforce per-tier log limit per site
     const logLimits: Record<string, number | null> = {
       free: 1,
-      starter: null,
       pro: null,
       business: null,
     };
@@ -506,10 +504,14 @@ export const update = mutation({
     if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
 
-    // If changing site, verify the new site belongs to the user
+    // If changing site, verify the user can access the new site
     if (args.siteId && args.siteId !== log.siteId) {
       const newSite = await ctx.db.get(args.siteId);
-      if (!newSite || newSite.ownerId !== user._id) {
+      const canAccess = newSite && (
+        newSite.ownerId === user._id ||
+        (user.appliedLicenseKeyId !== undefined && newSite.teamKeyId === user.appliedLicenseKeyId)
+      );
+      if (!canAccess) {
         throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
       }
     }
@@ -735,10 +737,45 @@ export const getStats = query({
       .unique();
     if (!user) return null;
 
-    const allLogs = await ctx.db
-      .query("logs")
-      .withIndex("by_author", (q) => q.eq("authorId", user._id))
-      .collect();
+    const teamKeyId = user.appliedLicenseKeyId;
+
+    // Gather all relevant logs: team sites (all authors) or personal sites only
+    let allLogs;
+    let totalSites: number;
+
+    if (teamKeyId) {
+      // Team mode: all logs from all team sites
+      const teamSites = await ctx.db
+        .query("sites")
+        .withIndex("by_team_key", (q) => q.eq("teamKeyId", teamKeyId))
+        .collect();
+      totalSites = teamSites.length;
+
+      const perSiteLogs = await Promise.all(
+        teamSites.map((site) =>
+          ctx.db
+            .query("logs")
+            .withIndex("by_site", (q) => q.eq("siteId", site._id))
+            .collect()
+        )
+      );
+      allLogs = perSiteLogs.flat();
+    } else {
+      // Personal mode: only logs from the user's own non-team sites
+      const ownedSites = await ctx.db
+        .query("sites")
+        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .collect();
+      const personalSites = ownedSites.filter((s) => !s.teamKeyId);
+      totalSites = personalSites.length;
+      const personalSiteIds = new Set(personalSites.map((s) => s._id));
+
+      const rawLogs = await ctx.db
+        .query("logs")
+        .withIndex("by_author", (q) => q.eq("authorId", user._id))
+        .collect();
+      allLogs = rawLogs.filter((l) => personalSiteIds.has(l.siteId));
+    }
 
     const nowMs = Date.now();
     const weekAgoIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -791,22 +828,6 @@ export const getStats = query({
       }
     }
     const dailyActivity = Object.entries(dailyMap).map(([date, count]) => ({ date, count }));
-
-    const ownSitesForStats = await ctx.db
-      .query("sites")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .collect()
-      .then((s) => s.length);
-    // Include team sites in total count
-    let totalSites = ownSitesForStats;
-    if (user.appliedLicenseKeyId) {
-      const teamSiteDocs = await ctx.db
-        .query("sites")
-        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
-        .collect();
-      const teamOnlySites = teamSiteDocs.filter((s) => s.ownerId !== user._id);
-      totalSites += teamOnlySites.length;
-    }
 
     const totalPhotos = allLogs.reduce(
       (sum, log) =>
@@ -948,6 +969,7 @@ export const _listBySiteForApi = internalQuery({
       location: log.location ?? null,
       latitude: log.latitude ?? null,
       longitude: log.longitude ?? null,
+      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
       createdAt: new Date(log._creationTime).toISOString(),
     }));
   },
@@ -973,7 +995,14 @@ export const _createFromApi = internalMutation({
   },
   handler: async (ctx, args) => {
     const site = await ctx.db.get(args.siteId);
-    if (!site || site.ownerId !== args.authorId) {
+    if (!site) {
+      throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    }
+    // Check ownership or team membership
+    const user = await ctx.db.get(args.authorId);
+    const canAccess = site.ownerId === args.authorId ||
+      (user?.appliedLicenseKeyId !== undefined && site.teamKeyId === user.appliedLicenseKeyId);
+    if (!canAccess) {
       throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
     }
     const logId = await ctx.db.insert("logs", {

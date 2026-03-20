@@ -287,7 +287,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Export logs</DialogTitle>
         </DialogHeader>
@@ -397,64 +397,65 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </>
               )}
 
-              {/* Sites */}
-              <Popover open={sitesPopoverOpen} onOpenChange={setSitesPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      "w-full flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors",
-                      !allSitesSelected && selectedSiteIds.size === 0
-                        ? "border-destructive"
-                        : "border-border"
-                    )}
-                  >
-                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Sites</span>
-                    <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start" sideOffset={4}>
-                  <div className="p-2 border-b border-border">
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
-                      onClick={toggleAllSites}
-                    >
-                      {allSitesSelected
-                        ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-                        : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
-                      <span className="text-sm font-medium">All sites</span>
-                      <span className="ml-auto text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
-                    </button>
-                  </div>
-                  <div className="max-h-52 overflow-y-auto p-2 space-y-0.5">
-                    {!sites ? (
-                      <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
-                      </div>
-                    ) : sites.length === 0 ? (
-                      <p className="py-4 text-center text-sm text-muted-foreground">No sites found</p>
-                    ) : (
-                      sites.map((site) => (
-                        <button
-                          key={site._id}
-                          type="button"
-                          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
-                          onClick={() => toggleSite(site._id)}
-                        >
-                          {selectedSiteIds.has(site._id)
-                            ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
-                            : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                          <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
-                          <span className="text-sm text-foreground truncate">{site.name}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
+              {/* Sites — inline collapsible */}
+              <div className={cn(
+                "rounded-lg border bg-card overflow-hidden",
+                !allSitesSelected && selectedSiteIds.size === 0
+                  ? "border-destructive"
+                  : "border-border"
+              )}>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                  onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
+                >
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Sites</span>
+                  <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
+                </button>
+                {sitesPopoverOpen && (
+                  <>
+                    <div className="px-2 py-1.5 border-t border-border">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                        onClick={toggleAllSites}
+                      >
+                        {allSitesSelected
+                          ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                          : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
+                        <span className="text-sm font-medium">All sites</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
+                      </button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto overscroll-contain px-2 pb-2 space-y-0.5">
+                      {!sites ? (
+                        <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
+                        </div>
+                      ) : sites.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">No sites found</p>
+                      ) : (
+                        sites.map((site) => (
+                          <button
+                            key={site._id}
+                            type="button"
+                            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                            onClick={() => toggleSite(site._id)}
+                          >
+                            {selectedSiteIds.has(site._id)
+                              ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
+                              : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                            <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
+                            <span className="text-sm text-foreground truncate">{site.name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Date range */}
               <div className="grid grid-cols-2 gap-2">
@@ -490,112 +491,113 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               )}
 
-              {/* Entries selector — individual mode */}
+              {/* Entries selector — individual mode, inline collapsible */}
               {selectionMode === "individual" && (
-                <Popover open={entriesPopoverOpen} onOpenChange={setEntriesPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
-                    >
-                      <ListChecks className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Entries</span>
-                      <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 p-0" align="start" sideOffset={4}>
-                    {/* Search */}
-                    <div className="p-2 border-b border-border space-y-2">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                        <Input
-                          placeholder="Search entries…"
-                          value={entrySearch}
-                          onChange={(e) => setEntrySearch(e.target.value)}
-                          className="pl-8 pr-8 text-sm h-8"
-                        />
-                        {entrySearch && (
-                          <button
-                            type="button"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEntrySearch("")}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    onClick={() => setEntriesPopoverOpen(!entriesPopoverOpen)}
+                  >
+                    <ListChecks className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Entries</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", entriesPopoverOpen && "rotate-180")} />
+                  </button>
+                  {entriesPopoverOpen && (
+                    <>
+                      {/* Search */}
+                      <div className="px-2 py-1.5 border-t border-border space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input
+                            placeholder="Search entries…"
+                            value={entrySearch}
+                            onChange={(e) => setEntrySearch(e.target.value)}
+                            className="pl-8 pr-8 text-sm h-8"
+                          />
+                          {entrySearch && (
+                            <button
+                              type="button"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEntrySearch("")}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        {!isLoading && filteredEntries.length > 0 && (
+                          <div className="flex items-center justify-between px-0.5">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={toggleAllFilteredEntries}
+                            >
+                              {allFilteredSelected
+                                ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                : <Square className="w-3.5 h-3.5" />}
+                              {allFilteredSelected ? "Deselect all" : "Select all"}
+                              {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
+                            </button>
+                            <span className="text-xs text-muted-foreground">
+                              {selectedEntryIds.size} / {exportLogs?.length ?? 0}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      {!isLoading && filteredEntries.length > 0 && (
-                        <div className="flex items-center justify-between px-0.5">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={toggleAllFilteredEntries}
-                          >
-                            {allFilteredSelected
-                              ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                              : <Square className="w-3.5 h-3.5" />}
-                            {allFilteredSelected ? "Deselect all" : "Select all"}
-                            {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
-                          </button>
-                          <span className="text-xs text-muted-foreground">
-                            {selectedEntryIds.size} / {exportLogs?.length ?? 0}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Entry list */}
-                    <div className="max-h-64 overflow-y-auto">
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
-                        </div>
-                      ) : filteredEntries.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                          {entrySearch ? "No entries match your search" : "No entries found"}
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-border/50 p-1">
-                          {filteredEntries.map((log) => {
-                            const isSelected = selectedEntryIds.has(log._id);
-                            return (
-                              <button
-                                key={log._id}
-                                type="button"
-                                className={cn(
-                                  "w-full flex items-start gap-2.5 px-2 py-2 text-left rounded-md transition-colors hover:bg-accent",
-                                  isSelected && "bg-primary/5"
-                                )}
-                                onClick={() => toggleEntry(log._id)}
-                              >
-                                {isSelected
-                                  ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                                  : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-                                <div className="min-w-0 flex-1 space-y-0.5">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
-                                    <span className={cn(
-                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                                      CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
-                                    )}>
-                                      {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
-                                    </span>
+                      {/* Entry list */}
+                      <div className="max-h-48 overflow-y-auto overscroll-contain">
+                        {isLoading ? (
+                          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
+                          </div>
+                        ) : filteredEntries.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            {entrySearch ? "No entries match your search" : "No entries found"}
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-border/50 p-1">
+                            {filteredEntries.map((log) => {
+                              const isSelected = selectedEntryIds.has(log._id);
+                              return (
+                                <button
+                                  key={log._id}
+                                  type="button"
+                                  className={cn(
+                                    "w-full flex items-start gap-2.5 px-2 py-2 text-left rounded-md transition-colors hover:bg-accent",
+                                    isSelected && "bg-primary/5"
+                                  )}
+                                  onClick={() => toggleEntry(log._id)}
+                                >
+                                  {isSelected
+                                    ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                                    : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+                                  <div className="min-w-0 flex-1 space-y-0.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
+                                      <span className={cn(
+                                        "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                                        CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
+                                      )}>
+                                        {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <MapPin className="w-3 h-3 shrink-0" />
+                                      <span className="truncate">{log.siteName}</span>
+                                      <span className="shrink-0">·</span>
+                                      <span className="shrink-0">{format(new Date(log.loggedAt), "MMM d, yyyy")}</span>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                    <MapPin className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{log.siteName}</span>
-                                    <span className="shrink-0">·</span>
-                                    <span className="shrink-0">{format(new Date(log.loggedAt), "MMM d, yyyy")}</span>
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>

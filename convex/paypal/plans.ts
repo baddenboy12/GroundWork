@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "../_generated/server";
 
 const PAID_TIERS = v.union(
-  v.literal("starter"),
   v.literal("pro"),
   v.literal("business")
 );
@@ -12,11 +11,8 @@ const PAID_TIERS = v.union(
 export const getPayPalStatus = query({
   args: {},
   handler: async (ctx) => {
-    const starter = await ctx.db
-      .query("paypalPlans")
-      .withIndex("by_tier", (q) => q.eq("tier", "starter"))
-      .unique();
-    return { isInitialized: !!starter };
+    const plans = await ctx.db.query("paypalPlans").collect();
+    return { isInitialized: plans.length >= 2 };
   },
 });
 
@@ -44,6 +40,18 @@ export const _getAllPlans = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("paypalPlans").collect();
+  },
+});
+
+/** Internal: delete all plan records so they can be re-created via initializePayPalPlans. */
+export const _deleteAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("paypalPlans").collect();
+    for (const plan of all) {
+      await ctx.db.delete(plan._id);
+    }
+    return { deleted: all.length };
   },
 });
 

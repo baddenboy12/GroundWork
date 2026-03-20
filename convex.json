@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/get-convex/convex-backend/refs/heads/main/npm-packages/convex/schemas/convex.schema.json",
   "node": {
-    "externalPackages": ["jspdf", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "@usehercules/sdk"]
+    "externalPackages": ["jspdf", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "resend"]
   }
 }

@@ -25,10 +25,19 @@ export const create = action({
     if (!args.name.trim()) {
       throw new ConvexError({ message: "Webhook name cannot be empty", code: "BAD_REQUEST" });
     }
+    let parsed: URL;
     try {
-      new URL(args.url);
+      parsed = new URL(args.url);
     } catch {
       throw new ConvexError({ message: "Invalid webhook URL", code: "BAD_REQUEST" });
+    }
+    if (parsed.protocol !== "https:") {
+      throw new ConvexError({ message: "Webhook URL must use HTTPS", code: "BAD_REQUEST" });
+    }
+    const blockedPatterns = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]", "169.254.169.254"];
+    if (blockedPatterns.some((p) => parsed.hostname.includes(p)) ||
+        /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(parsed.hostname)) {
+      throw new ConvexError({ message: "Webhook URL must not target private/internal addresses", code: "BAD_REQUEST" });
     }
     if (args.events.length === 0) {
       throw new ConvexError({ message: "Select at least one event", code: "BAD_REQUEST" });
