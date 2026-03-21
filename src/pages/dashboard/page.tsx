@@ -162,10 +162,6 @@ function DashboardInner() {
               />
             </div>
             <div className="flex items-center gap-2.5 shrink-0">
-              <Button className="gap-2 h-12 px-5 text-base rounded-xl" onClick={() => setGlobalCreateOpen(true)}>
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">New log</span>
-              </Button>
               <Button
                 variant="secondary"
                 className={cn("gap-2 h-12 px-5 text-base rounded-xl", !isOnline && "opacity-50")}
@@ -208,6 +204,17 @@ function DashboardInner() {
           />
         )}
       </main>
+
+      {/* Floating new log button */}
+      {!showStats && (
+        <button
+          className="fixed bottom-36 right-12 w-20 h-20 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:bg-primary/90 active:scale-90 transition-all z-50"
+          onClick={() => setGlobalCreateOpen(true)}
+          aria-label="New log"
+        >
+          <Plus className="w-9 h-9" />
+        </button>
+      )}
 
       {/* Global create dialog */}
       <CreateLogDialog
