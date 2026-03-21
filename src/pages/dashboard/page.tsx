@@ -142,30 +142,15 @@ function DashboardInner() {
       {/* Site selector sub-bar — hidden when stats view is open */}
       {!showStats && (
         <div className="px-4 py-3.5 border-b border-border bg-card/80 shrink-0 space-y-3">
-          {/* Top row: Sites + actions */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 shrink-0">
-              <SitePopout
-                selectedSiteId={selectedSiteId}
-                onSelectSite={selectSite}
-                onSiteDeleted={handleSiteDeleted}
-              />
-            </div>
-            <div className="flex items-center gap-2.5 shrink-0">
-              <Button
-                variant="secondary"
-                className={cn("gap-2 h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform", !isOnline && "opacity-50")}
-                onClick={handleExport}
-                title={!isOnline ? "Export requires an internet connection" : undefined}
-              >
-                {!isOnline
-                  ? <WifiOff className="w-5 h-5" />
-                  : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-            </div>
+          {/* Top row: Sites */}
+          <div className="flex items-center gap-3">
+            <SitePopout
+              selectedSiteId={selectedSiteId}
+              onSelectSite={selectSite}
+              onSiteDeleted={handleSiteDeleted}
+            />
           </div>
-          {/* Bottom row: back + filters */}
+          {/* Bottom row: back + filters + export */}
           <div className="flex items-center gap-3">
             {selectedSiteId && (
               <Button
@@ -183,6 +168,17 @@ function DashboardInner() {
               resultCount={isFiltered ? null : null}
               isSearchMode={isFiltered}
             />
+            <Button
+              variant="secondary"
+              className={cn("gap-2 h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform ml-auto shrink-0", !isOnline && "opacity-50")}
+              onClick={handleExport}
+              title={!isOnline ? "Export requires an internet connection" : undefined}
+            >
+              {!isOnline
+                ? <WifiOff className="w-5 h-5" />
+                : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+              <span className="hidden sm:inline">Export</span>
+            </Button>
           </div>
         </div>
       )}
