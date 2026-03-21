@@ -221,14 +221,14 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
           <motion.div
             className="absolute left-0 top-[calc(100%+4px)] bg-card border border-border rounded-2xl shadow-2xl"
             style={{ width: PANEL_WIDTH, overflow: "hidden", zIndex: 100, transformOrigin: "top left" }}
-            initial={{ scaleX: 0.7, scaleY: 0.4, opacity: 0, y: -8, x: 10 }}
-            animate={{ scaleX: 1, scaleY: 1, opacity: 1, y: 0, x: 0 }}
-            exit={{ scaleX: 0.75, scaleY: 0.35, opacity: 0, y: -10, x: 12 }}
+            initial={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -4 }}
+            animate={{ scaleX: 1, scaleY: 1, opacity: 1, y: 0 }}
+            exit={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -4 }}
             transition={{
               type: "spring",
-              stiffness: 350,
-              damping: 22,
-              mass: 1,
+              stiffness: 500,
+              damping: 30,
+              mass: 0.5,
             }}
           >
             {/* Panel header */}
