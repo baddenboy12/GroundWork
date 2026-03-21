@@ -39,7 +39,7 @@ import EditSiteDialog from "./EditSiteDialog.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import TeamDeleteVoteDialog from "./TeamDeleteVoteDialog.tsx";
 
-const PANEL_WIDTH = 320;
+const PANEL_WIDTH = 360;
 
 type Props = {
   selectedSiteId: Id<"sites"> | null;
@@ -233,32 +233,32 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
           >
             {/* Panel header */}
             <motion.div
-              className="flex items-center justify-between px-4 py-3 border-b border-border"
+              className="flex items-center justify-between px-5 py-4 border-b border-border"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.03 }}
             >
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+              <span className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
                 All Sites
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleAddSite}
                   className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                    "w-12 h-12 rounded-xl flex items-center justify-center transition-colors active:scale-90",
                     atSiteLimit
                       ? "bg-muted text-muted-foreground"
                       : "bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary"
                   )}
                   aria-label="Add site"
                 >
-                  {atSiteLimit ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  {atSiteLimit ? <Lock className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                 </button>
               </div>
             </motion.div>
 
             {/* Site list */}
-            <div ref={listRef} className="py-2 max-h-[65vh] overflow-y-auto">
+            <div ref={listRef} className="py-2 max-h-[65vh] overflow-y-auto px-1">
               {sites === undefined ? (
                 <div className="px-3 space-y-1.5 py-2">
                   {[1, 2, 3].map((i) => (
@@ -289,7 +289,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
                         whileTap={{ scale: 0.97, transition: { duration: 0.08 } }}
                         className={cn(
-                          "group relative flex items-center gap-3 mx-2 px-4 py-4 rounded-xl cursor-pointer",
+                          "group relative flex items-center gap-3 mx-2 px-4 py-5 rounded-xl cursor-pointer",
                           "border transition-all duration-200",
                           isSelected
                             ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
@@ -312,23 +312,13 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                             />
                           )}
                         </AnimatePresence>
-                        {/* index */}
-                        <span className={cn(
-                          "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
-                          isSelected
-                            ? "text-primary/60"
-                            : "text-muted-foreground/35 group-hover:text-muted-foreground/60"
-                        )}>
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-
                         {/* Site name + owner hint */}
                         <div className="flex-1 min-w-0">
-                          <span className="text-base font-semibold truncate leading-tight block">
+                          <span className="text-lg font-semibold truncate leading-tight block">
                             {site.name}
                           </span>
                           {!site.isOwner && (
-                            <span className="text-[10px] text-muted-foreground truncate block leading-tight">
+                            <span className="text-sm text-muted-foreground truncate block leading-tight mt-0.5">
                               {site.ownerName}
                             </span>
                           )}
@@ -365,7 +355,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
                               className={cn(
-                                "w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors",
+                                "w-12 h-12 flex items-center justify-center rounded-xl shrink-0 transition-colors active:scale-90",
                                 "bg-transparent hover:bg-accent active:bg-accent",
                                 isSelected
                                   ? "text-primary/50 hover:text-primary"
@@ -373,13 +363,13 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               )}
                               aria-label="Site actions"
                             >
-                              <MoreVertical className="w-4 h-4" />
+                              <MoreVertical className="w-5 h-5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 p-1.5">
+                          <DropdownMenuContent align="end" className="w-52 p-2">
                             {/* Edit — owner only */}
                             <DropdownMenuItem
-                              className={cn("py-3.5 text-sm cursor-pointer rounded-lg", (!isOnline || !site.isOwner) && "opacity-50")}
+                              className={cn("py-4 text-base cursor-pointer rounded-xl", (!isOnline || !site.isOwner) && "opacity-50")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isOnline) {
@@ -399,7 +389,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                             {/* Delete — personal sites: immediate; team sites: vote */}
                             <DropdownMenuItem
                               className={cn(
-                                "py-3.5 text-sm cursor-pointer rounded-lg text-destructive focus:text-destructive",
+                                "py-4 text-base cursor-pointer rounded-xl text-destructive focus:text-destructive",
                                 !isOnline && "opacity-50",
                                 !isTeamSite && !site.isOwner && "opacity-50"
                               )}
