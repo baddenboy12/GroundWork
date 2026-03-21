@@ -98,11 +98,19 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
 
   // Track whether any dropdown menu inside the list is open
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuClosedAt = useRef(0);
+
+  const handleMenuOpenChange = (isOpen: boolean) => {
+    setMenuOpen(isOpen);
+    if (!isOpen) menuClosedAt.current = Date.now();
+  };
 
   // Close when clicking outside the whole wrapper (skip while dropdown menu is open)
   useEffect(() => {
     if (!open || menuOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
+      // Ignore clicks that happen right after the dropdown menu closed
+      if (Date.now() - menuClosedAt.current < 200) return;
       const target = e.target as HTMLElement;
       if (wrapperRef.current?.contains(target)) return;
       setOpen(false);
@@ -356,7 +364,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         )}
 
                         {/* ⋮ actions menu */}
-                        <DropdownMenu onOpenChange={setMenuOpen}>
+                        <DropdownMenu onOpenChange={handleMenuOpenChange}>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
                               className={cn(
