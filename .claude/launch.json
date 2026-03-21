@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vite",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "pnpm", "dev"],
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "convex",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "pnpm", "convex", "dev"],
+      "port": 3210
+    }
+  ]
+}

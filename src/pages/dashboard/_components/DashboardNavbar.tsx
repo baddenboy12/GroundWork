@@ -135,17 +135,17 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-3 h-14 px-3 rounded-xl">
+              <Button variant="ghost" className="gap-3 h-16 px-4 rounded-xl">
                 <div className={cn(
-                  "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
+                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                   isMissingName ? "bg-amber-500/20" : "bg-primary/20"
                 )}>
                   {isMissingName
                     ? <AlertCircle className="w-5 h-5 text-amber-500" />
-                    : <User className="w-5 h-5 text-primary" />
+                    : <User className="w-6 h-6 text-primary" />
                   }
                 </div>
-                <span className="text-base text-muted-foreground max-w-36 truncate hidden md:block">
+                <span className="text-lg text-muted-foreground max-w-36 truncate hidden md:block">
                   {displayName ?? "Set your name"}
                 </span>
               </Button>

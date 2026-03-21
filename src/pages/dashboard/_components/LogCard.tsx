@@ -44,49 +44,49 @@ export default function LogCard({ log, siteName }: Props) {
         )}
 
         {/* Summary */}
-        <div className="p-4 space-y-2.5">
+        <div className="p-5 space-y-3">
           {/* Site badge + category */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {siteName && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                <MapPin className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                <MapPin className="w-3.5 h-3.5" />
                 {siteName}
               </span>
             )}
             <span
               className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
+                "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border",
                 CATEGORY_COLORS[log.category as LogCategory]
               )}
             >
               {CATEGORY_LABELS[log.category as LogCategory]}
             </span>
             {photos.length > 0 && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
-                <ImageIcon className="w-3 h-3" />
+              <span className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
+                <ImageIcon className="w-4 h-4" />
                 {photos.length}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-base leading-snug line-clamp-2">
             {log.title}
           </h3>
 
           {/* Excerpt */}
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
             {log.content}
           </p>
 
           {/* Footer meta */}
-          <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground/70">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+          <div className="flex items-center gap-3 pt-1 text-sm text-muted-foreground/70">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
               {format(new Date(log.loggedAt), "MMM d, yyyy")}
             </span>
-            <span className="flex items-center gap-1 truncate">
-              <User className="w-3 h-3 shrink-0" />
+            <span className="flex items-center gap-1.5 truncate">
+              <User className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{log.authorName}</span>
             </span>
           </div>

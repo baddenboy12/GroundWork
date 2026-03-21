@@ -3,43 +3,27 @@ import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { format } from "date-fns";
-import { Clock, MapPin, ImageIcon, ClipboardList, Plus, FileDown, Lock } from "lucide-react";
+import { Clock, MapPin, ImageIcon, ClipboardList } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Button } from "@/components/ui/button.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
-import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
-import FilterBar, { type FilterState } from "./FilterBar.tsx";
-import GlobalExportDialog from "./GlobalExportDialog.tsx";
-import UpgradeDialog from "./UpgradeDialog.tsx";
+import { type FilterState } from "./FilterBar.tsx";
 import LogDetailDialog from "./LogDetailDialog.tsx";
 import OfflinePendingCard from "./OfflinePendingCard.tsx";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type RecentLog = Doc<"logs"> & { siteName: string; photoUrls: string[] };
 
-const DEFAULT_FILTERS: FilterState = {
-  search: "",
-  category: "all",
-  dateFrom: "",
-  dateTo: "",
-};
-
 type Props = {
-  onNewLog: () => void;
+  filters: FilterState;
   onSelectSite: (id: Id<"sites">) => void;
 };
 
-export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+export default function DashboardHome({ filters, onSelectSite }: Props) {
   const [openLog, setOpenLog] = useState<RecentLog | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
-  const { isAtLeast } = useSubscription();
-  const canExport = isAtLeast("pro");
   const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
   const isInTeam = !!myKeyInfo;
 
@@ -103,45 +87,15 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {isInTeam
-              ? "Latest log entries across your team's sites"
-              : "Your latest log entries across your personal sites"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={onNewLog}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New log</span>
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => canExport ? setExportOpen(true) : setExportUpgradeOpen(true)}
-          >
-            {canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-        </div>
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {isInTeam
+            ? "Latest log entries across your team's sites"
+            : "Your latest log entries across your personal sites"}
+        </p>
       </div>
 
-      {/* Search & Filters */}
-      <div className="mb-5">
-        <FilterBar
-          filters={filters}
-          onChange={setFilters}
-          resultCount={isFiltered && !isLoading ? (logs?.length ?? 0) : null}
-          isSearchMode={isFiltered}
-        />
-      </div>
 
       {/* Grid */}
       {isLoading && offlineQueue.length === 0 ? (
@@ -172,11 +126,6 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
               </>
             )}
           </div>
-          {!isFiltered && (
-            <Button size="sm" onClick={onNewLog}>
-              <Plus className="w-4 h-4 mr-1.5" /> New log entry
-            </Button>
-          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -216,15 +165,6 @@ export default function DashboardHome({ onNewLog, onSelectSite }: Props) {
         />
       )}
 
-      <GlobalExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
-
-      <UpgradeDialog
-        open={exportUpgradeOpen}
-        onClose={() => setExportUpgradeOpen(false)}
-        requiredTier="pro"
-        featureName="PDF & CSV Export"
-        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
-      />
     </div>
   );
 }

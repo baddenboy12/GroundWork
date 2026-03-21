@@ -158,7 +158,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2.5 h-11 px-4 rounded-xl text-base font-semibold transition-all duration-200",
+          "flex items-center gap-2.5 h-12 px-5 rounded-xl text-lg font-semibold transition-all duration-200",
           "bg-muted/70 hover:bg-muted border border-transparent",
           open && "bg-muted border-border shadow-inner"
         )}
@@ -181,10 +181,10 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className="w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors"
+            className="w-12 h-12 flex items-center justify-center rounded-xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors"
             aria-label="How sites work"
           >
-            <Info className="w-5 h-5" />
+            <Info className="w-6 h-6" />
           </button>
         </PopoverTrigger>
         <PopoverContent side="bottom" align="start" className="w-72 p-4 space-y-3 text-sm">
@@ -220,11 +220,17 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
         {open && (
           <motion.div
             className="absolute left-0 top-[calc(100%+4px)] bg-card border border-border rounded-2xl shadow-2xl"
-            style={{ width: PANEL_WIDTH, overflow: "hidden", zIndex: 100 }}
-            initial={{ clipPath: "inset(0 0 100% 0 round 16px)", opacity: 0 }}
-            animate={{ clipPath: "inset(0 0 0% 0 round 16px)", opacity: 1 }}
-            exit={{ clipPath: "inset(0 0 100% 0 round 16px)", opacity: 0 }}
-            transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
+            style={{ width: PANEL_WIDTH, overflow: "hidden", zIndex: 100, transformOrigin: "top left" }}
+            initial={{ scaleX: 0.7, scaleY: 0.4, opacity: 0, y: -8, x: 10 }}
+            animate={{ scaleX: 1, scaleY: 1, opacity: 1, y: 0, x: 0 }}
+            exit={{ scaleX: 0.75, scaleY: 0.35, opacity: 0, y: -10, x: 12 }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 22,
+              mass: 0.8,
+              exit: { type: "spring", stiffness: 300, damping: 20, mass: 1.2 },
+            }}
           >
             {/* Panel header */}
             <motion.div
@@ -237,11 +243,6 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                 All Sites
               </span>
               <div className="flex items-center gap-2">
-                {siteCount > 0 && (
-                  <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground">
-                    {totalCount}{config.maxSites !== null ? `/${config.maxSites}` : ""}
-                  </span>
-                )}
                 <button
                   onClick={handleAddSite}
                   className={cn(
@@ -289,7 +290,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         transition={{ delay: i * 0.008, duration: 0.1, ease: "easeOut" }}
                         whileTap={{ scale: 0.97, transition: { duration: 0.08 } }}
                         className={cn(
-                          "group flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl cursor-pointer",
+                          "group relative flex items-center gap-3 mx-2 px-4 py-4 rounded-xl cursor-pointer",
                           "border transition-all duration-200",
                           isSelected
                             ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
@@ -297,9 +298,21 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         )}
                         onClick={() => {
                           onSelectSite(site._id);
-                          setOpen(false);
+                          setTimeout(() => setOpen(false), 120);
                         }}
                       >
+                        {/* Slide-in indicator bar */}
+                        <AnimatePresence>
+                          {isSelected && (
+                            <motion.div
+                              className="absolute left-1 inset-y-2.5 w-[3px] rounded-full bg-primary"
+                              initial={{ scaleY: 0, opacity: 0 }}
+                              animate={{ scaleY: 1, opacity: 1 }}
+                              exit={{ scaleY: 0, opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            />
+                          )}
+                        </AnimatePresence>
                         {/* index */}
                         <span className={cn(
                           "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
@@ -312,7 +325,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
 
                         {/* Site name + owner hint */}
                         <div className="flex-1 min-w-0">
-                          <span className="text-[15px] font-semibold truncate leading-tight block">
+                          <span className="text-base font-semibold truncate leading-tight block">
                             {site.name}
                           </span>
                           {!site.isOwner && (
@@ -353,7 +366,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
                               className={cn(
-                                "w-9 h-9 flex items-center justify-center rounded-xl shrink-0 transition-colors",
+                                "w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors",
                                 "bg-transparent hover:bg-accent active:bg-accent",
                                 isSelected
                                   ? "text-primary/50 hover:text-primary"

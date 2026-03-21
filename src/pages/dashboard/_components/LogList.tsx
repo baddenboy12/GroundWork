@@ -1,56 +1,37 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, MapPin, FileDown, Lock, ChevronLeft, FileText, WifiOff } from "lucide-react";
+import { MapPin, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
 import LogCard from "./LogCard.tsx";
-import CreateLogDialog from "./CreateLogDialog.tsx";
-import FilterBar, { type FilterState } from "./FilterBar.tsx";
-import UpgradeDialog from "./UpgradeDialog.tsx";
-import ExportDialog from "./ExportDialog.tsx";
+import { type FilterState } from "./FilterBar.tsx";
 import OfflinePendingCard from "./OfflinePendingCard.tsx";
 import type { Id, Doc } from "@/convex/_generated/dataModel.d.ts";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
-import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
-import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import { type LogCategory } from "../_lib/constants.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
 type Props = {
   siteId: Id<"sites">;
-  /** Mobile: callback to navigate back to the site list */
-  onBack?: () => void;
+  filters: FilterState;
 };
 
-const DEFAULT_FILTERS: FilterState = {
-  search: "",
-  category: "all",
-  dateFrom: "",
-  dateTo: "",
-};
-
-export default function LogList({ siteId, onBack }: Props) {
+export default function LogList({ siteId, filters }: Props) {
   const sitesRaw = useQuery(api.sites.list, {});
   const sites = useCachedQuery("gw_cache_sites_list", sitesRaw);
   const site = sites?.find((s) => s._id === siteId);
-  const { isAtLeast } = useSubscription();
-  const canExport = isAtLeast("pro");
-  const isOnline = useOnlineStatus();
 
   // ── Per-site log cache for offline fallback ───────────────────────────────
   // listBySiteSimple returns the most recent 50 logs without pagination.
@@ -67,11 +48,6 @@ export default function LogList({ siteId, onBack }: Props) {
     const siteLower = site.name.toLowerCase();
     return offlineQueue.filter((e) => e.siteName.toLowerCase() === siteLower);
   }, [offlineQueue, site]);
-
-  const [createOpen, setCreateOpen] = useState(false);
-  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   // Debounce search to avoid firing on every keystroke
   const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
@@ -140,81 +116,30 @@ export default function LogList({ siteId, onBack }: Props) {
 
   const hasMorePages = !isSearchMode && pagedStatus === "CanLoadMore";
 
-  const handleOpenExport = () => {
-    if (!isOnline) {
-      toast.error("You're offline — export requires a connection");
-      return;
-    }
-    if (!canExport) { setExportUpgradeOpen(true); return; }
-    setExportOpen(true);
-  };
-
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="border-b border-border px-4 md:px-6 py-3 bg-background shrink-0 space-y-3">
 
-        {/* Top row */}
+        {/* Site info */}
         <div className="flex items-center gap-2">
-          {/* Back button */}
-          {onBack && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 -ml-1"
-              onClick={onBack}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-          )}
-
-          {/* Site name */}
+          <MapPin className="w-4 h-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary shrink-0" />
-              <h2 className="text-lg font-bold text-foreground truncate">
-                {site?.name ?? "Loading..."}
-              </h2>
-            </div>
+            <h2 className="text-lg font-bold text-foreground truncate">
+              {site?.name ?? "Loading..."}
+            </h2>
             {site?.location && (
-              <p className="text-sm text-muted-foreground mt-0.5 ml-6 truncate">
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {site.location}
               </p>
             )}
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New log</span>
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className={cn("gap-1.5", !isOnline && "opacity-50")}
-              onClick={handleOpenExport}
-              title={!isOnline ? "Export requires an internet connection" : undefined}
-            >
-              {!isOnline
-                ? <WifiOff className="w-4 h-4" />
-                : canExport ? <FileDown className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-          </div>
         </div>
 
-        {/* Filter bar */}
-        <FilterBar
-          filters={filters}
-          onChange={setFilters}
-          resultCount={isSearchMode ? activeResults.length : null}
-          isSearchMode={isSearchMode}
-        />
       </div>
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -240,17 +165,10 @@ export default function LogList({ siteId, onBack }: Props) {
                   : "Start documenting activity at this site"}
               </EmptyDescription>
             </EmptyHeader>
-            {!isSearchMode && filters.category === "all" && !filters.dateFrom && !filters.dateTo && (
-              <EmptyContent>
-                <Button size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="w-4 h-4 mr-1.5" /> New log entry
-                </Button>
-              </EmptyContent>
-            )}
           </Empty>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {/* Pending offline entries for this site at the top */}
               {!isSearchMode && pendingEntries.map((entry, i) => (
                 <motion.div
@@ -284,29 +202,6 @@ export default function LogList({ siteId, onBack }: Props) {
         )}
       </div>
 
-      <CreateLogDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        initialSiteName={site?.name}
-      />
-
-      {site && (
-        <ExportDialog
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          siteId={siteId}
-          siteName={site.name}
-          siteLocation={site.location}
-        />
-      )}
-
-      <UpgradeDialog
-        open={exportUpgradeOpen}
-        onClose={() => setExportUpgradeOpen(false)}
-        requiredTier="pro"
-        featureName="PDF & CSV Export"
-        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
-      />
     </div>
   );
 }

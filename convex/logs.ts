@@ -231,15 +231,33 @@ export const searchAllLogs = query({
         .collect();
       const teamSiteIds = new Set(teamSites.map((s) => s._id));
 
-      const searchResults = await ctx.db
-        .query("logs")
-        .withSearchIndex("search_title_global", (q) => {
-          const base = q.search("title", args.query);
-          return args.category ? base.eq("category", args.category) : base;
-        })
-        .take(200);
+      const [titleResults, contentResults] = await Promise.all([
+        ctx.db
+          .query("logs")
+          .withSearchIndex("search_title_global", (q) => {
+            const base = q.search("title", args.query);
+            return args.category ? base.eq("category", args.category) : base;
+          })
+          .take(200),
+        ctx.db
+          .query("logs")
+          .withSearchIndex("search_content_global", (q) => {
+            const base = q.search("content", args.query);
+            return args.category ? base.eq("category", args.category) : base;
+          })
+          .take(200),
+      ]);
 
-      results = searchResults.filter((l) => teamSiteIds.has(l.siteId));
+      const seen = new Set(titleResults.map((r) => r._id));
+      const merged = [...titleResults];
+      for (const r of contentResults) {
+        if (!seen.has(r._id)) {
+          seen.add(r._id);
+          merged.push(r);
+        }
+      }
+
+      results = merged.filter((l) => teamSiteIds.has(l.siteId));
     } else {
       // Personal mode: search within current user's logs, filter to personal sites
       const ownedSites = await ctx.db
@@ -250,15 +268,33 @@ export const searchAllLogs = query({
         ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
       );
 
-      const searchResults = await ctx.db
-        .query("logs")
-        .withSearchIndex("search_title_global", (q) => {
-          const base = q.search("title", args.query).eq("authorId", user._id);
-          return args.category ? base.eq("category", args.category) : base;
-        })
-        .take(100);
+      const [titleResults, contentResults] = await Promise.all([
+        ctx.db
+          .query("logs")
+          .withSearchIndex("search_title_global", (q) => {
+            const base = q.search("title", args.query).eq("authorId", user._id);
+            return args.category ? base.eq("category", args.category) : base;
+          })
+          .take(100),
+        ctx.db
+          .query("logs")
+          .withSearchIndex("search_content_global", (q) => {
+            const base = q.search("content", args.query).eq("authorId", user._id);
+            return args.category ? base.eq("category", args.category) : base;
+          })
+          .take(100),
+      ]);
 
-      results = searchResults.filter((l) => personalSiteIds.has(l.siteId));
+      const seen = new Set(titleResults.map((r) => r._id));
+      const merged = [...titleResults];
+      for (const r of contentResults) {
+        if (!seen.has(r._id)) {
+          seen.add(r._id);
+          merged.push(r);
+        }
+      }
+
+      results = merged.filter((l) => personalSiteIds.has(l.siteId));
     }
 
     if (args.dateFrom) {
@@ -351,16 +387,36 @@ export const searchBySite = query({
     // Return empty rather than throwing — offline-first mode may call this before auth resolves.
     if (!identity) return [];
 
-    const results = await ctx.db
-      .query("logs")
-      .withSearchIndex("search_title", (q) => {
-        const base = q.search("title", args.query).eq("siteId", args.siteId);
-        return args.category ? base.eq("category", args.category) : base;
-      })
-      .take(100);
+    // Search both title and content, then deduplicate
+    const [titleResults, contentResults] = await Promise.all([
+      ctx.db
+        .query("logs")
+        .withSearchIndex("search_title", (q) => {
+          const base = q.search("title", args.query).eq("siteId", args.siteId);
+          return args.category ? base.eq("category", args.category) : base;
+        })
+        .take(100),
+      ctx.db
+        .query("logs")
+        .withSearchIndex("search_content", (q) => {
+          const base = q.search("content", args.query).eq("siteId", args.siteId);
+          return args.category ? base.eq("category", args.category) : base;
+        })
+        .take(100),
+    ]);
+
+    // Deduplicate: title matches first, then content-only matches
+    const seen = new Set(titleResults.map((r) => r._id));
+    const merged = [...titleResults];
+    for (const r of contentResults) {
+      if (!seen.has(r._id)) {
+        seen.add(r._id);
+        merged.push(r);
+      }
+    }
 
     return await Promise.all(
-      results.map(async (log) => {
+      merged.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
         const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
         return { ...log, authorName: author?.name ?? "Unknown", photoUrls };

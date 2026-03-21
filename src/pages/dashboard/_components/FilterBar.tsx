@@ -47,36 +47,34 @@ export default function FilterBar({ filters, onChange, resultCount, isSearchMode
   const clearAll = () => onChange(DEFAULT_FILTERS);
 
   return (
-    <div className="space-y-2">
-      {/* Search — always full width */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+    <div className="flex items-center gap-2.5">
+      {/* Search */}
+      <div className="relative flex-1 min-w-40">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <Input
-          className="pl-8 pr-8 h-9 text-sm"
-          placeholder="Search logs by title..."
+          className="pl-10 pr-10 h-11 text-base rounded-xl"
+          placeholder="Search logs..."
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
         />
         {filters.search && (
           <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => onChange({ ...filters, search: "" })}
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Second row: category + date + clear */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Category filter */}
-        <Select
-          value={filters.category}
-          onValueChange={(v) => onChange({ ...filters, category: v as LogCategory | "all" })}
-        >
-          <SelectTrigger className="flex-1 min-w-32 h-8 text-xs">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
+      {/* Category filter */}
+      <Select
+        value={filters.category}
+        onValueChange={(v) => onChange({ ...filters, category: v as LogCategory | "all" })}
+      >
+        <SelectTrigger className="w-auto min-w-28 h-11 text-sm rounded-xl shrink-0">
+          <SelectValue placeholder="All categories" />
+        </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {LOG_CATEGORIES.map((c) => (
@@ -87,18 +85,17 @@ export default function FilterBar({ filters, onChange, resultCount, isSearchMode
           </SelectContent>
         </Select>
 
-        {/* Date range popover */}
-        <Popover>
+      {/* Date range popover */}
+      <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="secondary"
-              size="sm"
               className={cn(
-                "h-8 gap-1.5 text-xs shrink-0",
+                "h-11 gap-2 text-sm shrink-0 rounded-xl px-4",
                 (filters.dateFrom || filters.dateTo) && "border-primary/50 text-primary"
               )}
             >
-              <CalendarDays className="w-3.5 h-3.5" />
+              <CalendarDays className="w-4 h-4" />
               <span className="hidden sm:inline">Date range</span>
               <span className="sm:hidden">Date</span>
               {(filters.dateFrom || filters.dateTo) && (
@@ -141,30 +138,29 @@ export default function FilterBar({ filters, onChange, resultCount, isSearchMode
           </PopoverContent>
         </Popover>
 
-        {/* Active filters badge + clear */}
-        {activeFilterCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs text-muted-foreground gap-1.5 shrink-0"
-            onClick={clearAll}
-          >
-            <X className="w-3 h-3" />
-            Clear
-            <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-[10px] flex items-center justify-center font-bold">
-              {activeFilterCount}
-            </span>
-          </Button>
-        )}
-
-        {/* Result count */}
-        {isSearchMode && resultCount !== null && (
-          <span className="text-xs text-muted-foreground ml-auto">
-            <SlidersHorizontal className="w-3 h-3 inline mr-1" />
-            {resultCount} result{resultCount !== 1 ? "s" : ""}
+      {/* Active filters badge + clear */}
+      {activeFilterCount > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs text-muted-foreground gap-1.5 shrink-0"
+          onClick={clearAll}
+        >
+          <X className="w-3 h-3" />
+          Clear
+          <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-[10px] flex items-center justify-center font-bold">
+            {activeFilterCount}
           </span>
-        )}
-      </div>
+        </Button>
+      )}
+
+      {/* Result count */}
+      {isSearchMode && resultCount !== null && (
+        <span className="text-xs text-muted-foreground shrink-0">
+          <SlidersHorizontal className="w-3 h-3 inline mr-1" />
+          {resultCount} result{resultCount !== 1 ? "s" : ""}
+        </span>
+      )}
     </div>
   );
 }

@@ -179,8 +179,16 @@ export default defineSchema({
       searchField: "title",
       filterFields: ["siteId", "category"],
     })
+    .searchIndex("search_content", {
+      searchField: "content",
+      filterFields: ["siteId", "category"],
+    })
     .searchIndex("search_title_global", {
       searchField: "title",
+      filterFields: ["authorId", "category"],
+    })
+    .searchIndex("search_content_global", {
+      searchField: "content",
       filterFields: ["authorId", "category"],
     }),
 });

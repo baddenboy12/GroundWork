@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { Plus, Settings, Trash2, ChevronRight, Lock, Info, Users, Vote } from "lucide-react";
@@ -255,13 +255,25 @@ export default function SiteSidebar({ selectedSiteId, onSelectSite, onSiteDelete
               transition={{ delay: i * 0.04, duration: 0.2 }}
               whileTap={{ scale: 0.97 }}
               className={cn(
-                "group flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl cursor-pointer transition-colors",
+                "group relative flex items-center gap-3 mx-2 px-3 py-3.5 rounded-xl cursor-pointer transition-colors",
                 selectedSiteId === site._id
                   ? "bg-primary/15 text-foreground"
                   : "hover:bg-accent text-muted-foreground hover:text-foreground"
               )}
               onClick={() => onSelectSite(site._id)}
             >
+              {/* Slide-in indicator bar */}
+              <AnimatePresence>
+                {selectedSiteId === site._id && (
+                  <motion.div
+                    className="absolute left-0 inset-y-2 w-[3px] rounded-full bg-primary"
+                    initial={{ scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    exit={{ scaleY: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </AnimatePresence>
               <span className={cn(
                 "text-[10px] font-mono tabular-nums shrink-0 w-5 text-right leading-none",
                 selectedSiteId === site._id

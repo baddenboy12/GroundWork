@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
-import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api.js";
+import { Plus, FileDown, Lock, WifiOff, ChevronLeft } from "lucide-react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import { useBackgroundCacheSync } from "@/hooks/use-background-cache-sync.ts";
+import { useSubscription } from "@/hooks/use-subscription.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
+import { cn } from "@/lib/utils.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
@@ -12,7 +17,16 @@ import LogList from "./_components/LogList.tsx";
 import DashboardHome from "./_components/DashboardHome.tsx";
 import StatsView from "./_components/StatsView.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
+import ExportDialog from "./_components/ExportDialog.tsx";
+import GlobalExportDialog from "./_components/GlobalExportDialog.tsx";
+import UpgradeDialog from "./_components/UpgradeDialog.tsx";
+import FilterBar, { type FilterState } from "./_components/FilterBar.tsx";
+import { useCachedQuery } from "@/hooks/use-cached-query.ts";
+import { useDebounce } from "@/hooks/use-debounce.ts";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
+
+const DEFAULT_FILTERS: FilterState = { search: "", category: "all", dateFrom: "", dateTo: "" };
 
 // Blocks the Android back button / swipe-back gesture in standalone PWA mode.
 function BackBlocker() {
@@ -66,22 +80,52 @@ function DashboardInner() {
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
+  const isSearchMode = debouncedSearch.length > 0;
+  const isFiltered = isSearchMode || filters.category !== "all" || !!filters.dateFrom || !!filters.dateTo;
 
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
   const offlineQueue = useOfflineQueueState();
+  const { isAtLeast } = useSubscription();
+  const canExport = isAtLeast("pro");
+
+  // Site info for per-site export dialog
+  const sitesRaw = useQuery(api.sites.list, {});
+  const sites = useCachedQuery("gw_cache_sites_list", sitesRaw);
+  const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
   // Background cache — proactively caches every site's logs and photos
   // while online so they're available on any site after going offline.
   useBackgroundCacheSync();
 
+  const selectSite = (id: Id<"sites"> | null) => {
+    setSelectedSiteId(id);
+    setFilters(DEFAULT_FILTERS);
+  };
+
   const handleSiteDeleted = (id: Id<"sites">) => {
-    if (selectedSiteId === id) setSelectedSiteId(null);
+    if (selectedSiteId === id) selectSite(null);
   };
 
   const handleLogCreated = (siteId: Id<"sites">) => {
     setShowStats(false);
-    setSelectedSiteId(siteId);
+    selectSite(siteId);
+  };
+
+  const handleExport = () => {
+    if (!isOnline) {
+      toast.error("You're offline — export requires a connection");
+      return;
+    }
+    if (!canExport) {
+      setExportUpgradeOpen(true);
+      return;
+    }
+    setExportOpen(true);
   };
 
   return (
@@ -91,18 +135,54 @@ function DashboardInner() {
         onNewLog={() => setGlobalCreateOpen(true)}
         onStats={() => {
           setShowStats((v) => !v);
-          setSelectedSiteId(null);
+          selectSite(null);
         }}
       />
 
       {/* Site selector sub-bar — hidden when stats view is open */}
       {!showStats && (
-        <div className="flex items-center px-4 py-2 border-b border-border bg-card/80 shrink-0">
-          <SitePopout
-            selectedSiteId={selectedSiteId}
-            onSelectSite={setSelectedSiteId}
-            onSiteDeleted={handleSiteDeleted}
-          />
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/80 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Back button — visible when viewing a site */}
+            {selectedSiteId && (
+              <Button
+                variant="outline"
+                className="gap-1.5 font-semibold h-11 px-4 text-base rounded-xl"
+                onClick={() => selectSite(null)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+                Back
+              </Button>
+            )}
+            <SitePopout
+              selectedSiteId={selectedSiteId}
+              onSelectSite={selectSite}
+              onSiteDeleted={handleSiteDeleted}
+            />
+          </div>
+          <div className="flex items-center gap-2.5 flex-1 justify-end">
+            <FilterBar
+              filters={filters}
+              onChange={setFilters}
+              resultCount={isFiltered ? null : null}
+              isSearchMode={isFiltered}
+            />
+            <Button className="gap-2 h-11 px-5 text-base rounded-xl shrink-0" onClick={() => setGlobalCreateOpen(true)}>
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">New log</span>
+            </Button>
+            <Button
+              variant="secondary"
+              className={cn("gap-2 h-11 px-5 text-base rounded-xl shrink-0", !isOnline && "opacity-50")}
+              onClick={handleExport}
+              title={!isOnline ? "Export requires an internet connection" : undefined}
+            >
+              {!isOnline
+                ? <WifiOff className="w-5 h-5" />
+                : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -117,11 +197,11 @@ function DashboardInner() {
         {showStats ? (
           <StatsView onBack={() => setShowStats(false)} />
         ) : selectedSiteId ? (
-          <LogList siteId={selectedSiteId} onBack={() => setSelectedSiteId(null)} />
+          <LogList siteId={selectedSiteId} filters={filters} />
         ) : (
           <DashboardHome
-            onNewLog={() => setGlobalCreateOpen(true)}
-            onSelectSite={setSelectedSiteId}
+            filters={filters}
+            onSelectSite={selectSite}
           />
         )}
       </main>
@@ -131,6 +211,28 @@ function DashboardInner() {
         open={globalCreateOpen}
         onClose={() => setGlobalCreateOpen(false)}
         onCreated={handleLogCreated}
+        initialSiteName={selectedSite?.name}
+      />
+
+      {/* Export dialogs */}
+      {selectedSiteId && selectedSite ? (
+        <ExportDialog
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          siteId={selectedSiteId}
+          siteName={selectedSite.name}
+          siteLocation={selectedSite.location}
+        />
+      ) : (
+        <GlobalExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
+      )}
+
+      <UpgradeDialog
+        open={exportUpgradeOpen}
+        onClose={() => setExportUpgradeOpen(false)}
+        requiredTier="pro"
+        featureName="PDF & CSV Export"
+        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
       />
     </div>
   );
