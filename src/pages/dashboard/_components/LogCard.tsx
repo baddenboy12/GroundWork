@@ -73,7 +73,7 @@ export default function LogCard({ log, siteName }: Props) {
           </h3>
 
           {/* Excerpt */}
-          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2" style={{ fontFamily: "'MV Boli', cursive" }}>
             {log.content}
           </p>
 
