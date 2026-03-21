@@ -25,7 +25,7 @@ export default function LogCard({ log, siteName }: Props) {
       <motion.button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group w-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group w-full h-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex flex-col"
         whileTap={{ scale: 0.96 }}
         whileHover={{ y: -2 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -48,7 +48,7 @@ export default function LogCard({ log, siteName }: Props) {
         )}
 
         {/* Summary */}
-        <div className="p-5 space-y-3">
+        <div className="p-5 space-y-3 flex-1 flex flex-col">
           {/* Site badge + category */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {siteName && (
@@ -74,7 +74,7 @@ export default function LogCard({ log, siteName }: Props) {
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-3xl leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-2xl leading-snug line-clamp-2">
             {log.title}
           </h3>
 
@@ -84,7 +84,7 @@ export default function LogCard({ log, siteName }: Props) {
           </p>
 
           {/* Footer meta */}
-          <div className="flex items-center gap-3 pt-1 text-xl text-muted-foreground/70">
+          <div className="flex items-center gap-3 pt-1 text-xl text-muted-foreground/70 mt-auto">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
               {format(new Date(log.loggedAt), "MMM d, yyyy")}
