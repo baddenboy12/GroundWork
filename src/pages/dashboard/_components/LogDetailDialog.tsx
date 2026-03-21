@@ -259,7 +259,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                       </button>
                       <button
                         className={cn(
-                          "flex items-center gap-3 w-full py-4 px-3 text-base rounded-xl hover:bg-accent transition-colors text-left text-destructive",
+                          "flex items-center gap-4 w-full py-5 px-4 text-xl rounded-xl hover:bg-accent transition-colors text-left text-destructive",
                           !isOnline && "opacity-50"
                         )}
                         onClick={() => {
