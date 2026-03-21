@@ -131,15 +131,10 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                 }}
               >
                 {/* User icon */}
-                <div className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                  isMissingName ? "bg-amber-500/20" : "bg-primary/20"
-                )}>
-                  {isMissingName
-                    ? <AlertCircle className="w-4 h-4 text-amber-500" />
-                    : <User className="w-4 h-4 text-primary" />
-                  }
-                </div>
+                {isMissingName
+                  ? <AlertCircle className="w-7 h-7 text-amber-500 shrink-0" />
+                  : <User className="w-7 h-7 text-foreground shrink-0" />
+                }
                 {/* Name */}
                 <span className="text-xl font-medium text-foreground truncate">
                   {displayName ?? "Set name"}
