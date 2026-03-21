@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
@@ -175,17 +176,25 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-3 rounded-2xl">
-              <div className="px-4 py-5">
+            <DropdownMenuContent align="end" className="w-80 p-4 rounded-3xl" style={{ backgroundColor: "hsl(30 12% 12%)", border: "1px solid hsl(var(--border))" }}>
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: {},
+                  visible: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } },
+                }}
+              >
+              <motion.div className="px-4 py-5" variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
                 {isMissingName ? (
                   <div className="flex items-center gap-3">
                     <AlertCircle className="w-6 h-6 text-amber-500 shrink-0" />
-                    <p className="text-lg text-amber-500 font-medium">No name set</p>
+                    <p className="text-xl text-amber-500 font-medium">No name set</p>
                   </div>
                 ) : (
-                  <p className="text-xl font-semibold text-foreground truncate">{displayName}</p>
+                  <p className="text-2xl font-semibold text-foreground truncate">{displayName}</p>
                 )}
-                <p className="text-base text-muted-foreground truncate mt-1">{user?.profile.email}</p>
+                <p className="text-lg text-muted-foreground truncate mt-1">{user?.profile.email}</p>
                 <Badge
                   variant="secondary"
                   className={cn(
@@ -195,31 +204,40 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                 >
                   {config.name} plan
                 </Badge>
-              </div>
+              </motion.div>
               <DropdownMenuSeparator />
               {/* Set / edit name */}
+              <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
                 className={cn(
-                  "text-lg py-5 gap-4 rounded-xl",
+                  "text-xl py-5 gap-4 rounded-2xl",
                   isMissingName && "text-amber-500 focus:text-amber-500"
                 )}
                 onClick={openNameDialog}
               >
-                <Pencil className="w-6 h-6" />
+                <Pencil className="w-7 h-7" />
                 {isMissingName ? "Set your name" : "Edit name"}
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={() => navigate("/billing")}>
-                <CreditCard className="w-6 h-6" /> Subscription
+              </motion.div>
+              <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
+              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={() => navigate("/billing")}>
+                <CreditCard className="w-7 h-7" /> Subscription
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={onStats}>
-                <BarChart2 className="w-6 h-6" /> Statistics
+              </motion.div>
+              <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
+              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={onStats}>
+                <BarChart2 className="w-7 h-7" /> Statistics
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={() => navigate("/integrations")}>
-                <Plug className="w-6 h-6" /> Integrations & API
+              </motion.div>
+              <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
+              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={() => navigate("/integrations")}>
+                <Plug className="w-7 h-7" /> Integrations & API
               </DropdownMenuItem>
+              </motion.div>
               <DropdownMenuSeparator />
+              <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
-                className="text-lg py-5 gap-4 rounded-xl text-destructive focus:text-destructive"
+                className="text-xl py-5 gap-4 rounded-2xl text-destructive focus:text-destructive"
                 onClick={async () => {
                   for (let i = localStorage.length - 1; i >= 0; i--) {
                     const k = localStorage.key(i);
@@ -229,13 +247,15 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                   navigate("/");
                 }}
               >
-                <LogOut className="w-6 h-6" /> Sign out
+                <LogOut className="w-7 h-7" /> Sign out
               </DropdownMenuItem>
+              </motion.div>
               <DropdownMenuSeparator />
-              <div className="px-4 py-3 flex items-center justify-between">
+              <motion.div className="px-4 py-3 flex items-center justify-between" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
                 <span className="text-xs text-muted-foreground/50">Version</span>
                 <span className="text-xs font-mono text-muted-foreground/50">v{APP_VERSION}</span>
-              </div>
+              </motion.div>
+              </motion.div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
