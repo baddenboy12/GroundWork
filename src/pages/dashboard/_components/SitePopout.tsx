@@ -232,11 +232,17 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute left-0 top-[calc(100%+4px)] bg-card border border-border rounded-2xl shadow-2xl"
-            style={{ width: PANEL_WIDTH, overflow: "hidden", zIndex: 100, transformOrigin: "top left" }}
-            initial={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -4 }}
+            className="absolute"
+            style={{
+              width: PANEL_WIDTH,
+              zIndex: 100,
+              transformOrigin: "50px top",
+              left: "75px",
+              top: "calc(100% + 22px)",
+            }}
+            initial={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -8 }}
             animate={{ scaleX: 1, scaleY: 1, opacity: 1, y: 0 }}
-            exit={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -4 }}
+            exit={{ scaleX: 0.85, scaleY: 0.7, opacity: 0, y: -8 }}
             transition={{
               type: "spring",
               stiffness: 500,
@@ -244,6 +250,31 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
               mass: 0.5,
             }}
           >
+            {/* Notch pointing up toward Filters area */}
+            <div style={{
+              position: "absolute",
+              top: -10,
+              left: 55,
+              width: 22,
+              height: 22,
+              backgroundColor: "hsl(30 14% 17%)",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: 4,
+              transform: "rotate(45deg)",
+              zIndex: 0,
+            }} />
+            {/* Panel body */}
+            <div
+              className="shadow-2xl"
+              style={{
+                overflow: "hidden",
+                position: "relative",
+                zIndex: 1,
+                borderRadius: "24px",
+                background: "linear-gradient(to bottom, hsl(30 14% 15%) 0%, hsl(30 12% 10%) 80px)",
+                border: "1px solid hsl(var(--border))",
+              }}
+            >
             {/* Panel header */}
             <motion.div
               className="flex items-center justify-between px-5 py-4 border-b border-border"
@@ -462,6 +493,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                   ))}
                 </>
               )}
+            </div>
             </div>
           </motion.div>
         )}
