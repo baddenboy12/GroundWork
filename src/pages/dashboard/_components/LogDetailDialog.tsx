@@ -233,7 +233,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                       <MoreVertical style={{ width: 32, height: 32 }} />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="bottom" sideOffset={4} avoidCollisions={false} sticky="always" className="w-52 p-3 rounded-2xl">
+                  <DropdownMenuContent align="end" side="bottom" sideOffset={4} avoidCollisions={false} sticky="always" className="w-52 p-3 rounded-2xl !animate-none data-[state=open]:!animate-none opacity-100">
                     <DropdownMenuItem
                       className={cn("py-4 text-base cursor-pointer rounded-xl gap-3", !isOnline && "opacity-50")}
                       onClick={() => {
