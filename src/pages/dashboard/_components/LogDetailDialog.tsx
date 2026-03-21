@@ -461,25 +461,25 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
 
       {/* Navigation arrows + counter */}
       {photos.length > 1 && (
-        <div className="flex items-center gap-6 mt-4">
+        <div className="flex items-center gap-8 mt-4">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); goPrev(); }}
             disabled={activeIndex === 0}
-            className="p-3.5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
+            className="p-5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
-            <ChevronLeft className="w-7 h-7" />
+            <ChevronLeft style={{ width: 32, height: 32 }} />
           </button>
-          <span className="text-base text-muted-foreground font-medium min-w-[48px] text-center">
+          <span className="text-2xl text-muted-foreground font-semibold min-w-[60px] text-center">
             {activeIndex + 1} / {photos.length}
           </span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); goNext(); }}
             disabled={activeIndex === photos.length - 1}
-            className="p-3.5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
+            className="p-5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
-            <ChevronRight className="w-7 h-7" />
+            <ChevronRight style={{ width: 32, height: 32 }} />
           </button>
         </div>
       )}
