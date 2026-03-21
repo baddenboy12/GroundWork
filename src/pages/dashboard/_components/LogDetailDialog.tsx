@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
@@ -50,6 +50,13 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuClosedAt = useRef(0);
+
+  const handleMenuOpenChange = (isOpen: boolean) => {
+    setMenuOpen(isOpen);
+    if (!isOpen) menuClosedAt.current = Date.now();
+  };
   const [closing, setClosing] = useState(false);
 
   const photos = log.photoUrls ?? [];
@@ -131,7 +138,11 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
-        onClick={handleClose}
+        onClick={() => {
+          if (menuOpen) return;
+          if (Date.now() - menuClosedAt.current < 200) return;
+          handleClose();
+        }}
         style={{
           backgroundColor: "rgba(0,0,0,0.6)",
           animation: closing
@@ -197,7 +208,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     Offline
                   </span>
                 )}
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={handleMenuOpenChange}>
                   <DropdownMenuTrigger asChild>
                     <button
                       className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
