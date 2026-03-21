@@ -11,9 +11,15 @@ export default function BillingView({ onBack }: Props) {
       className="flex-1 overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.25 }}
     >
-      <BillingInner onBack={onBack} />
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
+        <BillingInner onBack={onBack} />
+      </motion.div>
     </motion.div>
   );
 }

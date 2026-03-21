@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
@@ -618,10 +619,21 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-6 py-12 space-y-12">
+      <motion.div
+        className="max-w-4xl mx-auto px-6 py-12 space-y-12"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+        }}
+      >
         {/* Current plan banner */}
         {!isLoading && (
-          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap">
+          <motion.div
+            className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap"
+            variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary" />
@@ -651,7 +663,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 Cancel subscription
               </Button>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* ── License Key / Team Section ─────────────────────────────── */}
@@ -1370,7 +1382,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             groundwork@teezfpo.com
           </a>
         </p>
-      </div>
+      </motion.div>
 
       {/* Leave team confirmation dialog */}
       <Dialog open={removeKeyDialogOpen} onOpenChange={setRemoveKeyDialogOpen}>
