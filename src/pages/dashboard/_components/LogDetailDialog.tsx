@@ -420,24 +420,29 @@ function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
             className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl cursor-pointer"
             style={{ zIndex: maxVisible }}
             onClick={() => onPhotoClick(activeIndex)}
-            initial={(d: number) => ({
-              x: d > 0 ? 200 : -200,
-              rotate: d > 0 ? 12 : -12,
-              opacity: 0,
-              scale: 0.9,
-            })}
-            animate={{
-              x: 0,
-              rotate: 0,
-              opacity: 1,
-              scale: 1,
+            variants={{
+              enter: (d: number) => ({
+                x: d > 0 ? 200 : -200,
+                rotate: d > 0 ? 12 : -12,
+                opacity: 0,
+                scale: 0.9,
+              }),
+              center: {
+                x: 0,
+                rotate: 0,
+                opacity: 1,
+                scale: 1,
+              },
+              exit: (d: number) => ({
+                x: d > 0 ? -200 : 200,
+                rotate: d > 0 ? -15 : 15,
+                opacity: 0,
+                scale: 0.85,
+              }),
             }}
-            exit={(d: number) => ({
-              x: d > 0 ? -200 : 200,
-              rotate: d > 0 ? -15 : 15,
-              opacity: 0,
-              scale: 0.85,
-            })}
+            initial="enter"
+            animate="center"
+            exit="exit"
             transition={{
               type: "spring",
               stiffness: 300,
