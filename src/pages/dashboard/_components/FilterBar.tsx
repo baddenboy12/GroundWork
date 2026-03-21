@@ -71,16 +71,17 @@ export default function FilterBar({ filters, onChange }: Props) {
         ref={buttonRef}
         variant="secondary"
         className={cn(
-          "h-14 gap-2.5 text-base rounded-2xl px-6 active:scale-95 transition-transform",
-          open && "bg-muted border-border shadow-inner",
+          "h-[5rem] w-[191px] gap-3.5 !text-3xl rounded-2xl !px-12 scale-[0.80] active:scale-[0.75] transition-transform border border-white/10",
+          open && "border-border shadow-inner",
           activeFilterCount > 0 && "border-primary/50 text-primary"
         )}
+        style={{ background: "linear-gradient(160deg, hsl(30 14% 22%) 0%, hsl(30 12% 14%) 50%, hsl(30 14% 18%) 100%)" }}
         onClick={() => setOpen(!open)}
       >
-        <SlidersHorizontal className="w-5 h-5" />
+        <SlidersHorizontal style={{ width: 28, height: 28 }} />
         Filters
         {activeFilterCount > 0 && (
-          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+          <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center font-bold">
             {activeFilterCount}
           </span>
         )}

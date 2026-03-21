@@ -188,13 +188,14 @@ function DashboardInner() {
             />
             <Button
               variant="secondary"
-              className={cn("gap-2 h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform ml-auto shrink-0", !isOnline && "opacity-50")}
+              className={cn("gap-3.5 h-[5rem] w-[197px] !px-12 !text-3xl rounded-2xl scale-[0.80] active:scale-[0.75] transition-transform ml-auto shrink-0 border border-white/10", !isOnline && "opacity-50")}
+              style={{ background: "linear-gradient(160deg, hsl(30 14% 22%) 0%, hsl(30 12% 14%) 50%, hsl(30 14% 18%) 100%)" }}
               onClick={handleExport}
               title={!isOnline ? "Export requires an internet connection" : undefined}
             >
               {!isOnline
-                ? <WifiOff className="w-5 h-5" />
-                : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                ? <WifiOff style={{ width: 28, height: 28 }} />
+                : canExport ? <FileDown style={{ width: 28, height: 28 }} /> : <Lock style={{ width: 28, height: 28 }} />}
               <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
@@ -228,11 +229,12 @@ function DashboardInner() {
       {/* Floating new log button */}
       {!showStats && !showIntegrations && !showBilling && (
         <button
-          className="fixed bottom-36 right-12 w-20 h-20 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:bg-primary/90 active:scale-90 transition-all z-50"
+          className="fixed bottom-36 right-12 w-[5.25rem] h-[5.25rem] rounded-full text-primary-foreground shadow-2xl flex items-center justify-center hover:brightness-110 active:scale-90 transition-all z-50 border border-white/15"
+          style={{ background: "linear-gradient(145deg, hsl(30 25% 70%) 0%, hsl(30 20% 55%) 50%, hsl(30 22% 62%) 100%)" }}
           onClick={() => setGlobalCreateOpen(true)}
           aria-label="New log"
         >
-          <Plus className="w-9 h-9" />
+          <Plus style={{ width: 48, height: 48 }} strokeWidth={3} />
         </button>
       )}
 

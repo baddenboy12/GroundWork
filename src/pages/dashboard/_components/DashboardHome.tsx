@@ -107,8 +107,8 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       {/* Header */}
       <div className="mb-4">
-        <h1 className="text-xl font-semibold text-foreground">Recent Activity</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <h1 className="text-2xl font-semibold text-foreground">Recent Activity</h1>
+        <p className="text-base text-muted-foreground mt-0.5">
           {isInTeam
             ? "Latest log entries across your team's sites"
             : "Your latest log entries across your personal sites"}

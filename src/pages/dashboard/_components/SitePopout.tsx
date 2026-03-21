@@ -171,22 +171,23 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2.5 h-14 px-6 rounded-2xl text-lg font-semibold transition-all duration-200",
-          "bg-muted/70 hover:bg-muted border border-transparent active:scale-95",
-          open && "bg-muted border-border shadow-inner"
+          "flex items-center gap-3.5 h-[5rem] px-10 rounded-2xl text-3xl font-semibold transition-all duration-200 scale-[0.85] border border-white/10",
+          "hover:brightness-110 active:scale-[0.80]",
+          open && "border-border shadow-inner"
         )}
+        style={{ background: "linear-gradient(160deg, hsl(30 14% 18%) 0%, hsl(30 12% 10%) 50%, hsl(30 14% 14%) 100%)" }}
       >
-        <LayoutList className="w-5 h-5 text-primary shrink-0" />
+        <LayoutList className="w-7 h-7 text-primary shrink-0" />
         <span className="max-w-44 truncate">
           {selectedSite?.name ?? "Sites"}
         </span>
         {totalCount > 0 && (
-          <span className="text-[11px] font-mono bg-background/60 px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
+          <span className="text-xl font-mono bg-background/60 px-2.5 py-1 rounded-md text-muted-foreground shrink-0">
             {totalCount}
           </span>
         )}
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-5 h-5 text-muted-foreground" />
         </motion.div>
       </button>
 
@@ -194,10 +195,10 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className="w-14 h-14 flex items-center justify-center rounded-2xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted active:scale-90 transition-all"
+            className="w-20 h-20 -ml-4 flex items-center justify-center rounded-2xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted active:scale-90 transition-all"
             aria-label="How sites work"
           >
-            <Info className="w-6 h-6" />
+            <Info style={{ width: 32, height: 32 }} />
           </button>
         </PopoverTrigger>
         <PopoverContent side="bottom" align="start" className="w-72 p-4 space-y-3 text-sm">
