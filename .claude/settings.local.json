@@ -29,7 +29,8 @@
       "Bash(curl -s \"http://localhost:5173/src/pages/dashboard/_components/CreateLogDialog.tsx\")",
       "Bash(findstr :5173)",
       "Bash(pnpm dev:*)",
-      "Bash(scp -r dist/* root@172.233.163.131:/opt/groundwork/dist/)"
+      "Bash(scp -r dist/* root@172.233.163.131:/opt/groundwork/dist/)",
+      "Bash(npx convex:*)"
     ]
   }
 }

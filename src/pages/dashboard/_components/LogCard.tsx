@@ -50,16 +50,16 @@ export default function LogCard({ log, siteName }: Props) {
         {/* Summary */}
         <div className="p-5 space-y-3 flex-1 flex flex-col">
           {/* Site badge + category */}
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2.5 overflow-hidden">
             {siteName && (
-              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-                <MapPin className="w-3.5 h-3.5" />
-                {siteName}
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary min-w-0">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{siteName}</span>
               </span>
             )}
             <span
               className={cn(
-                "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border",
+                "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border shrink-0",
                 CATEGORY_COLORS[log.category as LogCategory]
               )}
             >

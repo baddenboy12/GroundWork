@@ -108,8 +108,9 @@ export const listRecent = query({
     return await Promise.all(
       logs.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
+        const author = await ctx.db.get(log.authorId);
         const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
       })
     );
   },
@@ -194,8 +195,9 @@ export const listRecentFiltered = query({
     return await Promise.all(
       logs.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
+        const author = await ctx.db.get(log.authorId);
         const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
       })
     );
   },
@@ -309,8 +311,9 @@ export const searchAllLogs = query({
     return await Promise.all(
       results.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
+        const author = await ctx.db.get(log.authorId);
         const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", photoUrls };
+        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
       })
     );
   },
