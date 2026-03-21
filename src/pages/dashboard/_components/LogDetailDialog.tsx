@@ -495,36 +495,39 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
         </div>
       )}
 
-      {/* Zoomed photo overlay — click again to bounce out */}
-      <AnimatePresence>
-        {zoomed && (
-          <motion.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
-          >
-            <motion.img
-              src={photos[activeIndex]}
-              alt={`Photo ${activeIndex + 1}`}
-              className="max-w-[92vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain cursor-pointer"
-              draggable={false}
-              initial={{ scale: 0.5, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.4, opacity: 0, y: 60 }}
-              transition={{
-                type: "spring",
-                stiffness: 350,
-                damping: 22,
-                mass: 0.7,
-              }}
+      {/* Zoomed photo overlay — rendered via portal so it's above everything */}
+      {createPortal(
+        <AnimatePresence>
+          {zoomed && (
+            <motion.div
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+            >
+              <motion.img
+                src={photos[activeIndex]}
+                alt={`Photo ${activeIndex + 1}`}
+                className="max-w-[92vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain cursor-pointer"
+                draggable={false}
+                initial={{ scale: 0.5, opacity: 0, y: 40 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.4, opacity: 0, y: 60 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 350,
+                  damping: 22,
+                  mass: 0.7,
+                }}
+                onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
