@@ -64,7 +64,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
       setVisible(false);
       setClosing(false);
       onClose();
-    }, 400);
+    }, 250);
   };
 
   // Close on Escape (only when lightbox is not open)
@@ -129,7 +129,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
         style={{
           backgroundColor: "rgba(0,0,0,0.6)",
           animation: closing
-            ? "log-backdrop-out 0.4s ease forwards"
+            ? "log-backdrop-out 0.25s ease forwards"
             : "log-backdrop-in 0.3s ease forwards",
           pointerEvents: closing ? "none" : "auto",
         }}
@@ -140,7 +140,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
           onClick={(e) => e.stopPropagation()}
           style={{
             animation: closing
-              ? "log-panel-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards"
+              ? "log-panel-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards"
               : "log-panel-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
           }}
         >
@@ -504,7 +504,7 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={() => setZoomed(false)}
+            onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
           >
             <motion.img
               src={photos[activeIndex]}
