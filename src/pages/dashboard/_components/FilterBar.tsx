@@ -44,12 +44,6 @@ export default function FilterBar({ filters, onChange }: Props) {
     onChange(DEFAULT_FILTERS);
   };
 
-  // Auto-focus search when panel opens
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 150);
-    }
-  }, [open]);
 
   // Close on click outside (anything not the dropdown or the trigger button)
   useEffect(() => {
