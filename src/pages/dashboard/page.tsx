@@ -16,6 +16,8 @@ import SitePopout from "./_components/SitePopout.tsx";
 import LogList from "./_components/LogList.tsx";
 import DashboardHome from "./_components/DashboardHome.tsx";
 import StatsView from "./_components/StatsView.tsx";
+import IntegrationsView from "./_components/IntegrationsView.tsx";
+import BillingView from "./_components/BillingView.tsx";
 import CreateLogDialog from "./_components/CreateLogDialog.tsx";
 import ExportDialog from "./_components/ExportDialog.tsx";
 import GlobalExportDialog from "./_components/GlobalExportDialog.tsx";
@@ -80,6 +82,8 @@ function DashboardInner() {
   const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showIntegrations, setShowIntegrations] = useState(false);
+  const [showBilling, setShowBilling] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -135,12 +139,26 @@ function DashboardInner() {
         onNewLog={() => setGlobalCreateOpen(true)}
         onStats={() => {
           setShowStats((v) => !v);
+          setShowIntegrations(false);
+          setShowBilling(false);
+          selectSite(null);
+        }}
+        onIntegrations={() => {
+          setShowIntegrations((v) => !v);
+          setShowStats(false);
+          setShowBilling(false);
+          selectSite(null);
+        }}
+        onBilling={() => {
+          setShowBilling((v) => !v);
+          setShowStats(false);
+          setShowIntegrations(false);
           selectSite(null);
         }}
       />
 
       {/* Site selector sub-bar — hidden when stats view is open */}
-      {!showStats && (
+      {!showStats && !showIntegrations && !showBilling && (
         <div className="px-4 py-3.5 border-b border-border bg-card/80 shrink-0 space-y-3">
           {/* Top row: Sites */}
           <div className="flex items-center gap-3">
@@ -193,6 +211,10 @@ function DashboardInner() {
       <main className="flex-1 overflow-hidden flex flex-col">
         {showStats ? (
           <StatsView onBack={() => setShowStats(false)} />
+        ) : showIntegrations ? (
+          <IntegrationsView onBack={() => setShowIntegrations(false)} />
+        ) : showBilling ? (
+          <BillingView onBack={() => setShowBilling(false)} />
         ) : selectedSiteId ? (
           <LogList siteId={selectedSiteId} filters={filters} />
         ) : (
@@ -204,7 +226,7 @@ function DashboardInner() {
       </main>
 
       {/* Floating new log button */}
-      {!showStats && (
+      {!showStats && !showIntegrations && !showBilling && (
         <button
           className="fixed bottom-36 right-12 w-20 h-20 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:bg-primary/90 active:scale-90 transition-all z-50"
           onClick={() => setGlobalCreateOpen(true)}

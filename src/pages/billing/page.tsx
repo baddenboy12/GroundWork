@@ -105,7 +105,7 @@ function AdminGrantedBadge() {
   );
 }
 
-function BillingInner() {
+export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const { tier, isLoading } = useSubscription();
   const user = useQuery(api.users.getCurrentUser, {});
   const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
@@ -592,18 +592,18 @@ function BillingInner() {
   const tierOrder: SubscriptionTier[] = ["free", "pro", "business"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={onBack ? "flex-1 overflow-y-auto" : "min-h-screen bg-background"}>
       {/* Header */}
       <div className="border-b border-border bg-card px-6 py-4 flex items-center gap-3">
         <button
-          onClick={() => navigate("/dashboard")}
-          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          onClick={onBack ?? (() => navigate("/dashboard"))}
+          className="p-3 rounded-xl hover:bg-accent active:scale-90 transition-all text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-6 h-6" />
         </button>
         <div>
-          <h1 className="font-bold text-foreground">Subscription</h1>
-          <p className="text-xs text-muted-foreground">Manage your plan</p>
+          <h1 className="text-xl font-semibold text-foreground">Subscription</h1>
+          <p className="text-sm text-muted-foreground">Manage your plan</p>
         </div>
       </div>
 

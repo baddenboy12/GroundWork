@@ -40,11 +40,13 @@ const TIER_BADGE_STYLE: Record<string, string> = {
 type Props = {
   onNewLog: () => void;
   onStats: () => void;
+  onIntegrations: () => void;
+  onBilling: () => void;
   /** Mobile only: opens the site list sheet */
   onMenuClick?: () => void;
 };
 
-export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Props) {
+export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onBilling, onMenuClick }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
@@ -220,7 +222,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={() => navigate("/billing")}>
+              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={onBilling}>
                 <CreditCard className="w-7 h-7" /> Subscription
               </DropdownMenuItem>
               </motion.div>
@@ -230,7 +232,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={() => navigate("/integrations")}>
+              <DropdownMenuItem className="text-xl py-5 gap-4 rounded-2xl" onClick={onIntegrations}>
                 <Plug className="w-7 h-7" /> Integrations & API
               </DropdownMenuItem>
               </motion.div>
