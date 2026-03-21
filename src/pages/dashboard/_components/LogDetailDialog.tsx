@@ -63,6 +63,9 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const handlePanelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Close the dropdown if it's open and user clicked inside the panel
+    // but not on the trigger button itself
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-menu-trigger]")) return;
     if (menuOpenRef.current) {
       setMenuOpen(false);
       menuOpenRef.current = false;
@@ -225,6 +228,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     <button
                       className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
                       aria-label="Log actions"
+                      data-menu-trigger
                     >
                       <MoreVertical style={{ width: 32, height: 32 }} />
                     </button>
