@@ -121,10 +121,10 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
         {/* Right controls — absolutely positioned so sizing doesn't affect left side */}
         <div className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
           {/* User menu with integrated tier ribbon */}
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => { if (!open) document.activeElement instanceof HTMLElement && document.activeElement.blur(); }}>
             <DropdownMenuTrigger asChild>
               <button
-                className="relative flex items-center gap-3 h-[4.5rem] pl-5 pr-12 rounded-full active:scale-95 transition-transform"
+                className="relative flex items-center gap-3 h-[4.5rem] pl-5 pr-12 rounded-full active:scale-95 transition-transform focus:outline-none"
                 style={{
                   backgroundColor: "hsl(30 12% 12%)",
                   border: "1px solid hsl(var(--border))",
