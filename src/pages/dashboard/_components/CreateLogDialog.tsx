@@ -213,7 +213,7 @@ export default function CreateLogDialog({
     <>
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent
-          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
+          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[15%] translate-y-0"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
