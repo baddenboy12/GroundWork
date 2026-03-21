@@ -96,14 +96,15 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const atSiteLimit = config.maxSites !== null && ownSiteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
-  // Close when clicking outside the whole wrapper (but not Radix portals like dropdown menus)
+  // Track whether any dropdown menu inside the list is open
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close when clicking outside the whole wrapper (skip while dropdown menu is open)
   useEffect(() => {
-    if (!open) return;
+    if (!open || menuOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
       if (wrapperRef.current?.contains(target)) return;
-      // Don't close if clicking inside a Radix dropdown portal
-      if (target.closest("[data-radix-popper-content-wrapper]")) return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -112,7 +113,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
     };
-  }, [open]);
+  }, [open, menuOpen]);
 
   // Scroll to selected site when panel opens
   useEffect(() => {
@@ -355,7 +356,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         )}
 
                         {/* ⋮ actions menu */}
-                        <DropdownMenu>
+                        <DropdownMenu onOpenChange={setMenuOpen}>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
                               className={cn(
