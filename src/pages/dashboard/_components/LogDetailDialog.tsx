@@ -148,7 +148,10 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
         onClick={() => {
-          if (menuOpen) return;
+          if (menuOpen) {
+            handleMenuOpenChange(false);
+            return;
+          }
           if (Date.now() - menuClosedAt.current < 200) return;
           handleClose();
         }}
@@ -228,9 +231,14 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                   >
                     <MoreVertical style={{ width: 32, height: 32 }} />
                   </button>
+                  <AnimatePresence>
                   {menuOpen && (
-                    <div
+                    <motion.div
                       className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 p-3 rounded-2xl bg-popover border border-border shadow-lg"
+                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -265,8 +273,9 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                       >
                         <Trash2 className="w-5 h-5" /> Delete
                       </button>
-                    </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                   <AlertDialogContent>
