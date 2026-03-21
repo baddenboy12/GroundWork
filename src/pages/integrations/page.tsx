@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
@@ -62,9 +63,19 @@ function IntegrationsInner() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div
+      className="min-h-screen bg-background"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Page header */}
-      <div className="border-b border-border bg-card">
+      <motion.div
+        className="border-b border-border bg-card"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center gap-3 mb-1">
             <Button
@@ -83,10 +94,15 @@ function IntegrationsInner() {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
+      <motion.div
+        className="max-w-4xl mx-auto px-4 md:px-6 py-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
+      >
         <IntegrationsGate>
           <Tabs defaultValue="api-keys">
             <TabsList className="mb-6">
@@ -115,8 +131,8 @@ function IntegrationsInner() {
             </TabsContent>
           </Tabs>
         </IntegrationsGate>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
