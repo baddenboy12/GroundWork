@@ -148,7 +148,7 @@ function DashboardInner() {
               {selectedSiteId && (
                 <Button
                   variant="outline"
-                  className="gap-1.5 font-semibold h-12 px-5 text-base rounded-xl"
+                  className="gap-1.5 font-semibold h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform"
                   onClick={() => selectSite(null)}
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -164,7 +164,7 @@ function DashboardInner() {
             <div className="flex items-center gap-2.5 shrink-0">
               <Button
                 variant="secondary"
-                className={cn("gap-2 h-12 px-5 text-base rounded-xl", !isOnline && "opacity-50")}
+                className={cn("gap-2 h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform", !isOnline && "opacity-50")}
                 onClick={handleExport}
                 title={!isOnline ? "Export requires an internet connection" : undefined}
               >

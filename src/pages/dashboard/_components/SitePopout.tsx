@@ -158,8 +158,8 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2.5 h-12 px-5 rounded-xl text-lg font-semibold transition-all duration-200",
-          "bg-muted/70 hover:bg-muted border border-transparent",
+          "flex items-center gap-2.5 h-14 px-6 rounded-2xl text-lg font-semibold transition-all duration-200",
+          "bg-muted/70 hover:bg-muted border border-transparent active:scale-95",
           open && "bg-muted border-border shadow-inner"
         )}
       >
@@ -181,7 +181,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className="w-12 h-12 flex items-center justify-center rounded-xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors"
+            className="w-14 h-14 flex items-center justify-center rounded-2xl text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted active:scale-90 transition-all"
             aria-label="How sites work"
           >
             <Info className="w-6 h-6" />
