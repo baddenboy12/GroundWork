@@ -51,11 +51,23 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuOpenRef = useRef(false);
   const menuClosedAt = useRef(0);
 
   const handleMenuOpenChange = (isOpen: boolean) => {
     setMenuOpen(isOpen);
+    menuOpenRef.current = isOpen;
     if (!isOpen) menuClosedAt.current = Date.now();
+  };
+
+  const handlePanelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Close the dropdown if it's open and user clicked inside the panel
+    if (menuOpenRef.current) {
+      setMenuOpen(false);
+      menuOpenRef.current = false;
+      menuClosedAt.current = Date.now();
+    }
   };
   const [closing, setClosing] = useState(false);
 
@@ -154,7 +166,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
         {/* Modal panel */}
         <div
           className="relative bg-background rounded-2xl w-full max-w-5xl max-h-[94vh] overflow-y-auto shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          onClick={handlePanelClick}
           style={{
             animation: closing
               ? "log-panel-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards"
@@ -208,7 +220,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     Offline
                   </span>
                 )}
-                <DropdownMenu onOpenChange={handleMenuOpenChange}>
+                <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
                   <DropdownMenuTrigger asChild>
                     <button
                       className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
