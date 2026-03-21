@@ -145,16 +145,6 @@ function DashboardInner() {
           {/* Top row: Sites + actions */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 shrink-0">
-              {selectedSiteId && (
-                <Button
-                  variant="outline"
-                  className="gap-1.5 font-semibold h-14 px-6 text-base rounded-2xl active:scale-95 transition-transform"
-                  onClick={() => selectSite(null)}
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                  Back
-                </Button>
-              )}
               <SitePopout
                 selectedSiteId={selectedSiteId}
                 onSelectSite={selectSite}
@@ -175,13 +165,25 @@ function DashboardInner() {
               </Button>
             </div>
           </div>
-          {/* Bottom row: filters */}
-          <FilterBar
-            filters={filters}
-            onChange={setFilters}
-            resultCount={isFiltered ? null : null}
-            isSearchMode={isFiltered}
-          />
+          {/* Bottom row: back + filters */}
+          <div className="flex items-center gap-3">
+            {selectedSiteId && (
+              <Button
+                variant="outline"
+                className="gap-2 font-semibold h-16 px-7 text-lg rounded-2xl active:scale-95 transition-transform"
+                onClick={() => selectSite(null)}
+              >
+                <ChevronLeft className="w-6 h-6" />
+                Back
+              </Button>
+            )}
+            <FilterBar
+              filters={filters}
+              onChange={setFilters}
+              resultCount={isFiltered ? null : null}
+              isSearchMode={isFiltered}
+            />
+          </div>
         </div>
       )}
 
