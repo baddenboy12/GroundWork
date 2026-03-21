@@ -146,10 +146,10 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
         >
           {/* Close button */}
           <button
-            className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
+            className="absolute top-3 right-3 z-10 w-16 h-16 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
             onClick={handleClose}
           >
-            <X className="w-5 h-5" />
+            <X className="w-8 h-8" />
           </button>
 
           {/* Photo cascade stack */}
