@@ -175,21 +175,21 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <div className="px-4 py-4">
+            <DropdownMenuContent align="end" className="w-80 p-3 rounded-2xl">
+              <div className="px-4 py-5">
                 {isMissingName ? (
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                    <p className="text-sm text-amber-500 font-medium">No name set</p>
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-6 h-6 text-amber-500 shrink-0" />
+                    <p className="text-lg text-amber-500 font-medium">No name set</p>
                   </div>
                 ) : (
-                  <p className="text-lg font-semibold text-foreground truncate">{displayName}</p>
+                  <p className="text-xl font-semibold text-foreground truncate">{displayName}</p>
                 )}
-                <p className="text-sm text-muted-foreground truncate">{user?.profile.email}</p>
+                <p className="text-base text-muted-foreground truncate mt-1">{user?.profile.email}</p>
                 <Badge
                   variant="secondary"
                   className={cn(
-                    "mt-2 text-xs px-2.5 py-1",
+                    "mt-3 text-sm px-3 py-1.5",
                     TIER_BADGE_STYLE[tier]
                   )}
                 >
@@ -200,26 +200,26 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
               {/* Set / edit name */}
               <DropdownMenuItem
                 className={cn(
-                  "text-base py-3.5 gap-3",
+                  "text-lg py-5 gap-4 rounded-xl",
                   isMissingName && "text-amber-500 focus:text-amber-500"
                 )}
                 onClick={openNameDialog}
               >
-                <Pencil className="w-5 h-5" />
+                <Pencil className="w-6 h-6" />
                 {isMissingName ? "Set your name" : "Edit name"}
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={() => navigate("/billing")}>
-                <CreditCard className="w-5 h-5" /> Subscription
+              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={() => navigate("/billing")}>
+                <CreditCard className="w-6 h-6" /> Subscription
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={onStats}>
-                <BarChart2 className="w-5 h-5" /> Statistics
+              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={onStats}>
+                <BarChart2 className="w-6 h-6" /> Statistics
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-base py-3.5 gap-3" onClick={() => navigate("/integrations")}>
-                <Plug className="w-5 h-5" /> Integrations & API
+              <DropdownMenuItem className="text-lg py-5 gap-4 rounded-xl" onClick={() => navigate("/integrations")}>
+                <Plug className="w-6 h-6" /> Integrations & API
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-base py-3.5 gap-3 text-destructive focus:text-destructive"
+                className="text-lg py-5 gap-4 rounded-xl text-destructive focus:text-destructive"
                 onClick={async () => {
                   for (let i = localStorage.length - 1; i >= 0; i--) {
                     const k = localStorage.key(i);
@@ -229,10 +229,10 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                   navigate("/");
                 }}
               >
-                <LogOut className="w-5 h-5" /> Sign out
+                <LogOut className="w-6 h-6" /> Sign out
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <div className="px-4 py-2.5 flex items-center justify-between">
+              <div className="px-4 py-3 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground/50">Version</span>
                 <span className="text-xs font-mono text-muted-foreground/50">v{APP_VERSION}</span>
               </div>
