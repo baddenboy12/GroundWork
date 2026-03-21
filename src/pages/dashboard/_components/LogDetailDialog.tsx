@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
-import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff } from "lucide-react";
+import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff, ChevronLeft, ChevronRight } from "lucide-react";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
@@ -152,39 +152,12 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             <X className="w-5 h-5" />
           </button>
 
-          {/* Photo strip */}
+          {/* Photo cascade stack */}
           {photos.length > 0 && (
-            <div
-              className={cn(
-                "grid gap-1 rounded-t-xl overflow-hidden",
-                photos.length === 1 && "grid-cols-1",
-                photos.length === 2 && "grid-cols-2",
-                photos.length >= 3 && "grid-cols-3"
-              )}
-            >
-              {photos.slice(0, 6).map((url, i) => {
-                const isLast = i === 5 && photos.length > 6;
-                return (
-                  <button
-                    key={url}
-                    type="button"
-                    className="relative overflow-hidden bg-muted hover:opacity-90 transition-opacity aspect-[4/3]"
-                    onClick={() => setLightboxIndex(i)}
-                  >
-                    <img
-                      src={url}
-                      alt={`Photo ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {isLast && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <span className="text-white text-xl font-bold">+{photos.length - 6}</span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <PhotoCascade
+              photos={photos}
+              onPhotoClick={(i) => setLightboxIndex(i)}
+            />
           )}
 
           <motion.div
@@ -371,5 +344,140 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
     />
     </>,
     document.body
+  );
+}
+
+/* ── Tilted cascade photo stack ─────────────────────────────────────────────── */
+
+type PhotoCascadeProps = {
+  photos: string[];
+  onPhotoClick: (index: number) => void;
+};
+
+function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
+
+  const maxVisible = Math.min(photos.length, 4);
+
+  const goNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeIndex < photos.length - 1) {
+      setDirection(1);
+      setActiveIndex((i) => i + 1);
+    }
+  };
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeIndex > 0) {
+      setDirection(-1);
+      setActiveIndex((i) => i - 1);
+    }
+  };
+
+  // Tilt angles for stacked cards behind the active one
+  const stackTilts = [0, -3, -6, -9];
+  const stackOffsets = [0, 6, 12, 18];
+  const stackScales = [1, 0.96, 0.92, 0.88];
+
+  return (
+    <div className="relative w-full flex flex-col items-center pt-4 pb-2 px-4">
+      {/* Stack container */}
+      <div
+        className="relative w-full max-w-[90%] aspect-[4/3]"
+        style={{ perspective: "800px" }}
+      >
+        {/* Background stack cards (static, behind) */}
+        {Array.from({ length: Math.min(maxVisible - 1, photos.length - activeIndex - 1) }).map((_, i) => {
+          const stackPos = i + 1; // 1, 2, 3 — behind the front card
+          return (
+            <div
+              key={`stack-${stackPos}`}
+              className="absolute inset-0 rounded-xl overflow-hidden border border-border/30 shadow-lg"
+              style={{
+                transform: `rotate(${stackTilts[stackPos]}deg) translateY(${stackOffsets[stackPos]}px) scale(${stackScales[stackPos]})`,
+                zIndex: maxVisible - stackPos,
+                opacity: 1 - stackPos * 0.15,
+              }}
+            >
+              {photos[activeIndex + stackPos] && (
+                <img
+                  src={photos[activeIndex + stackPos]}
+                  alt={`Photo ${activeIndex + stackPos + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Active (front) card with animation */}
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          <motion.div
+            key={activeIndex}
+            custom={direction}
+            className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl cursor-pointer"
+            style={{ zIndex: maxVisible }}
+            onClick={() => onPhotoClick(activeIndex)}
+            initial={(d: number) => ({
+              x: d > 0 ? 200 : -200,
+              rotate: d > 0 ? 12 : -12,
+              opacity: 0,
+              scale: 0.9,
+            })}
+            animate={{
+              x: 0,
+              rotate: 0,
+              opacity: 1,
+              scale: 1,
+            }}
+            exit={(d: number) => ({
+              x: d > 0 ? -200 : 200,
+              rotate: d > 0 ? -15 : 15,
+              opacity: 0,
+              scale: 0.85,
+            })}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 25,
+              mass: 0.8,
+            }}
+          >
+            <img
+              src={photos[activeIndex]}
+              alt={`Photo ${activeIndex + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation */}
+      {photos.length > 1 && (
+        <div className="flex items-center gap-4 mt-3">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={activeIndex === 0}
+            className="p-2 rounded-full bg-muted/60 hover:bg-muted disabled:opacity-30 transition-opacity"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-sm text-muted-foreground font-medium">
+            {activeIndex + 1} / {photos.length}
+          </span>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={activeIndex === photos.length - 1}
+            className="p-2 rounded-full bg-muted/60 hover:bg-muted disabled:opacity-30 transition-opacity"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
