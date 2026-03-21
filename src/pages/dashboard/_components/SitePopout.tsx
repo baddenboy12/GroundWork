@@ -96,11 +96,15 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const atSiteLimit = config.maxSites !== null && ownSiteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
-  // Close when clicking outside the whole wrapper
+  // Close when clicking outside the whole wrapper (but not Radix portals like dropdown menus)
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as HTMLElement;
+      if (wrapperRef.current?.contains(target)) return;
+      // Don't close if clicking inside a Radix dropdown portal
+      if (target.closest("[data-radix-popper-content-wrapper]")) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
