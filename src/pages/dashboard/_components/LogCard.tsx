@@ -25,7 +25,7 @@ export default function LogCard({ log, siteName }: Props) {
       <motion.button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group w-full h-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex flex-col"
+        className="group relative w-full h-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex flex-col"
         whileTap={{ scale: 0.96 }}
         whileHover={{ y: -2 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -48,7 +48,7 @@ export default function LogCard({ log, siteName }: Props) {
         )}
 
         {/* Summary */}
-        <div className="p-5 space-y-3 flex-1 flex flex-col">
+        <div className="p-5 pb-12 space-y-3 flex-1 flex flex-col">
           {/* Site badge + category */}
           <div className="flex items-center gap-2.5 overflow-hidden">
             {siteName && (
@@ -65,34 +65,35 @@ export default function LogCard({ log, siteName }: Props) {
             >
               {CATEGORY_LABELS[log.category as LogCategory]}
             </span>
-            {photos.length > 0 && (
-              <span className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
-                <ImageIcon className="w-4 h-4" />
-                {photos.length}
-              </span>
-            )}
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground text-2xl leading-snug line-clamp-2">
+          <h3 className="font-semibold text-foreground text-xl leading-snug line-clamp-2">
             {log.title}
           </h3>
 
           {/* Excerpt */}
-          <p className="text-xl text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-lg text-muted-foreground leading-relaxed line-clamp-2">
             {log.content}
           </p>
 
-          {/* Footer meta */}
-          <div className="flex items-center gap-3 pt-1 text-lg text-muted-foreground/70 mt-auto">
+        </div>
+        <div className="absolute bottom-1.5 left-5 right-2 flex items-center text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            {format(new Date(log.loggedAt), "MMM d, yyyy")}
+          </span>
+          <div className="flex items-center gap-4 ml-auto">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              {format(new Date(log.loggedAt), "MMM d, yyyy")}
+              <User className="w-3.5 h-3.5" />
+              <span className="max-w-[100px] truncate">{log.authorName}</span>
             </span>
-            <span className="flex items-center gap-1.5 truncate">
-              <User className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{log.authorName}</span>
-            </span>
+            {photos.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4" />
+                {photos.length}
+              </span>
+            )}
           </div>
         </div>
       </motion.button>
