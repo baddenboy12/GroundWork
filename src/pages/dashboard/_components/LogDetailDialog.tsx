@@ -234,7 +234,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                   <AnimatePresence>
                   {menuOpen && (
                     <motion.div
-                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 p-3 rounded-2xl bg-popover border border-border shadow-lg"
+                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-64 p-4 rounded-2xl bg-popover border border-border shadow-lg"
                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
@@ -243,7 +243,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     >
                       <button
                         className={cn(
-                          "flex items-center gap-3 w-full py-4 px-3 text-base rounded-xl hover:bg-accent transition-colors text-left",
+                          "flex items-center gap-4 w-full py-5 px-4 text-xl rounded-xl hover:bg-accent transition-colors text-left",
                           !isOnline && "opacity-50"
                         )}
                         onClick={() => {
@@ -255,7 +255,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setEditOpen(true);
                         }}
                       >
-                        <Pencil className="w-5 h-5" /> Edit
+                        <Pencil className="w-7 h-7" /> Edit
                       </button>
                       <button
                         className={cn(
@@ -271,7 +271,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setDeleteOpen(true);
                         }}
                       >
-                        <Trash2 className="w-5 h-5" /> Delete
+                        <Trash2 className="w-7 h-7" /> Delete
                       </button>
                     </motion.div>
                   )}
