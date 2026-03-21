@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
+import { motion } from "motion/react";
 import { Clock, User, ImageIcon, MapPin } from "lucide-react";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
@@ -21,10 +22,13 @@ export default function LogCard({ log, siteName }: Props) {
 
   return (
     <>
-      <button
+      <motion.button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group w-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group w-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        whileTap={{ scale: 0.96 }}
+        whileHover={{ y: -2 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
         {/* Cover photo thumbnail */}
         {coverPhoto ? (
@@ -91,7 +95,7 @@ export default function LogCard({ log, siteName }: Props) {
             </span>
           </div>
         </div>
-      </button>
+      </motion.button>
 
       <LogDetailDialog
         log={log}

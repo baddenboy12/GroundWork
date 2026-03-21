@@ -32,6 +32,7 @@ import LocationPicker from "./LocationPicker.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { AlertTriangle, Lock, MapPin, Plus, WifiOff } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils.ts";
 
 type Props = {
@@ -217,10 +218,30 @@ export default function CreateLogDialog({
           onEscapeKeyDown={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25, mass: 0.8 }}
+          >
           <DialogHeader>
-            <DialogTitle className="text-2xl">New log entry</DialogTitle>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <DialogTitle className="text-2xl">New log entry</DialogTitle>
+            </motion.div>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+          <motion.form
+            onSubmit={handleSubmit}
+            className="space-y-5 pt-2"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+            }}
+          >
 
             {/* Offline notice */}
             {!isOnline && (
@@ -233,7 +254,7 @@ export default function CreateLogDialog({
             )}
 
             {/* Site name — autocomplete with auto-create */}
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label htmlFor="log-site" className="text-base flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-primary" /> Site *
               </Label>
@@ -379,9 +400,9 @@ export default function CreateLogDialog({
                   A new site named &quot;{siteName.trim()}&quot; will be created
                 </p>
               )}
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label htmlFor="log-title" className="text-base">Title *</Label>
               <Input
                 id="log-title"
@@ -391,8 +412,8 @@ export default function CreateLogDialog({
                 className="text-xl h-14"
                 required
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            </motion.div>
+            <motion.div className="grid grid-cols-2 gap-4" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <div className="space-y-2">
                 <Label className="text-base">Category *</Label>
                 <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
@@ -419,8 +440,8 @@ export default function CreateLogDialog({
                   required
                 />
               </div>
-            </div>
-            <div className="space-y-2">
+            </motion.div>
+            <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label className="text-base flex items-center gap-2">
                 Location
                 {locationFromSite && (
@@ -435,9 +456,9 @@ export default function CreateLogDialog({
                 onCoordsChange={(c) => { setCoords(c); setLocationFromSite(false); }}
                 placeholder="e.g. Tower 12 – Roof East, 123 Main St"
               />
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label htmlFor="log-content" className="text-base">Notes *</Label>
               <Textarea
                 id="log-content"
@@ -448,10 +469,10 @@ export default function CreateLogDialog({
                 className="text-xl min-h-[160px] resize-none"
                 required
               />
-            </div>
+            </motion.div>
 
             {/* Photos — available on all tiers; offline uploader shown when offline */}
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label className={cn("text-base flex items-center gap-2")}>
                 Photos
                 {!isOnline && (
@@ -465,21 +486,38 @@ export default function CreateLogDialog({
               ) : (
                 <OfflinePhotoUploader photos={offlinePhotos} onChange={setOfflinePhotos} maxPhotos={maxPhotosPerEntry} />
               )}
-            </div>
+            </motion.div>
 
             <DialogFooter>
-              <Button type="button" variant="secondary" size="lg" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
+              <motion.div
+                className="flex gap-3 w-full sm:w-auto sm:justify-end"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 22 }}
               >
-                {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
-              </Button>
+                <motion.div whileTap={{ scale: 0.95 }}>
+                  <Button type="button" variant="secondary" size="lg" onClick={handleClose} className="rounded-xl">
+                    Cancel
+                  </Button>
+                </motion.div>
+                <motion.div
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full rounded-xl"
+                    disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
+                  >
+                    {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
+                  </Button>
+                </motion.div>
+              </motion.div>
             </DialogFooter>
-          </form>
+          </motion.form>
+          </motion.div>
         </DialogContent>
       </Dialog>
 
