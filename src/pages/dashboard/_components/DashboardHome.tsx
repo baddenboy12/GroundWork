@@ -224,17 +224,17 @@ function RecentLogCard({ log, onClick, onSiteClick }: CardProps) {
         </div>
 
         {/* Title */}
-        <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
+        <h3 className="font-semibold text-foreground text-2xl leading-snug line-clamp-2">
           {log.title}
         </h3>
 
         {/* Excerpt */}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+        <p className="text-xl text-muted-foreground leading-relaxed line-clamp-2">
           {log.content}
         </p>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground/70">
+        <div className="flex items-center gap-3 pt-1 text-lg text-muted-foreground/70">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {format(new Date(log.loggedAt), "MMM d, yyyy")}

@@ -26,7 +26,10 @@
       "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"ls -la /opt/groundwork/dist/ && systemctl restart nginx 2>/dev/null || service nginx restart 2>/dev/null || echo ''No nginx restart needed''\")",
       "Bash(npx tsc:*)",
       "Bash(curl -s http://localhost:5173)",
-      "Bash(curl -s \"http://localhost:5173/src/pages/dashboard/_components/CreateLogDialog.tsx\")"
+      "Bash(curl -s \"http://localhost:5173/src/pages/dashboard/_components/CreateLogDialog.tsx\")",
+      "Bash(findstr :5173)",
+      "Bash(pnpm dev:*)",
+      "Bash(scp -r dist/* root@172.233.163.131:/opt/groundwork/dist/)"
     ]
   }
 }
