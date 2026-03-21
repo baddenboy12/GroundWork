@@ -143,10 +143,10 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                 <div
                   className="absolute overflow-hidden"
                   style={{
-                    top: 0,
-                    right: 0,
-                    width: 50,
-                    height: 50,
+                    top: -2,
+                    right: -2,
+                    width: 56,
+                    height: 56,
                     borderRadius: "0 9999px 0 0",
                   }}
                 >
@@ -159,10 +159,10 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
                       tier === "free" && "bg-muted text-muted-foreground",
                     )}
                     style={{
-                      top: 6,
-                      right: -10,
+                      top: 10,
+                      right: -8,
                       width: 72,
-                      height: 18,
+                      height: 20,
                       transform: "rotate(35deg)",
                       fontSize: 9,
                       fontWeight: 800,
