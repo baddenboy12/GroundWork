@@ -410,7 +410,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               <MoreVertical className="w-5 h-5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52 p-2">
+                          <DropdownMenuContent align="end" className="w-52 p-3 rounded-2xl" style={{ backgroundColor: "hsl(30 12% 8%)", border: "1px solid hsl(var(--border))" }}>
                             {/* Edit — owner only */}
                             <DropdownMenuItem
                               className={cn("py-4 text-base cursor-pointer rounded-xl", (!isOnline || !site.isOwner) && "opacity-50")}
