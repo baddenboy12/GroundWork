@@ -200,10 +200,10 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="w-12 h-12 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
+                      className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
                       aria-label="Log actions"
                     >
-                      <MoreVertical className="w-6 h-6" />
+                      <MoreVertical style={{ width: 32, height: 32 }} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52 p-2">
