@@ -226,10 +226,9 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
             exit={{ scaleX: 0.75, scaleY: 0.35, opacity: 0, y: -10, x: 12 }}
             transition={{
               type: "spring",
-              stiffness: 400,
+              stiffness: 350,
               damping: 22,
-              mass: 0.8,
-              exit: { type: "spring", stiffness: 300, damping: 20, mass: 1.2 },
+              mass: 1,
             }}
           >
             {/* Panel header */}
