@@ -198,7 +198,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                         size="icon"
                         variant="ghost"
                         className={cn(
-                          "h-14 w-14 text-muted-foreground hover:text-foreground active:scale-90 transition-all",
+                          "h-20 w-20 text-muted-foreground hover:text-foreground active:scale-90 transition-all",
                           !isOnline && "opacity-40 cursor-not-allowed"
                         )}
                         onClick={() => {
@@ -209,7 +209,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setEditOpen(true);
                         }}
                       >
-                        <Pencil className="w-6 h-6" />
+                        <Pencil className="w-8 h-8" />
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -227,7 +227,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           size="icon"
                           variant="ghost"
                           className={cn(
-                            "h-14 w-14 text-muted-foreground hover:text-destructive active:scale-90 transition-all",
+                            "h-20 w-20 text-muted-foreground hover:text-destructive active:scale-90 transition-all",
                             !isOnline && "opacity-40 cursor-not-allowed"
                           )}
                           onClick={() => {
@@ -238,7 +238,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                             setDeleteOpen(true);
                           }}
                         >
-                          <Trash2 className="w-6 h-6" />
+                          <Trash2 className="w-8 h-8" />
                         </Button>
                       </span>
                     </TooltipTrigger>
