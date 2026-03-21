@@ -154,10 +154,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
 
           {/* Photo cascade stack */}
           {photos.length > 0 && (
-            <PhotoCascade
-              photos={photos}
-              onPhotoClick={(i) => setLightboxIndex(i)}
-            />
+            <PhotoCascade photos={photos} />
           )}
 
           <motion.div
@@ -351,28 +348,36 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
 
 type PhotoCascadeProps = {
   photos: string[];
-  onPhotoClick: (index: number) => void;
 };
 
-function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
+function PhotoCascade({ photos }: PhotoCascadeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
+  const [direction, setDirection] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
 
   const maxVisible = Math.min(photos.length, 4);
+  const swipeThreshold = 50;
 
-  const goNext = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const goNext = () => {
     if (activeIndex < photos.length - 1) {
       setDirection(1);
       setActiveIndex((i) => i + 1);
     }
   };
 
-  const goPrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const goPrev = () => {
     if (activeIndex > 0) {
       setDirection(-1);
       setActiveIndex((i) => i - 1);
+    }
+  };
+
+  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+    const swipe = info.offset.x + info.velocity.x * 0.3;
+    if (swipe < -swipeThreshold && activeIndex < photos.length - 1) {
+      goNext();
+    } else if (swipe > swipeThreshold && activeIndex > 0) {
+      goPrev();
     }
   };
 
@@ -390,7 +395,7 @@ function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
       >
         {/* Background stack cards (static, behind) */}
         {Array.from({ length: Math.min(maxVisible - 1, photos.length - activeIndex - 1) }).map((_, i) => {
-          const stackPos = i + 1; // 1, 2, 3 — behind the front card
+          const stackPos = i + 1;
           return (
             <div
               key={`stack-${stackPos}`}
@@ -406,20 +411,25 @@ function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
                   src={photos[activeIndex + stackPos]}
                   alt={`Photo ${activeIndex + stackPos + 1}`}
                   className="w-full h-full object-cover"
+                  draggable={false}
                 />
               )}
             </div>
           );
         })}
 
-        {/* Active (front) card with animation */}
+        {/* Active (front) card with swipe + animation */}
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           <motion.div
             key={activeIndex}
             custom={direction}
-            className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl cursor-pointer"
+            className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl cursor-pointer touch-pan-y"
             style={{ zIndex: maxVisible }}
-            onClick={() => onPhotoClick(activeIndex)}
+            onClick={() => setZoomed(true)}
+            drag={photos.length > 1 ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDragEnd={handleDragEnd}
             variants={{
               enter: (d: number) => ({
                 x: d > 0 ? 200 : -200,
@@ -453,36 +463,68 @@ function PhotoCascade({ photos, onPhotoClick }: PhotoCascadeProps) {
             <img
               src={photos[activeIndex]}
               alt={`Photo ${activeIndex + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover pointer-events-none"
+              draggable={false}
             />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation arrows + counter */}
       {photos.length > 1 && (
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex items-center gap-6 mt-4">
           <button
             type="button"
-            onClick={goPrev}
+            onClick={(e) => { e.stopPropagation(); goPrev(); }}
             disabled={activeIndex === 0}
-            className="p-2 rounded-full bg-muted/60 hover:bg-muted disabled:opacity-30 transition-opacity"
+            className="p-3.5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-7 h-7" />
           </button>
-          <span className="text-sm text-muted-foreground font-medium">
+          <span className="text-base text-muted-foreground font-medium min-w-[48px] text-center">
             {activeIndex + 1} / {photos.length}
           </span>
           <button
             type="button"
-            onClick={goNext}
+            onClick={(e) => { e.stopPropagation(); goNext(); }}
             disabled={activeIndex === photos.length - 1}
-            className="p-2 rounded-full bg-muted/60 hover:bg-muted disabled:opacity-30 transition-opacity"
+            className="p-3.5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-7 h-7" />
           </button>
         </div>
       )}
+
+      {/* Zoomed photo overlay — click again to bounce out */}
+      <AnimatePresence>
+        {zoomed && (
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setZoomed(false)}
+          >
+            <motion.img
+              src={photos[activeIndex]}
+              alt={`Photo ${activeIndex + 1}`}
+              className="max-w-[92vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain cursor-pointer"
+              draggable={false}
+              initial={{ scale: 0.5, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.4, opacity: 0, y: 60 }}
+              transition={{
+                type: "spring",
+                stiffness: 350,
+                damping: 22,
+                mass: 0.7,
+              }}
+              onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
