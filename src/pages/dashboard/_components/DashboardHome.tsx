@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -79,6 +79,29 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
     : (recent as RecentLog[] | undefined);
 
   const isLoading = logs === undefined;
+
+  // Eagerly pre-cache all visible photo URLs into the SW cache
+  useEffect(() => {
+    if (!logs || !("caches" in window)) return;
+    const urls: string[] = [];
+    for (const log of logs) {
+      if (log.photoUrls) {
+        for (const url of log.photoUrls) {
+          if (url) urls.push(url);
+        }
+      }
+    }
+    if (urls.length === 0) return;
+    // Fire-and-forget: fetch each URL so the SW caches it
+    void (async () => {
+      for (const url of urls) {
+        try {
+          const hit = await caches.match(url);
+          if (!hit) await fetch(url);
+        } catch { /* best-effort */ }
+      }
+    })();
+  }, [logs]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">

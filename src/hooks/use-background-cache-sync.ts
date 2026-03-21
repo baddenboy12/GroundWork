@@ -19,7 +19,7 @@ const FAST_BATCH_DELAY_MS = 200;
 
 // How long to wait after data arrives before starting photo pre-warm
 // (lets the app UI settle first).
-const PHOTO_PREWARM_INITIAL_DELAY_MS = 3000;
+const PHOTO_PREWARM_INITIAL_DELAY_MS = 1000;
 
 /** Inferred network quality from the Network Information API. */
 type NetworkProfile = "fast" | "medium" | "slow" | "save-data";

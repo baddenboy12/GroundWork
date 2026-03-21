@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { motion } from "motion/react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -108,6 +108,28 @@ export default function LogList({ siteId, filters }: Props) {
       return true;
     });
   }, [isSearchMode, searchResults, pagedResults, pagedStatus, cachedLogs, filters]);
+
+  // Eagerly pre-cache all visible photo URLs into the SW cache
+  useEffect(() => {
+    if (!activeResults.length || !("caches" in window)) return;
+    const urls: string[] = [];
+    for (const log of activeResults) {
+      if (log.photoUrls) {
+        for (const url of log.photoUrls) {
+          if (url) urls.push(url);
+        }
+      }
+    }
+    if (urls.length === 0) return;
+    void (async () => {
+      for (const url of urls) {
+        try {
+          const hit = await caches.match(url);
+          if (!hit) await fetch(url);
+        } catch { /* best-effort */ }
+      }
+    })();
+  }, [activeResults]);
 
   // Show skeleton only when truly loading with no cached fallback available
   const isLoading = isSearchMode
