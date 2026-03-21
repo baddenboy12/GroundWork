@@ -43,61 +43,61 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  // "entering" | "open" | "exiting" | "closed"
-  const [phase, setPhase] = useState<"entering" | "open" | "exiting" | "closed">("closed");
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const photos = log.photoUrls ?? [];
 
-  // Drive phase transitions based on `open` prop
+  // Open: show immediately
   useEffect(() => {
-    if (open && (phase === "closed" || phase === "exiting")) {
-      setPhase("entering");
-      // After entrance animation completes, mark as fully open
-      const t = setTimeout(() => setPhase("open"), 400);
-      return () => clearTimeout(t);
+    if (open && !visible) {
+      setClosing(false);
+      setVisible(true);
     }
-    if (!open && (phase === "entering" || phase === "open")) {
-      setPhase("exiting");
-      // After exit animation completes, unmount
-      const t = setTimeout(() => setPhase("closed"), 450);
-      return () => clearTimeout(t);
-    }
-  }, [open, phase]);
+  }, [open, visible]);
+
+  // Intercept close: animate out first, then notify parent
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+      onClose();
+    }, 400);
+  };
 
   // Close on Escape (only when lightbox is not open)
   useEffect(() => {
-    if (phase === "closed") return;
+    if (!visible) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && lightboxIndex === null) onClose();
+      if (e.key === "Escape" && lightboxIndex === null) handleClose();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [phase, lightboxIndex, onClose]);
+  }, [visible, lightboxIndex, closing]);
 
   // Lock body scroll while visible
   useEffect(() => {
-    if (phase !== "closed") {
+    if (visible) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
     return () => { document.body.style.overflow = ""; };
-  }, [phase]);
+  }, [visible]);
 
   const handleDelete = async () => {
     try {
       await removeLog({ logId: log._id });
       toast.success("Log entry deleted");
-      onClose();
+      handleClose();
     } catch {
       toast.error("Failed to delete log entry");
     }
   };
 
-  if (phase === "closed") return null;
-
-  const isClosing = phase === "exiting";
-  const isOpening = phase === "entering";
+  if (!visible) return null;
 
   return createPortal(
     <>
@@ -118,20 +118,20 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
         }
         @keyframes log-panel-out {
           0% { opacity: 1; transform: scale(1) translateY(0); }
-          100% { opacity: 0; transform: scale(0.75) translateY(100px); }
+          100% { opacity: 0; transform: scale(0.85) translateY(80px); }
         }
       `}</style>
 
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           backgroundColor: "rgba(0,0,0,0.6)",
-          animation: isClosing
+          animation: closing
             ? "log-backdrop-out 0.4s ease forwards"
             : "log-backdrop-in 0.3s ease forwards",
-          pointerEvents: isClosing ? "none" : "auto",
+          pointerEvents: closing ? "none" : "auto",
         }}
       >
         {/* Modal panel */}
@@ -139,7 +139,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
           className="relative bg-background rounded-2xl w-full max-w-5xl max-h-[94vh] overflow-y-auto shadow-2xl"
           onClick={(e) => e.stopPropagation()}
           style={{
-            animation: isClosing
+            animation: closing
               ? "log-panel-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards"
               : "log-panel-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
           }}
@@ -147,7 +147,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
           {/* Close button */}
           <button
             className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
-            onClick={onClose}
+            onClick={handleClose}
           >
             <X className="w-5 h-5" />
           </button>
