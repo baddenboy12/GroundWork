@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import LocationPicker, { type PickerCoords } from "./LocationPicker.tsx";
 
 type Props = {
@@ -23,7 +22,6 @@ type Props = {
 export default function CreateSiteDialog({ open, onClose }: Props) {
   const createSite = useMutation(api.sites.create);
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [coords, setCoords] = useState<PickerCoords | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,14 +33,13 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
     try {
       await createSite({
         name: name.trim(),
-        description: description.trim() || undefined,
+        description: undefined,
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,
       });
       toast.success("Site created");
       setName("");
-      setDescription("");
       setLocation("");
       setCoords(null);
       onClose();
@@ -78,16 +75,6 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
               onChange={setLocation}
               onCoordsChange={setCoords}
               placeholder="123 Main St, City"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="site-desc">Description</Label>
-            <Textarea
-              id="site-desc"
-              placeholder="Brief description of this site..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
             />
           </div>
           <DialogFooter>

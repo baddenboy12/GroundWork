@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import LocationPicker, { type PickerCoords } from "./LocationPicker.tsx";
 
@@ -25,7 +24,6 @@ type Props = {
 export default function EditSiteDialog({ open, onClose, site }: Props) {
   const updateSite = useMutation(api.sites.update);
   const [name, setName] = useState(site.name);
-  const [description, setDescription] = useState(site.description ?? "");
   const [location, setLocation] = useState(site.location ?? "");
   // Initialise coords from stored values so the map opens pre-pinned
   const [coords, setCoords] = useState<PickerCoords | null>(
@@ -43,7 +41,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
       await updateSite({
         siteId: site._id,
         name: name.trim(),
-        description: description.trim() || undefined,
+        description: undefined,
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,
@@ -85,15 +83,6 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               onCoordsChange={setCoords}
               initialCoords={coords}
               placeholder="123 Main St, City"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-site-desc">Description</Label>
-            <Textarea
-              id="edit-site-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
             />
           </div>
           <DialogFooter>
