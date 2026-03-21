@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
@@ -242,9 +243,20 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <motion.div
+          initial={{ scale: 0.85, opacity: 0, y: 30 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 350, damping: 25, mass: 0.8 }}
+        >
         <DialogHeader>
-          <DialogTitle>Export logs — {siteName}</DialogTitle>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+          >
+            <DialogTitle>Export logs — {siteName}</DialogTitle>
+          </motion.div>
         </DialogHeader>
 
         <div className="space-y-5 py-1">
@@ -544,6 +556,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
             )}
           </Button>
         </DialogFooter>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
