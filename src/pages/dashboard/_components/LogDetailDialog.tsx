@@ -21,7 +21,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
-import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
@@ -191,63 +197,46 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     Offline
                   </span>
                 )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={cn(
-                          "h-20 w-20 text-muted-foreground hover:text-foreground active:scale-90 transition-all",
-                          !isOnline && "opacity-40 cursor-not-allowed"
-                        )}
-                        onClick={() => {
-                          if (!isOnline) {
-                            toast.error("You're offline — editing requires a connection");
-                            return;
-                          }
-                          setEditOpen(true);
-                        }}
-                      >
-                        <Pencil style={{ width: 36, height: 36 }} />
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!isOnline && (
-                    <TooltipContent side="bottom">
-                      <p>Editing requires an internet connection</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="w-12 h-12 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
+                      aria-label="Log actions"
+                    >
+                      <MoreVertical className="w-6 h-6" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52 p-2">
+                    <DropdownMenuItem
+                      className={cn("py-4 text-base cursor-pointer rounded-xl gap-3", !isOnline && "opacity-50")}
+                      onClick={() => {
+                        if (!isOnline) {
+                          toast.error("You're offline — editing requires a connection");
+                          return;
+                        }
+                        setEditOpen(true);
+                      }}
+                    >
+                      <Pencil className="w-5 h-5" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className={cn(
+                        "py-4 text-base cursor-pointer rounded-xl gap-3 text-destructive focus:text-destructive",
+                        !isOnline && "opacity-50"
+                      )}
+                      onClick={() => {
+                        if (!isOnline) {
+                          toast.error("You're offline — deletion requires a connection");
+                          return;
+                        }
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="w-5 h-5" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className={cn(
-                            "h-20 w-20 text-muted-foreground hover:text-destructive active:scale-90 transition-all",
-                            !isOnline && "opacity-40 cursor-not-allowed"
-                          )}
-                          onClick={() => {
-                            if (!isOnline) {
-                              toast.error("You're offline — deletion requires a connection");
-                              return;
-                            }
-                            setDeleteOpen(true);
-                          }}
-                        >
-                          <Trash2 style={{ width: 36, height: 36 }} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {!isOnline && (
-                      <TooltipContent side="bottom">
-                        <p>Deletion requires an internet connection</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
