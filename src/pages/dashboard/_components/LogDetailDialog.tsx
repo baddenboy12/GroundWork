@@ -22,12 +22,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
 import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.tsx";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
@@ -223,46 +217,57 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     Offline
                   </span>
                 )}
-                <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
-                      aria-label="Log actions"
-                      data-menu-trigger
+                <div className="relative" data-menu-trigger>
+                  <button
+                    className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
+                    aria-label="Log actions"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuOpenChange(!menuOpen);
+                    }}
+                  >
+                    <MoreVertical style={{ width: 32, height: 32 }} />
+                  </button>
+                  {menuOpen && (
+                    <div
+                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 p-3 rounded-2xl bg-popover border border-border shadow-lg"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreVertical style={{ width: 32, height: 32 }} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="bottom" sideOffset={4} avoidCollisions={false} sticky="always" className="w-52 p-3 rounded-2xl !animate-none data-[state=open]:!animate-none opacity-100">
-                    <DropdownMenuItem
-                      className={cn("py-4 text-base cursor-pointer rounded-xl gap-3", !isOnline && "opacity-50")}
-                      onClick={() => {
-                        if (!isOnline) {
-                          toast.error("You're offline — editing requires a connection");
-                          return;
-                        }
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Pencil className="w-5 h-5" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className={cn(
-                        "py-4 text-base cursor-pointer rounded-xl gap-3 text-destructive focus:text-destructive",
-                        !isOnline && "opacity-50"
-                      )}
-                      onClick={() => {
-                        if (!isOnline) {
-                          toast.error("You're offline — deletion requires a connection");
-                          return;
-                        }
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <Trash2 className="w-5 h-5" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <button
+                        className={cn(
+                          "flex items-center gap-3 w-full py-4 px-3 text-base rounded-xl hover:bg-accent transition-colors text-left",
+                          !isOnline && "opacity-50"
+                        )}
+                        onClick={() => {
+                          if (!isOnline) {
+                            toast.error("You're offline — editing requires a connection");
+                            return;
+                          }
+                          handleMenuOpenChange(false);
+                          setEditOpen(true);
+                        }}
+                      >
+                        <Pencil className="w-5 h-5" /> Edit
+                      </button>
+                      <button
+                        className={cn(
+                          "flex items-center gap-3 w-full py-4 px-3 text-base rounded-xl hover:bg-accent transition-colors text-left text-destructive",
+                          !isOnline && "opacity-50"
+                        )}
+                        onClick={() => {
+                          if (!isOnline) {
+                            toast.error("You're offline — deletion requires a connection");
+                            return;
+                          }
+                          handleMenuOpenChange(false);
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="w-5 h-5" /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
