@@ -255,7 +255,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setEditOpen(true);
                         }}
                       >
-                        <span className="w-7 flex items-center justify-center shrink-0"><Pencil className="w-7 h-7" /></span> Edit
+                        <span className="w-8 flex items-center justify-center shrink-0"><Pencil className="w-7 h-7" /></span> Edit
                       </button>
                       <button
                         className={cn(
@@ -271,7 +271,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setDeleteOpen(true);
                         }}
                       >
-                        <span className="w-7 flex items-center justify-center shrink-0"><Trash2 className="w-7 h-7" /></span> Delete
+                        <span className="w-8 flex items-center justify-center shrink-0"><Trash2 className="w-7 h-7" /></span> Delete
                       </button>
                     </motion.div>
                   )}
