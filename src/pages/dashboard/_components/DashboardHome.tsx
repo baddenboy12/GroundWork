@@ -99,7 +99,7 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
 
       {/* Grid */}
       {isLoading && offlineQueue.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-64 w-full rounded-xl" />
           ))}
@@ -128,7 +128,7 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {/* Pending offline entries at the top (only shown when not filtering) */}
           {!isFiltered && offlineQueue.map((entry, i) => (
             <motion.div

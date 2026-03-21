@@ -24,7 +24,7 @@ export default function LogCard({ log, siteName }: Props) {
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group w-full text-left bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group w-full text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-md active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {/* Cover photo thumbnail */}
         {coverPhoto ? (

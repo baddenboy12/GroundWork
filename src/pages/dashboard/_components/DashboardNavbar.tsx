@@ -90,7 +90,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
 
   return (
     <>
-      <header className="h-20 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+      <header className="h-20 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-4">
         {/* Left: hamburger (mobile) + logo */}
         <div className="flex items-center gap-3 shrink-0">
           {isMobile && onMenuClick && (
@@ -124,11 +124,11 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
           <button
             onClick={() => navigate("/billing")}
             className={cn(
-              "hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition-opacity hover:opacity-80",
+              "flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-sm font-semibold transition-opacity hover:opacity-80",
               TIER_BADGE_STYLE[tier] ?? TIER_BADGE_STYLE.free
             )}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-4 h-4" />
             {config.name}
           </button>
 

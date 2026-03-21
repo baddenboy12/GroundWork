@@ -376,10 +376,10 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuContent align="end" className="w-48 p-1.5">
                             {/* Edit — owner only */}
                             <DropdownMenuItem
-                              className={cn("py-2.5 text-sm cursor-pointer", (!isOnline || !site.isOwner) && "opacity-50")}
+                              className={cn("py-3.5 text-sm cursor-pointer rounded-lg", (!isOnline || !site.isOwner) && "opacity-50")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isOnline) {
@@ -399,7 +399,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                             {/* Delete — personal sites: immediate; team sites: vote */}
                             <DropdownMenuItem
                               className={cn(
-                                "py-2.5 text-sm cursor-pointer text-destructive focus:text-destructive",
+                                "py-3.5 text-sm cursor-pointer rounded-lg text-destructive focus:text-destructive",
                                 !isOnline && "opacity-50",
                                 !isTeamSite && !site.isOwner && "opacity-50"
                               )}

@@ -141,48 +141,51 @@ function DashboardInner() {
 
       {/* Site selector sub-bar — hidden when stats view is open */}
       {!showStats && (
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/80 shrink-0">
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Back button — visible when viewing a site */}
-            {selectedSiteId && (
-              <Button
-                variant="outline"
-                className="gap-1.5 font-semibold h-11 px-4 text-base rounded-xl"
-                onClick={() => selectSite(null)}
-              >
-                <ChevronLeft className="w-5 h-5" />
-                Back
+        <div className="px-4 py-3.5 border-b border-border bg-card/80 shrink-0 space-y-3">
+          {/* Top row: Sites + actions */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              {selectedSiteId && (
+                <Button
+                  variant="outline"
+                  className="gap-1.5 font-semibold h-12 px-5 text-base rounded-xl"
+                  onClick={() => selectSite(null)}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  Back
+                </Button>
+              )}
+              <SitePopout
+                selectedSiteId={selectedSiteId}
+                onSelectSite={selectSite}
+                onSiteDeleted={handleSiteDeleted}
+              />
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <Button className="gap-2 h-12 px-5 text-base rounded-xl" onClick={() => setGlobalCreateOpen(true)}>
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">New log</span>
               </Button>
-            )}
-            <SitePopout
-              selectedSiteId={selectedSiteId}
-              onSelectSite={selectSite}
-              onSiteDeleted={handleSiteDeleted}
-            />
+              <Button
+                variant="secondary"
+                className={cn("gap-2 h-12 px-5 text-base rounded-xl", !isOnline && "opacity-50")}
+                onClick={handleExport}
+                title={!isOnline ? "Export requires an internet connection" : undefined}
+              >
+                {!isOnline
+                  ? <WifiOff className="w-5 h-5" />
+                  : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2.5 flex-1 justify-end">
-            <FilterBar
-              filters={filters}
-              onChange={setFilters}
-              resultCount={isFiltered ? null : null}
-              isSearchMode={isFiltered}
-            />
-            <Button className="gap-2 h-11 px-5 text-base rounded-xl shrink-0" onClick={() => setGlobalCreateOpen(true)}>
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">New log</span>
-            </Button>
-            <Button
-              variant="secondary"
-              className={cn("gap-2 h-11 px-5 text-base rounded-xl shrink-0", !isOnline && "opacity-50")}
-              onClick={handleExport}
-              title={!isOnline ? "Export requires an internet connection" : undefined}
-            >
-              {!isOnline
-                ? <WifiOff className="w-5 h-5" />
-                : canExport ? <FileDown className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-          </div>
+          {/* Bottom row: filters */}
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            resultCount={isFiltered ? null : null}
+            isSearchMode={isFiltered}
+          />
         </div>
       )}
 

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C c:/Users/cyr/projects/GroundWork log --oneline -20)",
+      "Bash(npx vite:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(code --command simpleBrowser.show http://localhost:5173)",
+      "Bash(code --open-url http://localhost:5173)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 42476 //F)",
+      "Bash(taskkill //PID 45388 //F)",
+      "Bash(where pnpm:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ssh root@172.233.163.131 \"ls /root/ && which node && which pnpm\")",
+      "Bash(ssh -o ConnectTimeout=10 -o BatchMode=yes root@172.233.163.131 \"echo connected\")",
+      "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"find / -maxdepth 4 -name ''GroundWork'' -type d 2>/dev/null | head -5\")",
+      "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"find / -maxdepth 4 -name ''package.json'' -path ''*/GroundWork/*'' -o -name ''groundwork'' -type d 2>/dev/null | head -10; ls /root/ 2>/dev/null; ls /var/www/ 2>/dev/null; ls /opt/ 2>/dev/null\")",
+      "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"cd /opt/groundwork && git remote -v && git log --oneline -3 && git status -s\")",
+      "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"ls -la /opt/groundwork/\")",
+      "Bash(pnpm build:*)",
+      "Bash(scp -r -o ConnectTimeout=10 dist/* root@172.233.163.131:/opt/groundwork/dist/)",
+      "Bash(ssh -o ConnectTimeout=10 root@172.233.163.131 \"ls -la /opt/groundwork/dist/ && systemctl restart nginx 2>/dev/null || service nginx restart 2>/dev/null || echo ''No nginx restart needed''\")"
+    ]
+  }
+}
