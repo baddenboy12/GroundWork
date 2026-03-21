@@ -192,6 +192,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent
         className="sm:max-w-2xl max-h-[92vh] overflow-y-auto"
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl">Edit log entry</DialogTitle>
