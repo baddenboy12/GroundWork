@@ -209,7 +209,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                           setEditOpen(true);
                         }}
                       >
-                        <Pencil style={{ width: 52, height: 52 }} />
+                        <Pencil style={{ width: 36, height: 36 }} />
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -238,7 +238,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                             setDeleteOpen(true);
                           }}
                         >
-                          <Trash2 style={{ width: 52, height: 52 }} />
+                          <Trash2 style={{ width: 36, height: 36 }} />
                         </Button>
                       </span>
                     </TooltipTrigger>
