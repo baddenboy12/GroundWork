@@ -90,7 +90,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
 
   return (
     <>
-      <header className="h-20 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 shrink-0 gap-4">
+      <header className="relative h-20 border-b border-border bg-card flex items-center px-4 md:px-6 shrink-0 gap-4">
         {/* Left: hamburger (mobile) + logo */}
         <div className="flex items-center gap-3 shrink-0">
           {isMobile && onMenuClick && (
@@ -118,37 +118,67 @@ export default function DashboardNavbar({ onNewLog, onStats, onMenuClick }: Prop
           </button>
         </div>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Plan badge */}
-          <button
-            onClick={() => navigate("/billing")}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-sm font-semibold transition-opacity hover:opacity-80",
-              TIER_BADGE_STYLE[tier] ?? TIER_BADGE_STYLE.free
-            )}
-          >
-            <Zap className="w-4 h-4" />
-            {config.name}
-          </button>
-
-          {/* User menu */}
+        {/* Right controls — absolutely positioned so sizing doesn't affect left side */}
+        <div className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {/* User menu with integrated tier ribbon */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-3 h-16 px-4 rounded-xl">
+              <button
+                className="relative flex items-center gap-3 h-[4.5rem] pl-5 pr-12 rounded-full active:scale-95 transition-transform"
+                style={{
+                  backgroundColor: "hsl(30 12% 12%)",
+                  border: "1px solid hsl(var(--border))",
+                }}
+              >
+                {/* User icon */}
                 <div className={cn(
                   "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                   isMissingName ? "bg-amber-500/20" : "bg-primary/20"
                 )}>
                   {isMissingName
-                    ? <AlertCircle className="w-5 h-5 text-amber-500" />
-                    : <User className="w-6 h-6 text-primary" />
+                    ? <AlertCircle className="w-4 h-4 text-amber-500" />
+                    : <User className="w-4 h-4 text-primary" />
                   }
                 </div>
-                <span className="text-lg text-muted-foreground max-w-36 truncate hidden md:block">
-                  {displayName ?? "Set your name"}
+                {/* Name */}
+                <span className="text-xl font-medium text-foreground truncate">
+                  {displayName ?? "Set name"}
                 </span>
-              </Button>
+                {/* Tier ribbon — diagonal sash clipped to top-right corner */}
+                <div
+                  className="absolute overflow-hidden"
+                  style={{
+                    top: 0,
+                    right: 0,
+                    width: 50,
+                    height: 50,
+                    borderRadius: "0 9999px 0 0",
+                  }}
+                >
+                  <div
+                    className={cn(
+                      "absolute flex items-center justify-center",
+                      tier === "business" && "bg-amber-500/90 text-amber-950",
+                      tier === "pro" && "bg-primary/90 text-primary-foreground",
+                      tier === "starter" && "bg-blue-500/90 text-white",
+                      tier === "free" && "bg-muted text-muted-foreground",
+                    )}
+                    style={{
+                      top: 6,
+                      right: -10,
+                      width: 72,
+                      height: 18,
+                      transform: "rotate(35deg)",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {config.name}
+                  </div>
+                </div>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72">
               <div className="px-4 py-4">
