@@ -57,26 +57,26 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-[1100px] w-[99%] p-16 top-[8%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-[700px] w-[95%] p-10 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh]" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="text-6xl font-bold">Edit site</DialogTitle>
+          <DialogTitle className="text-5xl font-bold">Edit site</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-12 pt-8">
-          <div className="space-y-5">
-            <Label htmlFor="edit-site-name" className="text-4xl">Site name *</Label>
+        <form onSubmit={handleSubmit} className="space-y-10 pt-6">
+          <div className="space-y-4">
+            <Label htmlFor="edit-site-name" className="text-3xl">Site name *</Label>
             <Input
               id="edit-site-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="h-[6rem] text-4xl rounded-2xl px-8"
+              className="h-[5rem] text-3xl rounded-2xl px-6"
             />
-            <p className="text-2xl text-muted-foreground">
+            <p className="text-xl text-muted-foreground">
               Renaming this site updates the label across all log entries under it.
             </p>
           </div>
-          <div className="space-y-5">
-            <Label htmlFor="edit-site-location" className="text-4xl">Location</Label>
+          <div className="space-y-4">
+            <Label htmlFor="edit-site-location" className="text-3xl">Location</Label>
             <LocationPicker
               id="edit-site-location"
               value={location}
@@ -86,11 +86,11 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               placeholder="123 Main St, City"
             />
           </div>
-          <DialogFooter className="gap-6 pt-6">
-            <Button type="button" variant="secondary" onClick={onClose} className="h-24 text-3xl px-12 rounded-2xl">
+          <DialogFooter className="gap-5 pt-4">
+            <Button type="button" variant="secondary" onClick={onClose} className="h-20 text-2xl px-10 rounded-2xl">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()} className="h-24 text-3xl px-12 rounded-2xl">
+            <Button type="submit" disabled={loading || !name.trim()} className="h-20 text-2xl px-10 rounded-2xl">
               {loading ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
