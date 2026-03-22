@@ -73,7 +73,7 @@ export default function LogCard({ log, siteName }: Props) {
           </h3>
 
           {/* Excerpt */}
-          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2" style={{ fontFamily: "Consolas, 'Courier New', monospace", fontWeight: "bold" }}>
+          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2" style={{ fontFamily: "'MS Reference Sans Serif', sans-serif", fontWeight: "bold" }}>
             {log.content}
           </p>
 
