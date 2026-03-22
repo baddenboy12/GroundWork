@@ -301,7 +301,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
 
             {/* Content */}
             <motion.div
-              className="max-h-64 overflow-y-auto overscroll-contain rounded-lg pr-1"
+              className="max-h-[420px] overflow-y-auto overscroll-contain rounded-lg pr-1"
               variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
             >
