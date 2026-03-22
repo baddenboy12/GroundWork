@@ -82,17 +82,23 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {/* Take Photo */}
-            <button
+            <motion.button
               type="button"
               onClick={() => cameraRef.current?.click()}
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/70 transition-colors text-amber-600 dark:text-amber-400"
             >
               <Camera className="w-7 h-7" />
               <span className="text-sm font-semibold">Take Photo</span>
-            </button>
+            </motion.button>
 
             {/* Browse files / drop zone */}
-            <div
+            <motion.div
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className={cn(
                 "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
                 dragOver
@@ -106,7 +112,7 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
             >
               <ImagePlus className="w-7 h-7" />
               <span className="text-sm font-semibold">Browse Files</span>
-            </div>
+            </motion.div>
           </div>
         )
       )}

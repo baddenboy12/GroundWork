@@ -107,17 +107,23 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
       {!atLimit && (
         <div className="grid grid-cols-2 gap-2">
           {/* Take Photo button */}
-          <button
+          <motion.button
             type="button"
             onClick={() => cameraRef.current?.click()}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
             className="flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/70 transition-colors text-primary"
           >
             <Camera className="w-7 h-7" />
             <span className="text-sm font-semibold">Take Photo</span>
-          </button>
+          </motion.button>
 
           {/* Browse / drop zone */}
-          <div
+          <motion.div
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
             className={cn(
               "flex flex-col items-center gap-2.5 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
               dragOver
@@ -131,7 +137,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
           >
             <ImagePlus className="w-7 h-7" />
             <span className="text-sm font-semibold">Browse Files</span>
-          </div>
+          </motion.div>
         </div>
       )}
 
