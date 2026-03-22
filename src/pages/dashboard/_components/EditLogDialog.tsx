@@ -215,7 +215,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               value={siteId}
               onValueChange={(v) => setSiteId(v as Id<"sites">)}
             >
-              <SelectTrigger className="!h-[8rem] !text-[24px]">
+              <SelectTrigger className="!h-[5.5rem] !text-[24px]">
                 <SelectValue placeholder="Select a site" />
               </SelectTrigger>
               <SelectContent>
@@ -232,7 +232,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="space-y-2">
               <Label className="text-xl font-semibold">Category *</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                <SelectTrigger className="!h-[8rem] !text-[24px]">
+                <SelectTrigger className="!h-[5.5rem] !text-[24px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
