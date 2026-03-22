@@ -1,6 +1,6 @@
 // ── Configuration ─────────────────────────────────────────────────────────────
 
-const CACHE = "groundwork-sw";
+const CACHE = "groundwork-sw-v2";
 
 // Hosts whose responses should never be intercepted or cached.
 const BYPASS = [
@@ -162,10 +162,12 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  // Claim all open clients so this SW controls them without a reload, then
-  // prime the cache in case this is a fresh activation after a browser restart.
+  // Delete old caches from previous SW versions, claim all open clients,
+  // then prime the cache in case this is a fresh activation after a browser restart.
   event.waitUntil(
-    self.clients.claim().then(() => refreshCache(true))
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim()).then(() => refreshCache(true))
   );
 });
 
