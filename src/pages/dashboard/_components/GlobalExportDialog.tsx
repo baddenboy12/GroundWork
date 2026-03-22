@@ -433,7 +433,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                       <span className="ml-auto text-base text-muted-foreground">{sites?.length ?? 0} total</span>
                     </button>
                   </div>
-                  <div className="max-h-96 overflow-y-auto overscroll-contain px-3 py-2.5 space-y-1">
+                  <div className="max-h-96 overflow-y-auto overscroll-contain px-3 py-2.5 space-y-1" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
                     {!sites ? (
                       <div className="flex items-center justify-center gap-2 py-4 text-base text-muted-foreground">
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading…
