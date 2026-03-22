@@ -215,12 +215,12 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               value={siteId}
               onValueChange={(v) => setSiteId(v as Id<"sites">)}
             >
-              <SelectTrigger className="h-16 text-lg">
+              <SelectTrigger className="h-[4.5rem] !text-[22px]">
                 <SelectValue placeholder="Select a site" />
               </SelectTrigger>
               <SelectContent>
                 {(sites ?? []).map((s) => (
-                  <SelectItem key={s._id} value={s._id} className="text-lg py-3">
+                  <SelectItem key={s._id} value={s._id} className="!text-[20px] py-4">
                     {s.name}
                   </SelectItem>
                 ))}
@@ -232,12 +232,12 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="space-y-2">
               <Label className="text-xl font-semibold">Category *</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                <SelectTrigger className="h-16 text-lg">
+                <SelectTrigger className="h-[4.5rem] !text-[22px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {LOG_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c} className="text-lg py-3">
+                    <SelectItem key={c} value={c} className="!text-[20px] py-4">
                       {CATEGORY_LABELS[c]}
                     </SelectItem>
                   ))}
