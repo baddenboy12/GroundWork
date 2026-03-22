@@ -188,7 +188,7 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[28px]"
+          className="pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[24px]"
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}
