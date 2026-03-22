@@ -444,8 +444,6 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   <div
                     className="fixed inset-0 z-[99]"
                     onClick={() => setSitesPopoverOpen(false)}
-                    onTouchEnd={() => setSitesPopoverOpen(false)}
-                    style={{ touchAction: "none", pointerEvents: "auto" }}
                   />
                   <div
                     className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg"
