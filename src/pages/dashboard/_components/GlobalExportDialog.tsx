@@ -289,7 +289,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 350, damping: 25, mass: 0.8 }}
         >
-        <DialogHeader>
+        <DialogHeader className="-mt-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
