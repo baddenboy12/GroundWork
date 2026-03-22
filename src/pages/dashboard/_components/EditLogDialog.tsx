@@ -262,18 +262,21 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                       {(sites ?? [])
                         .filter((s) => !siteSearch || s.name.toLowerCase().includes(siteSearch.toLowerCase()))
                         .map((s) => (
-                          <button
+                          <motion.button
                             key={s._id}
                             type="button"
+                            whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             className={cn(
-                              "w-full flex items-center gap-3 px-4 py-3 text-left !text-[20px] transition-colors hover:bg-accent",
-                              s._id === siteId && "bg-primary/5"
+                              "flex items-center gap-3 mx-2 my-0.5 px-3 py-3 text-left !text-[20px] rounded-xl transition-colors hover:bg-accent",
+                              s._id === siteId ? "bg-primary/10 border border-primary/20" : "bg-white/[0.04]"
                             )}
+                            style={{ width: "calc(100% - 16px)" }}
                             onClick={() => { setSiteId(s._id); setSiteDropdownOpen(false); }}
                           >
                             {s._id === siteId && <Check className="w-5 h-5 text-primary shrink-0" />}
                             <span className="truncate">{s.name}</span>
-                          </button>
+                          </motion.button>
                         ))
                       }
                     </div>
