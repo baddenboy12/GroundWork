@@ -67,14 +67,12 @@ export default function IntegrationsView({ onBack }: Props) {
       >
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center gap-3 mb-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-14 w-14 shrink-0 rounded-2xl bg-white/[0.04] border border-white/[0.06] active:scale-90 transition-all"
+            <button
+              className="p-3 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-accent active:scale-90 transition-all text-muted-foreground hover:text-foreground"
               onClick={onBack}
             >
               <ArrowLeft className="w-7 h-7" />
-            </Button>
+            </button>
             <div>
               <h1 className="text-xl font-semibold text-foreground">Integrations & API</h1>
               <p className="text-sm text-muted-foreground">
