@@ -234,16 +234,18 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                   <AnimatePresence>
                   {menuOpen && (
                     <motion.div
-                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-64 p-4 rounded-2xl bg-popover border border-border shadow-lg"
-                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-64 p-3 rounded-3xl bg-popover border border-border shadow-lg"
+                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         className={cn(
-                          "flex items-center gap-4 w-full py-5 px-4 text-xl rounded-xl hover:bg-accent transition-colors text-left",
+                          "flex items-center gap-4 w-full py-5 px-4 text-xl rounded-xl hover:bg-accent transition-colors text-left bg-white/[0.04]",
                           !isOnline && "opacity-50"
                         )}
                         onClick={() => {
@@ -256,10 +258,12 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                         }}
                       >
                         <span className="w-8 flex items-center justify-center shrink-0"><Pencil className="w-7 h-7" /></span> Edit
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         className={cn(
-                          "flex items-center gap-4 w-full py-5 px-4 text-xl rounded-xl hover:bg-accent transition-colors text-left text-destructive",
+                          "flex items-center gap-4 w-full py-5 px-4 mt-1 text-xl rounded-xl hover:bg-accent transition-colors text-left text-destructive bg-white/[0.04]",
                           !isOnline && "opacity-50"
                         )}
                         onClick={() => {
@@ -272,7 +276,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                         }}
                       >
                         <span className="w-8 flex items-center justify-center shrink-0"><Trash2 className="w-7 h-7" /></span> Delete
-                      </button>
+                      </motion.button>
                     </motion.div>
                   )}
                   </AnimatePresence>
