@@ -245,8 +245,11 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               <DropdownMenuSeparator />
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
-                style={METALLIC_STYLE}
-                className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06] text-destructive focus:text-destructive"
+                style={{
+                  background: "linear-gradient(180deg, hsl(5 20% 14%) 0%, hsl(5 18% 9%) 100%)",
+                  boxShadow: "inset 0 1px 0 rgba(255,100,100,0.08), inset 0 -1px 0 rgba(0,0,0,0.3)",
+                }}
+                className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-red-900/30 text-destructive focus:text-destructive"
                 onClick={async () => {
                   for (let i = localStorage.length - 1; i >= 0; i--) {
                     const k = localStorage.key(i);
