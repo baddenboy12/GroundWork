@@ -554,7 +554,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                             placeholder="Search entries…"
                             value={entrySearch}
                             onChange={(e) => setEntrySearch(e.target.value)}
-                            className="pl-13 pr-12 h-16 rounded-xl !text-[22px]"
+                            className="pl-13 pr-12 h-14 rounded-xl !text-[22px]"
                           />
                           {entrySearch && (
                             <button
