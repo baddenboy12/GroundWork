@@ -403,65 +403,62 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </>
               )}
 
-              {/* Sites — inline collapsible */}
-              <div className={cn(
-                "rounded-lg border bg-card overflow-hidden",
-                !allSitesSelected && selectedSiteIds.size === 0
-                  ? "border-destructive"
-                  : "border-border"
-              )}>
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
-                  onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
-                >
-                  <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
-                  <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
-                  <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
-                </button>
-                {sitesPopoverOpen && (
-                  <>
-                    <div className="px-2 py-1.5 border-t border-border">
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
-                        onClick={toggleAllSites}
-                      >
-                        {allSitesSelected
-                          ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-                          : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
-                        <span className="text-sm font-medium">All sites</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
-                      </button>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto overscroll-contain px-2 pb-2 space-y-0.5">
-                      {!sites ? (
-                        <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
-                        </div>
-                      ) : sites.length === 0 ? (
-                        <p className="py-4 text-center text-sm text-muted-foreground">No sites found</p>
-                      ) : (
-                        sites.map((site) => (
-                          <button
-                            key={site._id}
-                            type="button"
-                            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
-                            onClick={() => toggleSite(site._id)}
-                          >
-                            {selectedSiteIds.has(site._id)
-                              ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
-                              : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                            <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
-                            <span className="text-sm text-foreground truncate">{site.name}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* Sites — popover dropdown */}
+              <Popover open={sitesPopoverOpen} onOpenChange={setSitesPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors",
+                      !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
+                    )}
+                  >
+                    <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
+                    <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[420px] p-0 overflow-hidden" align="start" sideOffset={4}>
+                  <div className="px-2 py-1.5 border-b border-border">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                      onClick={toggleAllSites}
+                    >
+                      {allSitesSelected
+                        ? <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                        : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <span className="text-sm font-medium">All sites</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{sites?.length ?? 0} total</span>
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto overscroll-contain px-2 py-2 space-y-0.5">
+                    {!sites ? (
+                      <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
+                      </div>
+                    ) : sites.length === 0 ? (
+                      <p className="py-4 text-center text-sm text-muted-foreground">No sites found</p>
+                    ) : (
+                      sites.map((site) => (
+                        <button
+                          key={site._id}
+                          type="button"
+                          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                          onClick={() => toggleSite(site._id)}
+                        >
+                          {selectedSiteIds.has(site._id)
+                            ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
+                            : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                          <MapPin className="w-3 h-3 text-primary/60 shrink-0" />
+                          <span className="text-sm text-foreground truncate">{site.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Date range */}
               <div className="grid grid-cols-2 gap-2">
@@ -479,23 +476,24 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Category + Entries count — collapsible like Sites */}
+              {/* Category — popover dropdown */}
               {selectionMode === "filter" && (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 px-5 py-4 text-xl hover:bg-accent transition-colors"
-                    onClick={() => setCategoryOpen(!categoryOpen)}
-                  >
-                    <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
-                    <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
-                    <span className="flex-1 text-left font-medium text-foreground truncate text-xl">
-                      {CATEGORIES.find((c) => c.value === category)?.label ?? "All categories"}
-                    </span>
-                    <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
-                  </button>
-                  {categoryOpen && (
-                    <div className="border-t border-border px-3 py-3 space-y-1">
+                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
+                    >
+                      <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
+                      <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
+                      <span className="flex-1 text-left font-medium text-foreground truncate text-xl">
+                        {CATEGORIES.find((c) => c.value === category)?.label ?? "All categories"}
+                      </span>
+                      <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[420px] p-3" align="start" sideOffset={4}>
+                    <div className="space-y-1">
                       {CATEGORIES.map((c) => (
                         <button
                           key={c.value}
@@ -516,8 +514,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </PopoverContent>
+                </Popover>
               )}
 
               {/* Entries selector — individual mode, inline collapsible */}
