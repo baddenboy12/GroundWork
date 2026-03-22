@@ -189,7 +189,7 @@ export default function LocationPicker({
           placeholder={placeholder}
           required={required}
           style={{ fontSize: "22px" }}
-          className="pl-14 pr-18 h-[5rem] rounded-2xl"
+          className="pl-14 pr-16 h-[5rem] rounded-2xl truncate"
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}
@@ -199,13 +199,13 @@ export default function LocationPicker({
           disabled={gps.status === "loading"}
           onClick={handleGps}
           className={cn(
-            "absolute right-4 h-14 w-14 flex items-center justify-center rounded-xl transition-all",
+            "absolute right-3 h-10 w-10 flex items-center justify-center rounded-lg transition-all",
             gps.status === "loading"
               ? "bg-primary/20 text-primary animate-pulse cursor-wait"
               : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
           )}
         >
-          <LocateFixed className="w-7 h-7" />
+          <LocateFixed className="w-5 h-5" />
         </button>
       </div>
 
