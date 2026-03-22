@@ -153,12 +153,10 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
     });
   }, []);
 
-  // Close dropdowns on outside click/tap (no backdrop needed)
+  // Close dropdowns on outside click (desktop only — mobile closes via button toggle)
   useEffect(() => {
     if (!sitesPopoverOpen && !categoryOpen) return;
-
-    let handlerAttached = false;
-    const handler = (e: Event) => {
+    const handler = (e: MouseEvent) => {
       const target = e.target as Node;
       if (sitesPopoverOpen) {
         if (
@@ -177,21 +175,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
         }
       }
     };
-
-    // Delay so the opening tap/click doesn't immediately trigger close
-    const timeoutId = setTimeout(() => {
-      handlerAttached = true;
-      document.addEventListener("mousedown", handler);
-      document.addEventListener("touchend", handler);
-    }, 150);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (handlerAttached) {
-        document.removeEventListener("mousedown", handler);
-        document.removeEventListener("touchend", handler);
-      }
-    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [sitesPopoverOpen, categoryOpen]);
 
   // When sites load, default to all selected
