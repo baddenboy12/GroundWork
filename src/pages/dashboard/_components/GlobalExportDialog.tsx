@@ -491,7 +491,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
                     <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
                     <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="border-0 shadow-none h-auto px-0 flex-1 text-lg font-medium focus:ring-0">
+                      <SelectTrigger className="border-0 shadow-none h-auto pl-4 pr-0 flex-1 text-lg font-medium focus:ring-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
