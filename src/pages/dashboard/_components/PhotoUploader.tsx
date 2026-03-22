@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
+import { motion, LayoutGroup } from "motion/react";
 import { ImagePlus, X, Camera } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { compressImage } from "../_lib/compress-image.ts";
+import { useDragReorder } from "../_lib/use-drag-reorder.ts";
 
 export type R2Photo = {
   url: string;       // R2 public URL — empty string while pending upload
@@ -78,6 +80,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     onChange(photos.filter((_, i) => i !== index));
   };
 
+  const { dragIndex, containerRef, handlePointerDown, handlePointerMove, handlePointerUp } = useDragReorder(photos, onChange);
   const atLimit = photos.length >= maxPhotos;
 
   return (
@@ -138,33 +141,52 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
 
       {/* Photo previews */}
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo, i) => (
-            <div
-              key={photo.previewUrl}
-              className="relative group rounded-lg overflow-hidden aspect-square bg-muted"
-            >
-              <img
-                src={photo.previewUrl}
-                alt={photo.fileName}
-                className="w-full h-full object-cover"
-              />
-              {/* Pending badge */}
-              {photo.file && (
-                <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-muted-foreground">
-                  Pending
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => removePhoto(i)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+        <LayoutGroup>
+          <div
+            ref={containerRef}
+            className="grid grid-cols-3 gap-2 select-none"
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+            {photos.map((photo, i) => (
+              <motion.div
+                key={photo.previewUrl}
+                layout
+                layoutId={photo.previewUrl}
+                data-reorder-index={i}
+                onPointerDown={handlePointerDown(i)}
+                className={cn(
+                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab",
+                  dragIndex === i && "ring-2 ring-primary/50 shadow-lg scale-105 z-10",
+                  dragIndex !== null && dragIndex !== i && "opacity-70"
+                )}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <img
+                  src={photo.previewUrl}
+                  alt={photo.fileName}
+                  className="w-full h-full object-cover pointer-events-none"
+                  draggable={false}
+                />
+                {/* Pending badge */}
+                {photo.file && (
+                  <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-muted-foreground">
+                    Pending
+                  </div>
+                )}
+                <button
+                  type="button"
+                  data-no-drag
+                  onClick={() => removePhoto(i)}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </LayoutGroup>
       )}
     </div>
   );

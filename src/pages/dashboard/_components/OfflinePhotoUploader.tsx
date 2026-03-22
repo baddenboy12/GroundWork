@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
+import { motion, LayoutGroup } from "motion/react";
 import { ImagePlus, CloudUpload, X, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils.ts";
 import { compressImage } from "../_lib/compress-image.ts";
 import type { OfflinePhoto } from "@/hooks/use-offline-queue.ts";
+import { useDragReorder } from "../_lib/use-drag-reorder.ts";
 
 async function compressToDataUrl(file: File): Promise<OfflinePhoto> {
   const compressed = await compressImage(file);
@@ -55,6 +57,7 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
     if (e.dataTransfer.files) void handleFiles(e.dataTransfer.files);
   };
 
+  const { dragIndex, containerRef, handlePointerDown, handlePointerMove, handlePointerUp } = useDragReorder(photos, onChange);
   const atLimit = photos.length >= maxPhotos;
 
   return (
@@ -114,23 +117,49 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
 
       {/* Thumbnails */}
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo, i) => (
-            <div key={i} className="relative group rounded-lg overflow-hidden aspect-square bg-muted">
-              <img src={photo.dataUrl} alt={photo.fileName} className="w-full h-full object-cover" />
-              <div className="absolute bottom-1 left-1 bg-amber-500/80 text-white rounded px-1 py-0.5 text-[9px] font-medium leading-none">
-                pending
-              </div>
-              <button
-                type="button"
-                onClick={() => onChange(photos.filter((_, idx) => idx !== i))}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+        <LayoutGroup>
+          <div
+            ref={containerRef}
+            className="grid grid-cols-3 gap-2 select-none"
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+            {photos.map((photo, i) => (
+              <motion.div
+                key={photo.dataUrl}
+                layout
+                layoutId={photo.dataUrl}
+                data-reorder-index={i}
+                onPointerDown={handlePointerDown(i)}
+                className={cn(
+                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab",
+                  dragIndex === i && "ring-2 ring-amber-500/50 shadow-lg scale-105 z-10",
+                  dragIndex !== null && dragIndex !== i && "opacity-70"
+                )}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <img
+                  src={photo.dataUrl}
+                  alt={photo.fileName}
+                  className="w-full h-full object-cover pointer-events-none"
+                  draggable={false}
+                />
+                <div className="absolute bottom-1 left-1 bg-amber-500/80 text-white rounded px-1 py-0.5 text-[9px] font-medium leading-none">
+                  pending
+                </div>
+                <button
+                  type="button"
+                  data-no-drag
+                  onClick={() => onChange(photos.filter((_, idx) => idx !== i))}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </LayoutGroup>
       )}
     </div>
   );
