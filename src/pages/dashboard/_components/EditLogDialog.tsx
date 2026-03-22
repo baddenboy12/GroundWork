@@ -231,7 +231,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="relative" ref={siteDropdownRef}>
               <button
                 type="button"
-                className="w-full flex items-center justify-between !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs"
+                className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs"
                 onClick={() => { setSiteDropdownOpen(!siteDropdownOpen); setSiteSearch(""); }}
               >
                 <span className="truncate">
@@ -240,7 +240,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", siteDropdownOpen && "rotate-180")} />
               </button>
               {siteDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
+                <div className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
                   <div className="px-3 py-2.5 border-b border-border">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
