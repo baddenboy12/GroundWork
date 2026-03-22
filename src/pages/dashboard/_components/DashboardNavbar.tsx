@@ -263,7 +263,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               </DropdownMenuItem>
               </motion.div>
               <DropdownMenuSeparator />
-              <motion.div className="px-4 py-3 flex items-center justify-center" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
+              <motion.div className="px-4 py-3 flex items-center justify-start" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
                 <span className="text-sm font-mono text-muted-foreground/50">v{APP_VERSION}</span>
               </motion.div>
               </motion.div>
