@@ -71,7 +71,7 @@ const FORMAT_OPTIONS: {
 ];
 
 const CATEGORIES = [
-  { value: "all", label: "All categories" },
+  { value: "all", label: "All Categories" },
   { value: "inspection", label: CATEGORY_LABELS.inspection },
   { value: "maintenance", label: CATEGORY_LABELS.maintenance },
   { value: "incident", label: CATEGORY_LABELS.incident },
@@ -295,7 +295,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
           >
-            <DialogTitle className="text-3xl font-bold relative" style={{ top: "-1.2rem" }}>Export logs</DialogTitle>
+            <DialogTitle className="text-3xl font-bold relative" style={{ top: "-1.2rem" }}>Export Logs</DialogTitle>
           </motion.div>
         </DialogHeader>
 
@@ -313,7 +313,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               )}
             >
               <Filter className="w-5 h-5" />
-              Bulk filter
+              Bulk Filter
             </button>
             <button
               type="button"
@@ -326,7 +326,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               )}
             >
               <ListChecks className="w-5 h-5" />
-              Select entries
+              Select Entries
             </button>
           </div>
 
@@ -499,7 +499,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
                     <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
                     <span className="flex-1 text-left font-medium text-foreground truncate text-xl">
-                      {CATEGORIES.find((c) => c.value === category)?.label ?? "All categories"}
+                      {CATEGORIES.find((c) => c.value === category)?.label ?? "All Categories"}
                     </span>
                     <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
                   </button>
