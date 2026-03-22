@@ -58,7 +58,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="!max-w-none w-[90%] p-8 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh]" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+        className="!max-w-none w-[90%] p-8 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh] rounded-3xl [&>button]:w-12 [&>button]:h-12 [&>button>svg]:w-7 [&>button>svg]:h-7" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-5xl font-bold">Edit site</DialogTitle>
         </DialogHeader>
