@@ -212,7 +212,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
                 className={cn(
-                  "text-[28px] py-5 gap-4 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform",
+                  "text-xl py-3.5 gap-3 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform",
                   isMissingName && "text-amber-500 focus:text-amber-500"
                 )}
                 onClick={openNameDialog}
@@ -222,24 +222,24 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-[28px] py-5 gap-4 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onBilling}>
+              <DropdownMenuItem className="text-xl py-3.5 gap-3 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onBilling}>
                 <CreditCard className="w-7 h-7" /> Subscription
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-[28px] py-5 gap-4 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onStats}>
+              <DropdownMenuItem className="text-xl py-3.5 gap-3 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onStats}>
                 <BarChart2 className="w-7 h-7" /> Statistics
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-[28px] py-5 gap-4 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onIntegrations}>
+              <DropdownMenuItem className="text-xl py-3.5 gap-3 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onIntegrations}>
                 <Plug className="w-7 h-7" /> Integrations & API
               </DropdownMenuItem>
               </motion.div>
               <DropdownMenuSeparator />
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
-                className="text-[28px] py-5 gap-4 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform text-destructive focus:text-destructive"
+                className="text-xl py-3.5 gap-3 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform text-destructive focus:text-destructive"
                 onClick={async () => {
                   for (let i = localStorage.length - 1; i >= 0; i--) {
                     const k = localStorage.key(i);
