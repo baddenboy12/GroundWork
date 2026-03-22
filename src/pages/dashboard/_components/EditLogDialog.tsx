@@ -275,6 +275,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={7}
+              style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
               className="text-xl min-h-[180px] resize-none"
               required
             />

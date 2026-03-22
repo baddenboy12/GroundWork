@@ -466,6 +466,7 @@ export default function CreateLogDialog({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={6}
+                style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
                 className="text-xl min-h-[160px] resize-none"
                 required
               />
