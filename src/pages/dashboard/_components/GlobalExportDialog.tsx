@@ -283,7 +283,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 px-8 pb-8 pt-12 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", sitesPopoverOpen || categoryOpen || themePopoverOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 px-8 pb-8 pt-12 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", sitesPopoverOpen || categoryOpen || themePopoverOpen || entriesPopoverOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -368,7 +368,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <button
                       type="button"
                       className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
-                      onClick={() => { setThemePopoverOpen(!themePopoverOpen); setSitesPopoverOpen(false); setCategoryOpen(false); }}
+                      onClick={() => { setThemePopoverOpen(!themePopoverOpen); setSitesPopoverOpen(false); setCategoryOpen(false); setEntriesPopoverOpen(false); }}
                     >
                       <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
                       <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
@@ -413,7 +413,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     "w-full flex items-center gap-2.5 rounded-2xl border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors",
                     !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
                   )}
-                  onClick={() => { setSitesPopoverOpen(!sitesPopoverOpen); setThemePopoverOpen(false); setCategoryOpen(false); }}
+                  onClick={() => { setSitesPopoverOpen(!sitesPopoverOpen); setThemePopoverOpen(false); setCategoryOpen(false); setEntriesPopoverOpen(false); }}
                 >
                   <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
                   <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
@@ -494,7 +494,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   <button
                     type="button"
                     className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
-                    onClick={() => { setCategoryOpen(!categoryOpen); setThemePopoverOpen(false); setSitesPopoverOpen(false); }}
+                    onClick={() => { setCategoryOpen(!categoryOpen); setThemePopoverOpen(false); setSitesPopoverOpen(false); setEntriesPopoverOpen(false); }}
                   >
                     <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
                     <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
@@ -531,13 +531,13 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               )}
 
-              {/* Entries selector — individual mode, inline collapsible */}
+              {/* Entries selector — individual mode, floating dropdown */}
               {selectionMode === "individual" && (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="relative">
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
-                    onClick={() => setEntriesPopoverOpen(!entriesPopoverOpen)}
+                    className="w-full flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
+                    onClick={() => { setEntriesPopoverOpen(!entriesPopoverOpen); setThemePopoverOpen(false); setSitesPopoverOpen(false); setCategoryOpen(false); }}
                   >
                     <ListChecks className="w-5 h-5 text-muted-foreground shrink-0" />
                     <span className="text-base text-muted-foreground shrink-0 text-left w-20">Entries</span>
@@ -545,24 +545,24 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", entriesPopoverOpen && "rotate-180")} />
                   </button>
                   {entriesPopoverOpen && (
-                    <>
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
                       {/* Search */}
-                      <div className="px-2 py-1.5 border-t border-border space-y-2">
+                      <div className="px-3 py-2.5 border-b border-border space-y-2">
                         <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                           <Input
                             placeholder="Search entries…"
                             value={entrySearch}
                             onChange={(e) => setEntrySearch(e.target.value)}
-                            className="pl-8 pr-8 text-sm h-8"
+                            className="pl-9 pr-9 text-base h-10"
                           />
                           {entrySearch && (
                             <button
                               type="button"
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                               onClick={() => setEntrySearch("")}
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -570,23 +570,32 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                           <div className="flex items-center justify-between px-0.5">
                             <button
                               type="button"
-                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                               onClick={toggleAllFilteredEntries}
                             >
                               {allFilteredSelected
-                                ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                                : <Square className="w-3.5 h-3.5" />}
+                                ? <CheckSquare className="w-4 h-4 text-primary" />
+                                : <Square className="w-4 h-4" />}
                               {allFilteredSelected ? "Deselect all" : "Select all"}
                               {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
                             </button>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-sm text-muted-foreground">
                               {selectedEntryIds.size} / {exportLogs?.length ?? 0}
                             </span>
                           </div>
                         )}
                       </div>
                       {/* Entry list */}
-                      <div className="max-h-48 overflow-y-auto overscroll-contain">
+                      <div
+                        className="px-3 py-2.5 space-y-1"
+                        style={{
+                          maxHeight: "384px",
+                          overflowY: "auto",
+                          overscrollBehavior: "contain",
+                          touchAction: "pan-y",
+                          WebkitOverflowScrolling: "touch",
+                        }}
+                      >
                         {isLoading ? (
                           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
@@ -635,7 +644,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                           </div>
                         )}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
