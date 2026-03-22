@@ -633,16 +633,16 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         {/* Current plan banner */}
         {!isLoading && (() => {
           const bannerColors = {
-            free: { border: "border-zinc-400/40", bg: "rgba(161,161,170,0.10)", iconBg: "bg-zinc-500/25", iconColor: "text-zinc-300" },
-            starter: { border: "border-blue-400/40", bg: "rgba(59,130,246,0.12)", iconBg: "bg-blue-500/25", iconColor: "text-blue-300" },
-            pro: { border: "border-blue-400/40", bg: "rgba(59,130,246,0.12)", iconBg: "bg-blue-500/25", iconColor: "text-blue-300" },
-            business: { border: "border-amber-400/40", bg: "rgba(245,158,11,0.12)", iconBg: "bg-amber-500/25", iconColor: "text-amber-300" },
+            free: { border: "border-zinc-400/50", bg: "rgba(161,161,170,0.15)", bgEnd: "rgba(161,161,170,0.05)", iconBg: "bg-zinc-500/30", iconColor: "text-zinc-200" },
+            starter: { border: "border-blue-400/50", bg: "rgba(59,130,246,0.20)", bgEnd: "rgba(59,130,246,0.06)", iconBg: "bg-blue-500/30", iconColor: "text-blue-200" },
+            pro: { border: "border-blue-400/50", bg: "rgba(59,130,246,0.20)", bgEnd: "rgba(59,130,246,0.06)", iconBg: "bg-blue-500/30", iconColor: "text-blue-200" },
+            business: { border: "border-amber-400/50", bg: "rgba(245,158,11,0.20)", bgEnd: "rgba(245,158,11,0.06)", iconBg: "bg-amber-500/30", iconColor: "text-amber-200" },
           };
           const bc = bannerColors[tier];
           return (
           <motion.div
             className={cn("rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap", bc.border)}
-            style={{ background: `linear-gradient(135deg, ${bc.bg} 0%, transparent 60%)` }}
+            style={{ background: `linear-gradient(135deg, ${bc.bg} 0%, ${bc.bgEnd} 70%, transparent 100%)` }}
             variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
           >
             <div className="flex items-center gap-4">
