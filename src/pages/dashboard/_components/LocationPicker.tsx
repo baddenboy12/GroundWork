@@ -171,9 +171,8 @@ export default function LocationPicker({
 
   const handleDismissMap = () => {
     setShowMap(false);
-    setCoords(null);
-    setAccuracy(null);
-    onCoordsChange?.(null);
+    // Keep coords and accuracy — only hide the map visually.
+    // The picked location is preserved so it saves with the entry.
   };
 
   return (
