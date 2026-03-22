@@ -57,7 +57,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-[720px] w-[95%] p-12 top-[12%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-[850px] w-[98%] p-12 top-[12%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-5xl font-bold">Edit site</DialogTitle>
         </DialogHeader>
@@ -69,7 +69,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="h-[5rem] text-2xl rounded-2xl px-6"
+              className="h-[5rem] text-3xl rounded-2xl px-6"
             />
             <p className="text-xl text-muted-foreground">
               Renaming this site updates the label across all log entries under it.
