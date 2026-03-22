@@ -188,7 +188,7 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          style={{ fontSize: "22px" }}
+          style={{ fontSize: "28px" }}
           className="pl-14 pr-16 h-[5rem] rounded-2xl truncate"
           autoComplete="off"
         />
