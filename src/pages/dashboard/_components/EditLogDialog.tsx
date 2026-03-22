@@ -251,7 +251,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 type="datetime-local"
                 value={loggedAt}
                 onChange={(e) => setLoggedAt(e.target.value)}
-                className="h-16 text-lg"
+                className="h-16 !text-[20px]"
                 required
               />
             </div>
