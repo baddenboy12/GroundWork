@@ -633,10 +633,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         {/* Current plan banner */}
         {!isLoading && (() => {
           const bannerColors = {
-            free: { border: "border-zinc-500/30", bg: "rgba(161,161,170,0.04)", iconBg: "bg-zinc-500/15", iconColor: "text-zinc-400" },
-            starter: { border: "border-blue-500/30", bg: "rgba(59,130,246,0.05)", iconBg: "bg-blue-500/15", iconColor: "text-blue-400" },
-            pro: { border: "border-blue-500/30", bg: "rgba(59,130,246,0.05)", iconBg: "bg-blue-500/15", iconColor: "text-blue-400" },
-            business: { border: "border-amber-500/30", bg: "rgba(245,158,11,0.05)", iconBg: "bg-amber-500/15", iconColor: "text-amber-400" },
+            free: { border: "border-zinc-400/40", bg: "rgba(161,161,170,0.10)", iconBg: "bg-zinc-500/25", iconColor: "text-zinc-300" },
+            starter: { border: "border-blue-400/40", bg: "rgba(59,130,246,0.12)", iconBg: "bg-blue-500/25", iconColor: "text-blue-300" },
+            pro: { border: "border-blue-400/40", bg: "rgba(59,130,246,0.12)", iconBg: "bg-blue-500/25", iconColor: "text-blue-300" },
+            business: { border: "border-amber-400/40", bg: "rgba(245,158,11,0.12)", iconBg: "bg-amber-500/25", iconColor: "text-amber-300" },
           };
           const bc = bannerColors[tier];
           return (
