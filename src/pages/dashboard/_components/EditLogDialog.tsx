@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
@@ -26,7 +26,8 @@ import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import LocationPicker from "./LocationPicker.tsx";
 import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
-import { Lock } from "lucide-react";
+import { Lock, ChevronDown, Search, X, Check } from "lucide-react";
+import { cn } from "@/lib/utils.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -74,6 +75,20 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const [photos, setPhotos] = useState<R2Photo[]>(() => logPhotosToR2(log));
   const [removedKeys, setRemovedKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
+  const [siteSearch, setSiteSearch] = useState("");
+  const siteDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close site dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (siteDropdownRef.current && !siteDropdownRef.current.contains(e.target as Node)) {
+        setSiteDropdownOpen(false);
+      }
+    };
+    if (siteDropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [siteDropdownOpen]);
 
   // Reset state whenever the dialog opens with a (potentially different) log
   useEffect(() => {
@@ -91,6 +106,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
       );
       setPhotos(logPhotosToR2(log));
       setRemovedKeys([]);
+      setSiteDropdownOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, log._id]);
@@ -212,21 +228,61 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
           <div className="space-y-2">
             <Label className="text-xl font-semibold">Site *</Label>
-            <Select
-              value={siteId}
-              onValueChange={(v) => setSiteId(v as Id<"sites">)}
-            >
-              <SelectTrigger className="!h-[3.8rem] !text-[24px]">
-                <SelectValue placeholder="Select a site" />
-              </SelectTrigger>
-              <SelectContent>
-                {(sites ?? []).map((s) => (
-                  <SelectItem key={s._id} value={s._id} className="!text-[20px] py-4">
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative" ref={siteDropdownRef}>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs"
+                onClick={() => { setSiteDropdownOpen(!siteDropdownOpen); setSiteSearch(""); }}
+              >
+                <span className="truncate">
+                  {(sites ?? []).find((s) => s._id === siteId)?.name ?? "Select a site"}
+                </span>
+                <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", siteDropdownOpen && "rotate-180")} />
+              </button>
+              {siteDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
+                  <div className="px-3 py-2.5 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        placeholder="Search sites…"
+                        value={siteSearch}
+                        onChange={(e) => setSiteSearch(e.target.value)}
+                        className="pl-10 pr-10 text-lg h-12 rounded-xl"
+                        autoFocus
+                      />
+                      {siteSearch && (
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSiteSearch("")}>
+                          <X className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="py-1"
+                    style={{ maxHeight: "320px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+                  >
+                    {(sites ?? [])
+                      .filter((s) => !siteSearch || s.name.toLowerCase().includes(siteSearch.toLowerCase()))
+                      .map((s) => (
+                        <button
+                          key={s._id}
+                          type="button"
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 text-left !text-[20px] transition-colors hover:bg-accent",
+                            s._id === siteId && "bg-primary/5"
+                          )}
+                          onClick={() => { setSiteId(s._id); setSiteDropdownOpen(false); }}
+                        >
+                          {s._id === siteId && <Check className="w-5 h-5 text-primary shrink-0" />}
+                          <span className="truncate">{s.name}</span>
+                        </button>
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
