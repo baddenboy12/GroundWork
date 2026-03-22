@@ -275,7 +275,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
       {/* Set / edit name dialog */}
       <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
         <DialogContent
-          className="sm:max-w-md !top-[5%] !translate-y-0 rounded-3xl"
+          className="sm:max-w-md !top-[30%] !translate-y-0 rounded-3xl"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
