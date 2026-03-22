@@ -1142,16 +1142,21 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               const isPendingThis = paypalPending === t;
               const isFree = t === "free";
 
+              const cardTint = {
+                free: { border: "border-zinc-400/40", gradient: "linear-gradient(160deg, rgba(161,161,170,0.15) 0%, transparent 50%)" },
+                pro: { border: "border-blue-400/40", gradient: "linear-gradient(160deg, rgba(59,130,246,0.18) 0%, transparent 50%)" },
+                business: { border: "border-amber-400/40", gradient: "linear-gradient(160deg, rgba(245,158,11,0.18) 0%, transparent 50%)" },
+              }[t === "starter" ? "pro" : t]!;
+
               return (
                 <div
                   key={t}
                   className={cn(
-                    "relative rounded-2xl border p-5 flex flex-col gap-4 transition-colors",
-                    cfg.highlight
-                      ? "border-primary/60 bg-card"
-                      : "border-border bg-card",
+                    "relative rounded-2xl border p-5 flex flex-col gap-4 transition-colors bg-card",
+                    cardTint.border,
                     isCurrent && "ring-2 ring-primary/40"
                   )}
+                  style={{ background: cardTint.gradient }}
                 >
                   {cfg.highlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
