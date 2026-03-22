@@ -570,16 +570,16 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                           <div className="flex items-center justify-between px-0.5">
                             <button
                               type="button"
-                              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              className="flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors"
                               onClick={toggleAllFilteredEntries}
                             >
                               {allFilteredSelected
-                                ? <CheckSquare className="w-4 h-4 text-primary" />
-                                : <Square className="w-4 h-4" />}
+                                ? <CheckSquare className="w-5 h-5 text-primary" />
+                                : <Square className="w-5 h-5" />}
                               {allFilteredSelected ? "Deselect all" : "Select all"}
                               {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
                             </button>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-base text-muted-foreground">
                               {selectedEntryIds.size} / {exportLogs?.length ?? 0}
                             </span>
                           </div>
@@ -613,26 +613,26 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                                   key={log._id}
                                   type="button"
                                   className={cn(
-                                    "w-full flex items-start gap-2.5 px-2 py-2 text-left rounded-md transition-colors hover:bg-accent",
+                                    "w-full flex items-start gap-3 px-3 py-3 text-left rounded-lg transition-colors hover:bg-accent",
                                     isSelected && "bg-primary/5"
                                   )}
                                   onClick={() => toggleEntry(log._id)}
                                 >
                                   {isSelected
-                                    ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                                    : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-                                  <div className="min-w-0 flex-1 space-y-0.5">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
+                                    ? <CheckSquare className="w-5 h-5 text-primary shrink-0 mt-1" />
+                                    : <Square className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />}
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-lg font-medium text-foreground truncate">{log.title}</span>
                                       <span className={cn(
-                                        "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                                        "text-xs px-2 py-0.5 rounded-full font-medium shrink-0",
                                         CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
                                       )}>
                                         {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                      <MapPin className="w-3 h-3 shrink-0" />
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <MapPin className="w-4 h-4 shrink-0" />
                                       <span className="truncate">{log.siteName}</span>
                                       <span className="shrink-0">·</span>
                                       <span className="shrink-0">{format(new Date(log.loggedAt), "MMM d, yyyy")}</span>
