@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils.ts";
 
 const SLOT_POSITIONS = [
   { x: 0, z: 0, scale: 1, opacity: 1, zIndex: 3 },       // front
-  { x: 240, z: -200, scale: 0.85, opacity: 0.6, zIndex: 1 }, // right
-  { x: -240, z: -200, scale: 0.85, opacity: 0.6, zIndex: 1 }, // left
+  { x: 190, z: -200, scale: 0.85, opacity: 0.6, zIndex: 1 }, // right
+  { x: -190, z: -200, scale: 0.85, opacity: 0.6, zIndex: 1 }, // left
 ] as const;
 
 type Props = {
