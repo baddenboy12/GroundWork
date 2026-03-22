@@ -283,7 +283,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", sitesPopoverOpen || categoryOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", sitesPopoverOpen || categoryOpen || themePopoverOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -364,29 +364,30 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               {/* Theme — only for Full Report */}
               {format_ === "full-pdf" && (
                 <>
-                  <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
-                      >
-                        <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
-                        <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
-                        <ThemeSwatch theme={selectedTheme} />
-                        <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
-                        <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[520px] p-4 overflow-hidden" align="start" sideOffset={4}>
-                      <p className="text-sm text-muted-foreground mb-3 font-medium uppercase tracking-wide">
-                        Choose a theme — {selectedTheme.name}
-                      </p>
-                      <ThemePicker
-                        value={selectedTheme.id}
-                        onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
+                      onClick={() => setThemePopoverOpen(!themePopoverOpen)}
+                    >
+                      <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
+                      <ThemeSwatch theme={selectedTheme} />
+                      <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
+                      <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", themePopoverOpen && "rotate-180")} />
+                    </button>
+                    {themePopoverOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg p-4">
+                        <p className="text-sm text-muted-foreground mb-3 font-medium uppercase tracking-wide">
+                          Choose a theme — {selectedTheme.name}
+                        </p>
+                        <ThemePicker
+                          value={selectedTheme.id}
+                          onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Report title */}
                   <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
