@@ -52,7 +52,7 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="!max-w-none w-[90%] p-10 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh] rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button>svg]:w-9 [&>button>svg]:h-9 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="!max-w-none w-[90%] p-10 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh] rounded-3xl [&>button]:w-20 [&>button]:h-20 [&>button>svg]:w-12 [&>button>svg]:h-12 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-5xl font-bold">Create new site</DialogTitle>
         </DialogHeader>
