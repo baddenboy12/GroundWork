@@ -377,8 +377,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[420px] p-3 overflow-hidden" align="start" sideOffset={4}>
-                      <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
+                    <PopoverContent className="w-[520px] p-4 overflow-hidden" align="start" sideOffset={4}>
+                      <p className="text-sm text-muted-foreground mb-3 font-medium uppercase tracking-wide">
                         Choose a theme — {selectedTheme.name}
                       </p>
                       <ThemePicker

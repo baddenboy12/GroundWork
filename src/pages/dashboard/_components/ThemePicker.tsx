@@ -13,7 +13,7 @@ function rgb(r: number, g: number, b: number): string {
 
 export default function ThemePicker({ value, onChange }: Props) {
   return (
-    <div className="grid grid-cols-5 gap-2 overflow-hidden">
+    <div className="grid grid-cols-5 gap-3 overflow-hidden">
       {THEMES.map((theme) => {
         const isSelected = theme.id === value;
         const [cr, cg, cb] = theme.coverBg;
@@ -27,7 +27,7 @@ export default function ThemePicker({ value, onChange }: Props) {
             title={theme.name}
             onClick={() => onChange(theme)}
             className={cn(
-              "relative flex flex-col rounded-lg overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "relative flex flex-col rounded-xl overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isSelected
                 ? "border-primary shadow-md scale-105"
                 : "border-border hover:border-muted-foreground/50 hover:scale-[1.02]"
@@ -35,7 +35,7 @@ export default function ThemePicker({ value, onChange }: Props) {
           >
             {/* Mini cover preview */}
             <div
-              className="h-6 w-full flex-shrink-0 relative"
+              className="h-10 w-full flex-shrink-0 relative"
               style={{ background: rgb(cr, cg, cb) }}
             >
               {/* Accent bar at top */}
@@ -72,7 +72,7 @@ export default function ThemePicker({ value, onChange }: Props) {
 
             {/* Mini entry preview */}
             <div
-              className="flex-1 w-full px-[4px] py-[3px] flex flex-col gap-[2px]"
+              className="flex-1 w-full px-[6px] py-[5px] flex flex-col gap-[3px]"
               style={{ background: rgb(er, eg, eb) }}
             >
               {/* Left bar accent */}
@@ -96,7 +96,7 @@ export default function ThemePicker({ value, onChange }: Props) {
 
             {/* Theme name */}
             <div
-              className="text-center text-[9px] font-medium py-[3px] w-full truncate px-1"
+              className="text-center text-xs font-medium py-1.5 w-full truncate px-1.5"
               style={{
                 background: isSelected ? `rgb(${cr},${cg},${cb})` : "transparent",
                 color: isSelected ? `rgb(${ar},${ag},${ab})` : "currentColor",
@@ -107,8 +107,8 @@ export default function ThemePicker({ value, onChange }: Props) {
 
             {/* Selected checkmark */}
             {isSelected && (
-              <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                <CheckIcon className="w-2.5 h-2.5 text-primary-foreground" />
+              <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                <CheckIcon className="w-3 h-3 text-primary-foreground" />
               </div>
             )}
           </button>
