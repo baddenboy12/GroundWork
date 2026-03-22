@@ -19,13 +19,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -135,6 +128,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   const [themePopoverOpen, setThemePopoverOpen] = useState(false);
   const [sitesPopoverOpen, setSitesPopoverOpen] = useState(false);
   const [entriesPopoverOpen, setEntriesPopoverOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   // When sites load, default to all selected
   useEffect(() => {
@@ -485,44 +479,50 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Category + Entries count */}
+              {/* Category + Entries count — collapsible like Sites */}
               {selectionMode === "filter" && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
+                    onClick={() => setCategoryOpen(!categoryOpen)}
+                  >
                     <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
                     <span className="text-base text-muted-foreground shrink-0 text-left w-20">Category</span>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="border-0 shadow-none h-auto p-0 flex-1 text-lg font-medium focus:ring-0 [&>svg]:hidden">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                  </div>
-                  <div className={cn(
-                    "rounded-lg border px-4 py-3 flex items-center justify-between",
-                    isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
-                  )}>
-                    {isLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Loading…
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-lg text-muted-foreground">
-                          Entries
-                        </span>
-                        <span className={cn("text-2xl font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
-                          {count}
-                        </span>
-                      </>
-                    )}
-                  </div>
+                    <span className="flex-1 text-left font-medium text-foreground truncate">
+                      {CATEGORIES.find((c) => c.value === category)?.label ?? "All categories"}
+                    </span>
+                    <span className={cn(
+                      "text-lg font-bold shrink-0 ml-2",
+                      isLoading ? "text-muted-foreground" : count === 0 ? "text-muted-foreground" : "text-primary"
+                    )}>
+                      {isLoading ? "…" : count}
+                    </span>
+                    <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
+                  </button>
+                  {categoryOpen && (
+                    <div className="border-t border-border px-2 py-2 space-y-0.5">
+                      {CATEGORIES.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md hover:bg-accent transition-colors text-left",
+                            category === c.value && "bg-accent"
+                          )}
+                          onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
+                        >
+                          {c.value !== "all" && (
+                            <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
+                          )}
+                          <span className="text-base text-foreground">{c.label}</span>
+                          {category === c.value && (
+                            <CheckSquare className="w-4 h-4 text-primary shrink-0 ml-auto" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
