@@ -295,7 +295,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
           >
-            <DialogTitle className="text-3xl font-bold" style={{ marginTop: "-1.2rem" }}>Export logs</DialogTitle>
+            <DialogTitle className="text-3xl font-bold relative" style={{ top: "-1.2rem" }}>Export logs</DialogTitle>
           </motion.div>
         </DialogHeader>
 
