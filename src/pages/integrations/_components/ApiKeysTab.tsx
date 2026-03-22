@@ -119,11 +119,7 @@ export default function ApiKeysTab() {
             <EmptyTitle className="text-2xl">No API keys yet</EmptyTitle>
             <EmptyDescription className="text-lg">Generate a key to start using the REST API</EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button className="gap-2 text-lg px-5 py-3 h-auto rounded-xl active:scale-95 transition-transform" onClick={() => setCreateOpen(true)}>
-              <Plus className="w-5 h-5" /> Generate key
-            </Button>
-          </EmptyContent>
+          <EmptyContent />
         </Empty>
       ) : (
         <div className="space-y-3">
