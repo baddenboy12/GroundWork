@@ -634,14 +634,14 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap"
             variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Crown className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Current plan</p>
+                <p className="text-lg text-muted-foreground">Current plan</p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-bold text-foreground text-lg">
+                  <p className="font-bold text-foreground text-2xl">
                     {tier === "free" ? "No active subscription" : TIER_CONFIG[tier].name}
                   </p>
                   {user?.adminGrantedTier ? (
@@ -657,7 +657,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground text-xs"
+                className="text-muted-foreground text-base"
                 onClick={() => setCancelDialogOpen(true)}
               >
                 Cancel subscription
@@ -837,28 +837,28 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             </div>
           ) : (
             /* No key — show input form */
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+              <p className="text-lg text-muted-foreground">
                 Enter a license key to join a team workspace. Team sites are separate
                 from your personal sites. The team tier will be applied to your account.
               </p>
-              <form onSubmit={handleApplyKey} className="flex gap-2">
+              <form onSubmit={handleApplyKey} className="flex gap-3">
                 <Input
                   placeholder="GW-XXXX-XXXX-XXXX"
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value.toUpperCase())}
-                  className="font-mono flex-1"
+                  className="font-mono flex-1 h-14 !text-[20px] rounded-xl"
                   maxLength={17}
                 />
-                <Button type="submit" disabled={keyApplyPending || !keyInput.trim()}>
+                <Button type="submit" className="text-lg px-6 h-14 rounded-xl" disabled={keyApplyPending || !keyInput.trim()}>
                   {keyApplyPending ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     "Apply"
                   )}
                 </Button>
               </form>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 Keys are provided by your team administrator or subscription owner.
               </p>
             </div>
