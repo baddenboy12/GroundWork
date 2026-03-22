@@ -231,7 +231,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="relative" ref={siteDropdownRef}>
               <button
                 type="button"
-                className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs"
+                className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs active:scale-95 transition-transform"
                 onClick={() => { setSiteDropdownOpen(!siteDropdownOpen); setSiteSearch(""); }}
               >
                 <span className="truncate">
