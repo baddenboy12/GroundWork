@@ -52,23 +52,24 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md top-[15%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="!max-w-none w-[90%] p-10 top-[8%] translate-y-0 overflow-y-auto max-h-[90vh]" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Create new site</DialogTitle>
+          <DialogTitle className="text-5xl font-bold">Create new site</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="site-name">Site name *</Label>
+        <form onSubmit={handleSubmit} className="space-y-10 pt-6">
+          <div className="space-y-4">
+            <Label htmlFor="site-name" className="text-3xl">Site name *</Label>
             <Input
               id="site-name"
               placeholder="Tower Site Alpha"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              className="h-[5rem] rounded-2xl px-6 !text-[22px]"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="site-location">Location</Label>
+          <div className="space-y-4">
+            <Label htmlFor="site-location" className="text-3xl">Location</Label>
             <LocationPicker
               id="site-location"
               value={location}
@@ -77,11 +78,11 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
               placeholder="123 Main St, City"
             />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={onClose}>
+          <DialogFooter className="gap-5 pt-4">
+            <Button type="button" variant="secondary" onClick={onClose} className="h-20 text-2xl px-10 rounded-2xl">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()}>
+            <Button type="submit" disabled={loading || !name.trim()} className="h-20 text-2xl px-10 rounded-2xl">
               {loading ? "Creating..." : "Create site"}
             </Button>
           </DialogFooter>
