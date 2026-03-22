@@ -1152,7 +1152,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 <div
                   key={t}
                   className={cn(
-                    "relative rounded-2xl border p-6 flex flex-col gap-4 transition-colors",
+                    "relative rounded-2xl border p-4 flex flex-col gap-3 transition-colors",
                     cardTint.border,
                     isCurrent && "ring-2 ring-primary/40"
                   )}
