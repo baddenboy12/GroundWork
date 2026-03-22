@@ -484,34 +484,34 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 <div className="rounded-lg border border-border bg-card overflow-hidden">
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
+                    className="w-full flex items-center gap-3 px-5 py-4 text-xl hover:bg-accent transition-colors"
                     onClick={() => setCategoryOpen(!categoryOpen)}
                   >
-                    <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-base text-muted-foreground shrink-0 text-left w-20">Category</span>
-                    <span className="flex-1 text-left font-medium text-foreground truncate">
+                    <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
+                    <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate text-xl">
                       {CATEGORIES.find((c) => c.value === category)?.label ?? "All categories"}
                     </span>
-                    <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
+                    <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
                   </button>
                   {categoryOpen && (
-                    <div className="border-t border-border px-2 py-2 space-y-0.5">
+                    <div className="border-t border-border px-3 py-3 space-y-1">
                       {CATEGORIES.map((c) => (
                         <button
                           key={c.value}
                           type="button"
                           className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md hover:bg-accent transition-colors text-left",
+                            "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
                             category === c.value && "bg-accent"
                           )}
                           onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
                         >
                           {c.value !== "all" && (
-                            <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
+                            <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
                           )}
-                          <span className="text-base text-foreground">{c.label}</span>
+                          <span className="text-lg text-foreground">{c.label}</span>
                           {category === c.value && (
-                            <CheckSquare className="w-4 h-4 text-primary shrink-0 ml-auto" />
+                            <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
                           )}
                         </button>
                       ))}
