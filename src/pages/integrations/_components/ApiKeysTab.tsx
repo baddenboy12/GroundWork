@@ -97,13 +97,13 @@ export default function ApiKeysTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-foreground">API Keys</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h2 className="font-semibold text-foreground text-2xl">API Keys</h2>
+          <p className="text-base text-muted-foreground mt-1">
             Use keys to authenticate REST API requests from external systems.
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-4 h-4" /> Generate key
+        <Button className="gap-2 text-lg px-5 py-3 h-auto rounded-xl active:scale-95 transition-transform" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-5 h-5" /> Generate key
         </Button>
       </div>
 
@@ -115,13 +115,13 @@ export default function ApiKeysTab() {
       ) : keys.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><Key /></EmptyMedia>
-            <EmptyTitle>No API keys yet</EmptyTitle>
-            <EmptyDescription>Generate a key to start using the REST API</EmptyDescription>
+            <EmptyMedia variant="icon"><Key className="w-10 h-10" /></EmptyMedia>
+            <EmptyTitle className="text-2xl">No API keys yet</EmptyTitle>
+            <EmptyDescription className="text-lg">Generate a key to start using the REST API</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="w-4 h-4 mr-1.5" /> Generate key
+            <Button className="gap-2 text-lg px-5 py-3 h-auto rounded-xl active:scale-95 transition-transform" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-5 h-5" /> Generate key
             </Button>
           </EmptyContent>
         </Empty>
@@ -130,14 +130,14 @@ export default function ApiKeysTab() {
           {keys.map((k) => (
             <div
               key={k._id}
-              className="flex items-center gap-4 border border-border rounded-xl px-4 py-3 bg-card"
+              className="flex items-center gap-4 border border-border rounded-2xl px-5 py-4 bg-card"
             >
-              <Key className="w-4 h-4 text-primary shrink-0" />
+              <Key className="w-6 h-6 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{k.name}</p>
-                <p className="text-xs text-muted-foreground font-mono mt-0.5">{k.keyPrefix}</p>
+                <p className="text-lg font-medium text-foreground">{k.name}</p>
+                <p className="text-sm text-muted-foreground font-mono mt-0.5">{k.keyPrefix}</p>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
                 <span>Created {format(new Date(k._creationTime), "MMM d, yyyy")}</span>
                 {k.lastUsedAt && (
                   <span className="hidden sm:inline">
@@ -148,7 +148,7 @@ export default function ApiKeysTab() {
               <Badge
                 variant="secondary"
                 className={cn(
-                  "text-[10px] shrink-0",
+                  "text-sm shrink-0 px-3 py-1",
                   k.isActive
                     ? "bg-green-500/15 text-green-400 border-green-500/30"
                     : "bg-muted text-muted-foreground"
@@ -156,26 +156,26 @@ export default function ApiKeysTab() {
               >
                 {k.isActive ? "Active" : "Revoked"}
               </Badge>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 {k.isActive && (
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-amber-500"
+                    className="h-12 w-12 rounded-xl text-muted-foreground hover:text-amber-500 active:scale-90 transition-all"
                     title="Revoke"
                     onClick={() => handleRevoke(k._id)}
                   >
-                    <ShieldOff className="w-3.5 h-3.5" />
+                    <ShieldOff className="w-5 h-5" />
                   </Button>
                 )}
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  className="h-12 w-12 rounded-xl text-muted-foreground hover:text-destructive active:scale-90 transition-all"
                   title="Delete"
                   onClick={() => setDeleteTargetId(k._id)}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-5 h-5" />
                 </Button>
               </div>
             </div>
@@ -185,24 +185,25 @@ export default function ApiKeysTab() {
 
       {/* Create key dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-3xl !top-[5%] !translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Generate API key</DialogTitle>
+            <DialogTitle className="text-2xl">Generate API key</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label>Key name</Label>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-lg font-semibold">Key name</Label>
               <Input
                 placeholder="e.g. Production integration"
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                className="h-14 !text-[20px] rounded-xl"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={isCreating}>
+            <Button variant="secondary" className="text-lg px-5 py-3 h-auto rounded-xl" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button className="text-lg px-5 py-3 h-auto rounded-xl" onClick={handleCreate} disabled={isCreating}>
               {isCreating ? "Generating…" : "Generate"}
             </Button>
           </DialogFooter>
@@ -211,24 +212,24 @@ export default function ApiKeysTab() {
 
       {/* Show the new key — one-time display */}
       <Dialog open={!!newKey} onOpenChange={(open) => !open && setNewKey(null)}>
-        <DialogContent>
+        <DialogContent className="rounded-3xl !top-[5%] !translate-y-0">
           <DialogHeader>
-            <DialogTitle>Your new API key</DialogTitle>
+            <DialogTitle className="text-2xl">Your new API key</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="rounded-lg bg-muted/60 border border-border p-3">
-              <p className="font-mono text-sm break-all text-foreground select-all">{newKey}</p>
+            <div className="rounded-xl bg-muted/60 border border-border p-4">
+              <p className="font-mono text-base break-all text-foreground select-all">{newKey}</p>
             </div>
-            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-xs text-amber-600 dark:text-amber-400">
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 text-base text-amber-600 dark:text-amber-400">
               Copy this key now — it will never be shown again.
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCopyKey} className="gap-1.5">
-              {keyCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            <Button onClick={handleCopyKey} className="gap-2 text-lg px-5 py-3 h-auto rounded-xl active:scale-95 transition-transform">
+              {keyCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
               {keyCopied ? "Copied!" : "Copy key"}
             </Button>
-            <Button variant="secondary" onClick={() => setNewKey(null)}>
+            <Button variant="secondary" className="text-lg px-5 py-3 h-auto rounded-xl" onClick={() => setNewKey(null)}>
               {"I've saved my key"}
             </Button>
           </DialogFooter>

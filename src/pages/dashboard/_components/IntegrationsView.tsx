@@ -94,17 +94,17 @@ export default function IntegrationsView({ onBack }: Props) {
       >
         <IntegrationsGate>
           <Tabs defaultValue="api-keys">
-            <TabsList className="mb-6">
-              <TabsTrigger value="api-keys" className="gap-2">
-                <Key className="w-3.5 h-3.5" />
+            <TabsList className="mb-6 h-14 p-1.5 rounded-2xl">
+              <TabsTrigger value="api-keys" className="gap-2 text-lg px-5 py-3 rounded-xl">
+                <Key className="w-5 h-5" />
                 API Keys
               </TabsTrigger>
-              <TabsTrigger value="webhooks" className="gap-2">
-                <Webhook className="w-3.5 h-3.5" />
+              <TabsTrigger value="webhooks" className="gap-2 text-lg px-5 py-3 rounded-xl">
+                <Webhook className="w-5 h-5" />
                 Webhooks
               </TabsTrigger>
-              <TabsTrigger value="docs" className="gap-2">
-                <BookOpen className="w-3.5 h-3.5" />
+              <TabsTrigger value="docs" className="gap-2 text-lg px-5 py-3 rounded-xl">
+                <BookOpen className="w-5 h-5" />
                 API Docs
               </TabsTrigger>
             </TabsList>
