@@ -150,7 +150,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
         <LayoutGroup>
           <div
             ref={containerRef}
-            className="grid grid-cols-3 gap-2 select-none"
+            className="grid grid-cols-4 gap-2 select-none"
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
