@@ -157,9 +157,9 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                 data-reorder-index={i}
                 onPointerDown={handlePointerDown(i)}
                 className={cn(
-                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab",
-                  dragIndex === i && "ring-2 ring-primary/50 shadow-lg scale-105 z-10",
-                  dragIndex !== null && dragIndex !== i && "opacity-70"
+                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab transition-all duration-150",
+                  dragIndex === i && "ring-2 ring-primary/50 shadow-lg scale-105 z-10 opacity-90",
+                  dragIndex !== null && dragIndex !== i && "ring-1 ring-primary/30 opacity-80"
                 )}
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               >

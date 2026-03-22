@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   const copy = [...arr];
@@ -14,6 +14,24 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
   const startPos = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const currentIndex = useRef<number | null>(null);
+  const pendingPointerId = useRef<number | null>(null);
+
+  // Block ALL touch scrolling on the container while a long-press timer is pending or dragging
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const preventScroll = (e: TouchEvent) => {
+      // If we're actively dragging OR waiting for long-press threshold, block scroll
+      if (isDragging.current || timerRef.current) {
+        e.preventDefault();
+      }
+    };
+
+    // Must be non-passive to allow preventDefault
+    container.addEventListener("touchmove", preventScroll, { passive: false });
+    return () => container.removeEventListener("touchmove", preventScroll);
+  }, []);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -22,7 +40,12 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
     }
     isDragging.current = false;
     currentIndex.current = null;
+    pendingPointerId.current = null;
     setDragIndex(null);
+    // Re-enable touch-action
+    if (containerRef.current) {
+      containerRef.current.style.touchAction = "";
+    }
   }, []);
 
   const getIndexAtPoint = useCallback((x: number, y: number): number | null => {
@@ -36,23 +59,24 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
 
   const handlePointerDown = useCallback(
     (index: number) => (e: React.PointerEvent) => {
-      // Ignore right-clicks and non-primary buttons
       if (e.button !== 0) return;
-      // Don't start drag from remove button
       if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
 
       startPos.current = { x: e.clientX, y: e.clientY };
       currentIndex.current = index;
+      pendingPointerId.current = e.pointerId;
+
+      // Immediately set touch-action none to prevent scroll from starting
+      if (containerRef.current) {
+        containerRef.current.style.touchAction = "none";
+      }
 
       const threshold = e.pointerType === "touch" ? 300 : 150;
 
       timerRef.current = setTimeout(() => {
         isDragging.current = true;
         setDragIndex(index);
-        // Prevent scrolling while dragging
-        if (containerRef.current) {
-          containerRef.current.style.touchAction = "none";
-        }
+        timerRef.current = null;
       }, threshold);
 
       const target = e.currentTarget as HTMLElement;
@@ -70,6 +94,10 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           clearTimeout(timerRef.current);
           timerRef.current = null;
+          // Re-enable scrolling since user is scrolling, not dragging
+          if (containerRef.current) {
+            containerRef.current.style.touchAction = "";
+          }
           return;
         }
       }
@@ -77,21 +105,30 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
       if (!isDragging.current || currentIndex.current === null) return;
 
       const overIdx = getIndexAtPoint(e.clientX, e.clientY);
+
       if (overIdx !== null && overIdx !== currentIndex.current) {
+        // Swap with another photo
         const from = currentIndex.current;
         const newItems = arrayMove(items, from, overIdx);
         currentIndex.current = overIdx;
         setDragIndex(overIdx);
         onChange(newItems);
+      } else if (overIdx === null && containerRef.current) {
+        // Pointer is in empty grid space — move to end of list
+        const lastIndex = items.length - 1;
+        if (currentIndex.current !== lastIndex) {
+          const from = currentIndex.current;
+          const newItems = arrayMove(items, from, lastIndex);
+          currentIndex.current = lastIndex;
+          setDragIndex(lastIndex);
+          onChange(newItems);
+        }
       }
     },
     [items, onChange, getIndexAtPoint]
   );
 
   const handlePointerUp = useCallback(() => {
-    if (containerRef.current) {
-      containerRef.current.style.touchAction = "";
-    }
     cleanup();
   }, [cleanup]);
 
