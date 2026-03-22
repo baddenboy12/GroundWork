@@ -295,11 +295,11 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
           >
-            <DialogTitle className="text-3xl font-bold -mt-3">Export logs</DialogTitle>
+            <DialogTitle className="text-3xl font-bold">Export logs</DialogTitle>
           </motion.div>
         </DialogHeader>
 
-        <div className="space-y-5 py-1">
+        <div className="space-y-5 py-1 mt-4">
           {/* Selection mode toggle */}
           <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-muted/40 p-1">
             <button
