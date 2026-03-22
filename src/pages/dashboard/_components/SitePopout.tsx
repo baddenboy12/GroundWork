@@ -105,14 +105,16 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
     if (!isOpen) menuClosedAt.current = Date.now();
   };
 
-  // Close when clicking outside the whole wrapper (skip while dropdown menu is open)
+  // Close when clicking outside the whole wrapper (skip while dropdown menu or edit dialog is open)
   useEffect(() => {
-    if (!open || menuOpenSiteId) return;
+    if (!open || menuOpenSiteId || editSite) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       // Ignore clicks that happen right after the dropdown menu closed
       if (Date.now() - menuClosedAt.current < 200) return;
       const target = e.target as HTMLElement;
       if (wrapperRef.current?.contains(target)) return;
+      // Ignore clicks on dialog overlays/content (Radix portals)
+      if (target.closest("[role='dialog']") || target.closest("[data-radix-portal]") || target.dataset.state === "open") return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -121,7 +123,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
     };
-  }, [open, menuOpenSiteId]);
+  }, [open, menuOpenSiteId, editSite]);
 
   // Scroll to selected site when panel opens
   useEffect(() => {
