@@ -146,7 +146,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
 
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-start justify-center pt-[12%] p-2 sm:p-4"
+        className="fixed inset-0 z-50 flex items-start justify-center pt-[20%] p-2 sm:p-4"
         onClick={() => {
           if (menuOpen) {
             handleMenuOpenChange(false);
