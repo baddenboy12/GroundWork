@@ -248,7 +248,7 @@ export default function LocationPicker({
           <MapContainer
             center={[coords.lat, coords.lng]}
             zoom={17}
-            className="h-72 w-full"
+            className="h-96 w-full"
             zoomControl={true}
             scrollWheelZoom={false}
           >
