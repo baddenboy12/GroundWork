@@ -134,6 +134,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   // Refs for portal-based floating dropdowns
   const sitesBtnRef = useRef<HTMLButtonElement>(null);
   const categoryBtnRef = useRef<HTMLButtonElement>(null);
+  const sitesDropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [sitesRect, setSitesRect] = useState<DOMRect | null>(null);
   const [categoryRect, setCategoryRect] = useState<DOMRect | null>(null);
 
@@ -150,6 +152,36 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
       return !prev;
     });
   }, []);
+
+  // Close dropdowns on outside click/tap (no backdrop needed)
+  useEffect(() => {
+    if (!sitesPopoverOpen && !categoryOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (sitesPopoverOpen) {
+        if (
+          !sitesDropdownRef.current?.contains(target) &&
+          !sitesBtnRef.current?.contains(target)
+        ) {
+          setSitesPopoverOpen(false);
+        }
+      }
+      if (categoryOpen) {
+        if (
+          !categoryDropdownRef.current?.contains(target) &&
+          !categoryBtnRef.current?.contains(target)
+        ) {
+          setCategoryOpen(false);
+        }
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [sitesPopoverOpen, categoryOpen]);
 
   // When sites load, default to all selected
   useEffect(() => {
@@ -440,15 +472,10 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
               </button>
               {sitesPopoverOpen && sitesRect && createPortal(
-                <>
                   <div
-                    className="fixed inset-0 z-[99]"
-                    onClick={() => setSitesPopoverOpen(false)}
-                  />
-                  <div
+                    ref={sitesDropdownRef}
                     className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg"
                     style={{ top: sitesRect.bottom + 4, left: sitesRect.left, width: sitesRect.width }}
-                    onTouchMove={(e) => e.stopPropagation()}
                   >
                     <div className="px-3 py-2.5 border-b border-border">
                       <button
@@ -496,8 +523,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         ))
                       )}
                     </div>
-                  </div>
-                </>,
+                  </div>,
                 document.body
               )}
 
@@ -534,9 +560,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
                   </button>
                   {categoryOpen && categoryRect && createPortal(
-                    <>
-                      <div className="fixed inset-0 z-[99]" onClick={() => setCategoryOpen(false)} />
                       <div
+                        ref={categoryDropdownRef}
                         className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg p-3"
                         style={{ top: categoryRect.bottom + 4, left: categoryRect.left, width: categoryRect.width }}
                       >
@@ -561,8 +586,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                             </button>
                           ))}
                         </div>
-                      </div>
-                    </>,
+                      </div>,
                     document.body
                   )}
                 </>
