@@ -253,7 +253,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -4 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
-                    className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-3xl border border-border bg-popover shadow-lg overflow-hidden origin-top-left"
+                    className="absolute left-0 top-full mt-1 z-50 w-[340px] rounded-3xl border border-border bg-popover shadow-lg overflow-hidden origin-top-left"
                   >
                     <div
                       className="py-1"
