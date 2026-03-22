@@ -305,7 +305,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
               variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
             >
-              <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed" style={{ fontFamily: "'MS Reference Sans Serif', sans-serif", fontWeight: "bold" }}>
+              <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed" style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}>
                 {log.content}
               </p>
             </motion.div>
