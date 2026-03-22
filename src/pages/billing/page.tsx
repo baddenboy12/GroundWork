@@ -1143,9 +1143,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               const isFree = t === "free";
 
               const cardTint = {
-                free: { border: "border-zinc-400/40", gradient: "linear-gradient(160deg, hsl(240 5% 18%) 0%, hsl(240 4% 14%) 50%, hsl(30 6% 12%) 100%)" },
-                pro: { border: "border-blue-400/40", gradient: "linear-gradient(160deg, hsl(220 20% 18%) 0%, hsl(220 10% 14%) 50%, hsl(30 6% 12%) 100%)" },
-                business: { border: "border-amber-400/40", gradient: "linear-gradient(160deg, hsl(35 20% 18%) 0%, hsl(35 12% 14%) 50%, hsl(30 6% 12%) 100%)" },
+                free: { border: "border-zinc-400/40", gradient: "linear-gradient(160deg, hsl(240 5% 12%) 0%, hsl(240 3% 10%) 50%, hsl(30 6% 9%) 100%)" },
+                pro: { border: "border-blue-400/40", gradient: "linear-gradient(160deg, hsl(220 18% 13%) 0%, hsl(220 8% 10%) 50%, hsl(30 6% 9%) 100%)" },
+                business: { border: "border-amber-400/40", gradient: "linear-gradient(160deg, hsl(35 18% 13%) 0%, hsl(35 10% 10%) 50%, hsl(30 6% 9%) 100%)" },
               }[t === "starter" ? "pro" : t]!;
 
               return (
