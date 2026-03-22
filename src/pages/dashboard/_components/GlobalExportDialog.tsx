@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -283,7 +283,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="!max-w-none w-[90%] max-h-[90vh] overflow-y-auto top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", sitesPopoverOpen || categoryOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -404,24 +404,24 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </>
               )}
 
-              {/* Sites — inline collapsible */}
-              <div className={cn(
-                "rounded-2xl border bg-card overflow-hidden",
-                !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
-              )}>
-              <button
-                type="button"
-                className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
-                onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
-              >
-                <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
-                <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
-                <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
-                <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
-              </button>
-              {sitesPopoverOpen && (
-                  <>
-                    <div className="px-3 py-2.5 border-t border-border">
+              {/* Sites — floating absolute dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full flex items-center gap-2.5 rounded-2xl border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors",
+                    !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
+                  )}
+                  onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
+                >
+                  <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
+                  <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
+                  <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
+                </button>
+                {sitesPopoverOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
+                    <div className="px-3 py-2.5 border-b border-border">
                       <button
                         type="button"
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors text-left"
@@ -467,8 +467,8 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         ))
                       )}
                     </div>
-                  </>
-              )}
+                  </div>
+                )}
               </div>
 
               {/* Date range */}
@@ -487,12 +487,12 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Category — inline collapsible */}
+              {/* Category — floating absolute dropdown */}
               {selectionMode === "filter" && (
-                <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="relative">
                   <button
                     type="button"
-                    className="w-full flex items-center gap-3 px-5 py-4 text-xl hover:bg-accent transition-colors"
+                    className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
                     onClick={() => setCategoryOpen(!categoryOpen)}
                   >
                     <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
@@ -503,26 +503,28 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
                   </button>
                   {categoryOpen && (
-                    <div className="border-t border-border p-3 space-y-1">
-                      {CATEGORIES.map((c) => (
-                        <button
-                          key={c.value}
-                          type="button"
-                          className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
-                            category === c.value && "bg-accent"
-                          )}
-                          onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
-                        >
-                          {c.value !== "all" && (
-                            <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
-                          )}
-                          <span className="text-lg text-foreground">{c.label}</span>
-                          {category === c.value && (
-                            <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
-                          )}
-                        </button>
-                      ))}
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg p-3">
+                      <div className="space-y-1">
+                        {CATEGORIES.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
+                              category === c.value && "bg-accent"
+                            )}
+                            onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
+                          >
+                            {c.value !== "all" && (
+                              <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
+                            )}
+                            <span className="text-lg text-foreground">{c.label}</span>
+                            {category === c.value && (
+                              <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
