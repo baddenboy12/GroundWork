@@ -243,7 +243,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 <div className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
                   <div
                     className="py-1"
-                    style={{ maxHeight: "320px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+                    style={{ maxHeight: "420px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
                   >
                     {(sites ?? [])
                       .filter((s) => !siteSearch || s.name.toLowerCase().includes(siteSearch.toLowerCase()))
