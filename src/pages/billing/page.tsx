@@ -631,14 +631,23 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         }}
       >
         {/* Current plan banner */}
-        {!isLoading && (
+        {!isLoading && (() => {
+          const bannerColors = {
+            free: { border: "border-zinc-500/30", bg: "rgba(161,161,170,0.04)", iconBg: "bg-zinc-500/15", iconColor: "text-zinc-400" },
+            starter: { border: "border-blue-500/30", bg: "rgba(59,130,246,0.05)", iconBg: "bg-blue-500/15", iconColor: "text-blue-400" },
+            pro: { border: "border-blue-500/30", bg: "rgba(59,130,246,0.05)", iconBg: "bg-blue-500/15", iconColor: "text-blue-400" },
+            business: { border: "border-amber-500/30", bg: "rgba(245,158,11,0.05)", iconBg: "bg-amber-500/15", iconColor: "text-amber-400" },
+          };
+          const bc = bannerColors[tier];
+          return (
           <motion.div
-            className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between gap-4 flex-wrap"
+            className={cn("rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap", bc.border)}
+            style={{ background: `linear-gradient(135deg, ${bc.bg} 0%, transparent 60%)` }}
             variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Crown className="w-8 h-8 text-primary" />
+              <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center", bc.iconBg)}>
+                <Crown className={cn("w-8 h-8", bc.iconColor)} />
               </div>
               <div>
                 <p className="text-lg text-muted-foreground">Current plan</p>
@@ -666,7 +675,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               </Button>
             )}
           </motion.div>
-        )}
+          );
+        })()}
 
         {/* ── License Key / Team Section ─────────────────────────────── */}
         <div className="space-y-4">
