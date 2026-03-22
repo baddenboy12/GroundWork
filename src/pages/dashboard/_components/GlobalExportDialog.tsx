@@ -485,21 +485,42 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Category — only in filter mode */}
+              {/* Category + Entries count — side by side */}
               {selectionMode === "filter" && (
-                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
-                  <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <span className="text-base text-muted-foreground shrink-0 w-20">Category</span>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="border-0 shadow-none h-auto px-0 flex-1 text-lg font-medium focus:ring-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
+                    <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger className="border-0 shadow-none h-auto px-0 flex-1 text-lg font-medium focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className={cn(
+                    "rounded-lg border px-4 py-3 flex items-center justify-between",
+                    isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
+                  )}>
+                    {isLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Loading…
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-sm text-muted-foreground">
+                          Entries
+                        </span>
+                        <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
+                          {count}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -614,27 +635,27 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
             </div>
           </div>
 
-          {/* Live count */}
-          <div className={cn(
-            "rounded-lg border px-4 py-3 flex items-center justify-between",
-            isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
-          )}>
-            {isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Loading entries…
-              </div>
-            ) : (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {selectionMode === "individual" ? "Selected entries" : "Entries to export"}
-                </span>
-                <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
-                  {count}
-                </span>
-              </>
-            )}
-          </div>
+          {/* Live count — only shown standalone for individual mode (filter mode has it inline) */}
+          {selectionMode === "individual" && (
+            <div className={cn(
+              "rounded-lg border px-4 py-3 flex items-center justify-between",
+              isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
+            )}>
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Loading entries…
+                </div>
+              ) : (
+                <>
+                  <span className="text-sm text-muted-foreground">Selected entries</span>
+                  <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
+                    {count}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-5 pt-4">
