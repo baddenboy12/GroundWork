@@ -441,10 +441,16 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               </button>
               {sitesPopoverOpen && sitesRect && createPortal(
                 <>
-                  <div className="fixed inset-0 z-[99]" onClick={() => setSitesPopoverOpen(false)} />
                   <div
-                    className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden"
+                    className="fixed inset-0 z-[99]"
+                    onClick={() => setSitesPopoverOpen(false)}
+                    onTouchEnd={() => setSitesPopoverOpen(false)}
+                    style={{ touchAction: "none", pointerEvents: "auto" }}
+                  />
+                  <div
+                    className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg"
                     style={{ top: sitesRect.bottom + 4, left: sitesRect.left, width: sitesRect.width }}
+                    onTouchMove={(e) => e.stopPropagation()}
                   >
                     <div className="px-3 py-2.5 border-b border-border">
                       <button
@@ -460,8 +466,14 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                       </button>
                     </div>
                     <div
-                      className="max-h-96 overflow-y-auto overscroll-contain px-3 py-2.5 space-y-1"
-                      onTouchMove={(e) => e.stopPropagation()}
+                      className="px-3 py-2.5 space-y-1"
+                      style={{
+                        maxHeight: "384px",
+                        overflowY: "auto",
+                        overscrollBehavior: "contain",
+                        touchAction: "pan-y",
+                        WebkitOverflowScrolling: "touch",
+                      }}
                     >
                       {!sites ? (
                         <div className="flex items-center justify-center gap-2 py-4 text-base text-muted-foreground">
