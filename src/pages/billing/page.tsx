@@ -1157,7 +1157,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
                   <div>
                     <p className="font-bold text-foreground text-xl">{cfg.name}</p>
-                    <p className="text-base text-muted-foreground mt-0.5">{cfg.tagline}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5 whitespace-nowrap">{cfg.tagline}</p>
                   </div>
 
                   <div>
@@ -1167,25 +1167,25 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
                   {/* Feature list */}
                   <ul className="space-y-2 flex-1">
-                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                    <li className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       <Check className="w-4 h-4 text-primary shrink-0" />
                       {cfg.maxSites === null
                         ? "Unlimited sites"
                         : `${cfg.maxSites} site${cfg.maxSites > 1 ? "s" : ""}`}
                     </li>
-                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                    <li className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       <Check className="w-4 h-4 text-primary shrink-0" />
                       {cfg.maxLogsPerSite === null
                         ? "Unlimited logs per site"
                         : `${cfg.maxLogsPerSite} log${cfg.maxLogsPerSite > 1 ? "s" : ""} per site`}
                     </li>
-                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                    <li className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       <Check className="w-4 h-4 text-primary shrink-0" />
                       Up to {cfg.maxPhotosPerEntry} photos per entry
                     </li>
                     <li
                       className={cn(
-                        "flex items-center gap-2 text-base",
+                        "flex items-center gap-2 text-sm whitespace-nowrap",
                         cfg.export ? "text-muted-foreground" : "text-muted-foreground/40"
                       )}
                     >
@@ -1198,7 +1198,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                     </li>
                     <li
                       className={cn(
-                        "flex items-center gap-2 text-base",
+                        "flex items-center gap-2 text-sm whitespace-nowrap",
                         cfg.integrations
                           ? "text-muted-foreground"
                           : "text-muted-foreground/40"
