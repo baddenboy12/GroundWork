@@ -235,7 +235,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
           <div className="space-y-2">
             <Label className="text-xl font-semibold">Site *</Label>
-            <div className="relative" ref={siteDropdownRef}>
+            <div className="relative w-fit" ref={siteDropdownRef}>
               <button
                 type="button"
                 className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-xl border border-input dark:bg-input/30 px-3 !text-[24px] shadow-xs active:scale-95 transition-transform"
