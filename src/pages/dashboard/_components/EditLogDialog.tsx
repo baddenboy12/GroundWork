@@ -264,6 +264,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               onChange={setLocation}
               onCoordsChange={setCoords}
               initialCoords={coords}
+              showMapByDefault={false}
               placeholder="e.g. Tower 12 – Roof East, 123 Main St"
             />
           </div>

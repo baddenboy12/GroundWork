@@ -104,6 +104,8 @@ type Props = {
   placeholder?: string;
   id?: string;
   required?: boolean;
+  /** Whether to show the map on mount when initialCoords are provided. Defaults to true. */
+  showMapByDefault?: boolean;
 };
 
 /**
@@ -121,13 +123,14 @@ export default function LocationPicker({
   placeholder = "e.g. 123 Main St, City",
   id,
   required,
+  showMapByDefault = true,
 }: Props) {
   const [gps, setGps] = useState<GpsState>({ status: "idle" });
   const [coords, setCoords] = useState<Coords | null>(
     initialCoords ? { lat: initialCoords.lat, lng: initialCoords.lng } : null
   );
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [showMap, setShowMap] = useState(!!initialCoords);
+  const [showMap, setShowMap] = useState(showMapByDefault && !!initialCoords);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGps = () => {
