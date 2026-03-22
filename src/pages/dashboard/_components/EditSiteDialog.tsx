@@ -57,26 +57,26 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg w-[90%] p-8 top-[15%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-[95%] w-[680px] p-10 top-[12%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="text-2xl">Edit site</DialogTitle>
+          <DialogTitle className="text-4xl font-bold">Edit site</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 pt-3">
-          <div className="space-y-2">
-            <Label htmlFor="edit-site-name" className="text-lg">Site name *</Label>
+        <form onSubmit={handleSubmit} className="space-y-8 pt-4">
+          <div className="space-y-3">
+            <Label htmlFor="edit-site-name" className="text-2xl">Site name *</Label>
             <Input
               id="edit-site-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="h-14 text-lg rounded-xl"
+              className="h-[4rem] text-2xl rounded-xl px-5"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Renaming this site updates the label across all log entries under it.
             </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-site-location" className="text-lg">Location</Label>
+          <div className="space-y-3">
+            <Label htmlFor="edit-site-location" className="text-2xl">Location</Label>
             <LocationPicker
               id="edit-site-location"
               value={location}
@@ -86,11 +86,11 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               placeholder="123 Main St, City"
             />
           </div>
-          <DialogFooter className="gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="h-12 text-base px-6 rounded-xl">
+          <DialogFooter className="gap-4 pt-3">
+            <Button type="button" variant="secondary" onClick={onClose} className="h-16 text-xl px-8 rounded-xl">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()} className="h-12 text-base px-6 rounded-xl">
+            <Button type="submit" disabled={loading || !name.trim()} className="h-16 text-xl px-8 rounded-xl">
               {loading ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
