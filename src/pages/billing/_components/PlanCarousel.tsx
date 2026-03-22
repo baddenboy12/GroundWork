@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useRef, useCallback } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils.ts";
 
@@ -16,10 +16,68 @@ type Props = {
 
 export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: Props) {
   const count = items.length;
+  const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swiped = useRef(false);
 
   const getSlot = (itemIndex: number) => {
     return ((itemIndex - frontIndex) % count + count) % count;
   };
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    swiped.current = false;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStart.current || swiped.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStart.current.x;
+    const dy = touch.clientY - touchStart.current.y;
+    const dt = Date.now() - touchStart.current.time;
+
+    // Only count horizontal swipes (not vertical scrolls)
+    if (Math.abs(dy) > Math.abs(dx) * 0.8) {
+      touchStart.current = null;
+      return;
+    }
+
+    // Velocity-based: fast flick or sufficient distance
+    const velocity = Math.abs(dx) / Math.max(dt, 1);
+    const threshold = velocity > 0.3 ? 20 : 40;
+
+    if (Math.abs(dx) > threshold) {
+      swiped.current = true;
+      if (dx < 0) {
+        onFrontIndexChange((frontIndex + 1) % count);
+      } else {
+        onFrontIndexChange((frontIndex - 1 + count) % count);
+      }
+    }
+    touchStart.current = null;
+  }, [frontIndex, count, onFrontIndexChange]);
+
+  // Also support mouse drag for desktop
+  const mouseStart = useRef<{ x: number } | null>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Don't hijack clicks on buttons
+    if ((e.target as HTMLElement).closest("button, a, [role=button]")) return;
+    mouseStart.current = { x: e.clientX };
+  }, []);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (!mouseStart.current) return;
+    const dx = e.clientX - mouseStart.current.x;
+    if (Math.abs(dx) > 40) {
+      if (dx < 0) {
+        onFrontIndexChange((frontIndex + 1) % count);
+      } else {
+        onFrontIndexChange((frontIndex - 1 + count) % count);
+      }
+    }
+    mouseStart.current = null;
+  }, [frontIndex, count, onFrontIndexChange]);
 
   return (
     <div className="w-full">
@@ -27,17 +85,13 @@ export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: 
         style={{ perspective: 1000, height: 480 }}
         className="relative mx-auto max-w-3xl overflow-visible"
       >
-        <motion.div
-          onPanEnd={(_, info) => {
-            const swipe = info.offset.x + info.velocity.x * 0.3;
-            if (swipe < -50) {
-              onFrontIndexChange((frontIndex + 1) % count);
-            } else if (swipe > 50) {
-              onFrontIndexChange((frontIndex - 1 + count) % count);
-            }
-          }}
+        <div
           className="relative w-full h-full flex items-center justify-center"
           style={{ transformStyle: "preserve-3d" }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
         >
           {items.map((item, i) => {
             const slot = getSlot(i);
@@ -68,7 +122,7 @@ export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: 
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
 
       {/* Dot indicators */}
