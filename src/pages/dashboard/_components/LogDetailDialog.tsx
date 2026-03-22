@@ -220,7 +220,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     Offline
                   </span>
                 )}
-                <div className="relative" data-menu-trigger>
+                <div className="relative mt-6 -mr-2" data-menu-trigger>
                   <button
                     className="w-16 h-16 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all"
                     aria-label="Log actions"
