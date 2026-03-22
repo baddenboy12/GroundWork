@@ -232,7 +232,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
   // Sites summary label
   const sitesSummary = allSitesSelected
-    ? `All sites (${sites?.length ?? 0})`
+    ? `All Sites (${sites?.length ?? 0})`
     : selectedSiteIds.size === 0
     ? "No sites selected"
     : `${selectedSiteIds.size} of ${sites?.length ?? 0} sites`;
@@ -431,7 +431,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         {allSitesSelected
                           ? <CheckSquare className="w-5 h-5 text-primary shrink-0" />
                           : <Square className="w-5 h-5 text-muted-foreground shrink-0" />}
-                        <span className="text-lg font-medium">All sites</span>
+                        <span className="text-lg font-medium">All Sites</span>
                         <span className="ml-auto text-base text-muted-foreground">{sites?.length ?? 0} total</span>
                       </button>
                     </div>
