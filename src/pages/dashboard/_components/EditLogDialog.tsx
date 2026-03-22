@@ -28,6 +28,7 @@ import LocationPicker from "./LocationPicker.tsx";
 import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
 import { Lock, ChevronDown, Search, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
+import { motion, AnimatePresence } from "motion/react";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -239,32 +240,40 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 </span>
                 <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", siteDropdownOpen && "rotate-180")} />
               </button>
-              {siteDropdownOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
-                  <div
-                    className="py-1"
-                    style={{ maxHeight: "420px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+              <AnimatePresence>
+                {siteDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
+                    className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden origin-top-left"
                   >
-                    {(sites ?? [])
-                      .filter((s) => !siteSearch || s.name.toLowerCase().includes(siteSearch.toLowerCase()))
-                      .map((s) => (
-                        <button
-                          key={s._id}
-                          type="button"
-                          className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 text-left !text-[20px] transition-colors hover:bg-accent",
-                            s._id === siteId && "bg-primary/5"
-                          )}
-                          onClick={() => { setSiteId(s._id); setSiteDropdownOpen(false); }}
-                        >
-                          {s._id === siteId && <Check className="w-5 h-5 text-primary shrink-0" />}
-                          <span className="truncate">{s.name}</span>
-                        </button>
-                      ))
-                    }
-                  </div>
-                </div>
-              )}
+                    <div
+                      className="py-1"
+                      style={{ maxHeight: "420px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+                    >
+                      {(sites ?? [])
+                        .filter((s) => !siteSearch || s.name.toLowerCase().includes(siteSearch.toLowerCase()))
+                        .map((s) => (
+                          <button
+                            key={s._id}
+                            type="button"
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 text-left !text-[20px] transition-colors hover:bg-accent",
+                              s._id === siteId && "bg-primary/5"
+                            )}
+                            onClick={() => { setSiteId(s._id); setSiteDropdownOpen(false); }}
+                          >
+                            {s._id === siteId && <Check className="w-5 h-5 text-primary shrink-0" />}
+                            <span className="truncate">{s.name}</span>
+                          </button>
+                        ))
+                      }
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
