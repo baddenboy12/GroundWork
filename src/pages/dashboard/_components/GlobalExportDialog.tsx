@@ -364,6 +364,20 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
               {/* Theme — only for Full Report */}
               {format_ === "full-pdf" && (
                 <>
+                  {/* Report title */}
+                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
+                    <Type className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-base text-muted-foreground shrink-0 w-20">Title</span>
+                    <input
+                      type="text"
+                      value={reportTitle}
+                      onChange={(e) => setReportTitle(e.target.value)}
+                      placeholder="e.g. Multi-Site Field Log Report"
+                      maxLength={80}
+                      className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
+                    />
+                  </div>
+
                   <div className="relative">
                     <button
                       type="button"
@@ -387,20 +401,6 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         />
                       </div>
                     )}
-                  </div>
-
-                  {/* Report title */}
-                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
-                    <Type className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-base text-muted-foreground shrink-0 w-20">Title</span>
-                    <input
-                      type="text"
-                      value={reportTitle}
-                      onChange={(e) => setReportTitle(e.target.value)}
-                      placeholder="e.g. Multi-Site Field Log Report"
-                      maxLength={80}
-                      className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
-                    />
                   </div>
                 </>
               )}
