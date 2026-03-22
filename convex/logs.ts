@@ -787,6 +787,7 @@ export const getStats = query({
     dailyActivity: Array<{ date: string; count: number }>;
     totalPhotos: number;
     totalSites: number;
+    topAuthor: { authorName: string; count: number } | null;
   } | null> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
@@ -894,6 +895,22 @@ export const getStats = query({
       0
     );
 
+    // Top author by log count
+    const authorCountMap: Record<string, number> = {};
+    for (const log of allLogs) {
+      const key = log.authorId as string;
+      authorCountMap[key] = (authorCountMap[key] ?? 0) + 1;
+    }
+    const topAuthorEntry = Object.entries(authorCountMap).sort((a, b) => b[1] - a[1])[0];
+    let topAuthor: { authorName: string; count: number } | null = null;
+    if (topAuthorEntry) {
+      const authorUser = await ctx.db.get(topAuthorEntry[0] as Id<"users">);
+      topAuthor = {
+        authorName: authorUser?.name?.trim() || "Unknown",
+        count: topAuthorEntry[1],
+      };
+    }
+
     return {
       totalEntries: allLogs.length,
       thisWeek,
@@ -903,6 +920,7 @@ export const getStats = query({
       dailyActivity,
       totalPhotos,
       totalSites,
+      topAuthor,
     };
   },
 });

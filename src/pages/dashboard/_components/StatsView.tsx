@@ -21,6 +21,7 @@ import {
   MapPin,
   Calendar,
   TrendingUp,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -124,6 +125,13 @@ export default function StatsView({ onBack }: Props) {
       color: "text-purple-500",
       bg: "bg-purple-500/10",
     },
+    ...(stats.topAuthor ? [{
+      label: `Top Author: ${stats.topAuthor.authorName}`,
+      value: stats.topAuthor.count,
+      icon: UserCheck,
+      color: "text-teal-500",
+      bg: "bg-teal-500/10",
+    }] : []),
   ];
 
   const tooltipStyle = {
