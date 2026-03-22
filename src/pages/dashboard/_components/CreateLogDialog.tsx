@@ -213,7 +213,7 @@ export default function CreateLogDialog({
     <>
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent
-          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[15%] translate-y-0"
+          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[15%] translate-y-0 [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -255,8 +255,8 @@ export default function CreateLogDialog({
 
             {/* Site name — autocomplete with auto-create */}
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
-              <Label htmlFor="log-site" className="text-base flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-primary" /> Site *
+              <Label htmlFor="log-site" className="text-xl font-semibold flex items-center gap-1.5">
+                <MapPin className="w-5 h-5 text-primary" /> Site *
               </Label>
               <div className="relative">
                 <Input
@@ -403,26 +403,26 @@ export default function CreateLogDialog({
             </motion.div>
 
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
-              <Label htmlFor="log-title" className="text-base">Title *</Label>
+              <Label htmlFor="log-title" className="text-xl font-semibold">Title *</Label>
               <Input
                 id="log-title"
                 placeholder="Generator fuel level check"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-xl h-14"
+                className="h-16 !text-[22px]"
                 required
               />
             </motion.div>
             <motion.div className="grid grid-cols-2 gap-4" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <div className="space-y-2">
-                <Label className="text-base">Category *</Label>
+                <Label className="text-xl font-semibold">Category *</Label>
                 <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                  <SelectTrigger className="h-14 text-base">
+                  <SelectTrigger className="!h-[3.8rem] !text-[24px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {LOG_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c} className="text-base py-3">
+                      <SelectItem key={c} value={c} className="!text-[20px] py-4">
                         {CATEGORY_LABELS[c]}
                       </SelectItem>
                     ))}
@@ -430,19 +430,19 @@ export default function CreateLogDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="log-date" className="text-base">Date & Time *</Label>
+                <Label htmlFor="log-date" className="text-xl font-semibold">Date & Time *</Label>
                 <Input
                   id="log-date"
                   type="datetime-local"
                   value={loggedAt}
                   onChange={(e) => setLoggedAt(e.target.value)}
-                  className="h-14 text-base"
+                  className="h-16 !text-[20px]"
                   required
                 />
               </div>
             </motion.div>
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
-              <Label className="text-base flex items-center gap-2">
+              <Label className="text-xl font-semibold flex items-center gap-2">
                 Location
                 {locationFromSite && (
                   <span className="text-xs font-normal text-primary border border-primary/30 rounded-full px-2 py-0.5">
@@ -455,11 +455,12 @@ export default function CreateLogDialog({
                 onChange={(v) => { setLocation(v); setLocationFromSite(false); }}
                 onCoordsChange={(c) => { setCoords(c); setLocationFromSite(false); }}
                 placeholder="e.g. Tower 12 – Roof East, 123 Main St"
+                inputClassName="!h-14"
               />
             </motion.div>
 
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
-              <Label htmlFor="log-content" className="text-base">Notes *</Label>
+              <Label htmlFor="log-content" className="text-xl font-semibold">Notes *</Label>
               <Textarea
                 id="log-content"
                 placeholder="Describe what was observed, done, or found..."
@@ -467,14 +468,14 @@ export default function CreateLogDialog({
                 onChange={(e) => setContent(e.target.value)}
                 rows={6}
                 style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
-                className="text-xl min-h-[160px] resize-none"
+                className="!text-[18px] min-h-[160px] resize-none"
                 required
               />
             </motion.div>
 
             {/* Photos — available on all tiers; offline uploader shown when offline */}
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
-              <Label className={cn("text-base flex items-center gap-2")}>
+              <Label className={cn("text-xl font-semibold flex items-center gap-2")}>
                 Photos
                 {!isOnline && (
                   <span className="text-xs font-normal text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5 flex items-center gap-1">
@@ -489,7 +490,7 @@ export default function CreateLogDialog({
               )}
             </motion.div>
 
-            <DialogFooter>
+            <DialogFooter className="gap-5 pt-4">
               <motion.div
                 className="flex gap-3 w-full sm:w-auto sm:justify-end"
                 initial={{ opacity: 0, y: 20 }}
@@ -497,7 +498,7 @@ export default function CreateLogDialog({
                 transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 22 }}
               >
                 <motion.div whileTap={{ scale: 0.95 }}>
-                  <Button type="button" variant="secondary" size="lg" onClick={handleClose} className="rounded-xl">
+                  <Button type="button" variant="secondary" onClick={handleClose} className="h-16 text-xl px-8 rounded-2xl">
                     Cancel
                   </Button>
                 </motion.div>
@@ -508,8 +509,7 @@ export default function CreateLogDialog({
                 >
                   <Button
                     type="submit"
-                    size="lg"
-                    className="w-full rounded-xl"
+                    className="w-full h-16 text-xl px-8 rounded-2xl"
                     disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
                   >
                     {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
