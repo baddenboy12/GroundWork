@@ -46,6 +46,11 @@ type Props = {
   onMenuClick?: () => void;
 };
 
+const METALLIC_STYLE: React.CSSProperties = {
+  background: "linear-gradient(180deg, hsl(30 10% 14%) 0%, hsl(30 8% 9%) 100%)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)",
+};
+
 export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onBilling, onMenuClick }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
@@ -211,8 +216,9 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               {/* Set / edit name */}
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
+                style={METALLIC_STYLE}
                 className={cn(
-                  "text-xl py-4 gap-3 my-1 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform",
+                  "text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06]",
                   isMissingName && "text-amber-500 focus:text-amber-500"
                 )}
                 onClick={openNameDialog}
@@ -222,24 +228,25 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-xl py-4 gap-3 my-1 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onBilling}>
+              <DropdownMenuItem style={METALLIC_STYLE} className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06]" onClick={onBilling}>
                 <CreditCard className="w-7 h-7" /> Subscription
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-xl py-4 gap-3 my-1 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onStats}>
+              <DropdownMenuItem style={METALLIC_STYLE} className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06]" onClick={onStats}>
                 <BarChart2 className="w-7 h-7" /> Statistics
               </DropdownMenuItem>
               </motion.div>
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
-              <DropdownMenuItem className="text-xl py-4 gap-3 my-1 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform" onClick={onIntegrations}>
+              <DropdownMenuItem style={METALLIC_STYLE} className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06]" onClick={onIntegrations}>
                 <Plug className="w-7 h-7" /> Integrations & API
               </DropdownMenuItem>
               </motion.div>
               <DropdownMenuSeparator />
               <motion.div variants={{ hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0 } }}>
               <DropdownMenuItem
-                className="text-xl py-4 gap-3 my-1 rounded-2xl bg-white/[0.04] active:scale-95 transition-transform text-destructive focus:text-destructive"
+                style={METALLIC_STYLE}
+                className="text-xl py-4 gap-3 my-1 rounded-2xl active:scale-95 transition-transform border border-white/[0.06] text-destructive focus:text-destructive"
                 onClick={async () => {
                   for (let i = localStorage.length - 1; i >= 0; i--) {
                     const k = localStorage.key(i);
