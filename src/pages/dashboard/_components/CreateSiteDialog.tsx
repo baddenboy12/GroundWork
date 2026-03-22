@@ -65,7 +65,7 @@ export default function CreateSiteDialog({ open, onClose }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="h-[5rem] rounded-2xl px-6 !text-[22px]"
+              className="h-[5rem] rounded-2xl px-6 !text-[26px]"
             />
           </div>
           <div className="space-y-4">
