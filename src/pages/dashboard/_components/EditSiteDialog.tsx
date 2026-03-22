@@ -70,8 +70,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              style={{ fontSize: "28px" }}
-              className="h-[5rem] rounded-2xl px-6"
+              className="h-[5rem] rounded-2xl px-6 !text-[28px]"
             />
             <p className="text-xl text-muted-foreground">
               Renaming this site updates the label across all log entries under it.
