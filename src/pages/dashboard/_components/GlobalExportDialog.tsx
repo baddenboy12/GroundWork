@@ -549,12 +549,12 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                       {/* Search */}
                       <div className="px-3 py-2.5 border-b border-border space-y-2">
                         <div className="relative">
-                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground pointer-events-none" />
                           <Input
                             placeholder="Search entries…"
                             value={entrySearch}
                             onChange={(e) => setEntrySearch(e.target.value)}
-                            className="pl-12 pr-12 text-lg h-14 rounded-xl"
+                            className="pl-13 pr-12 h-16 rounded-xl !text-[22px]"
                           />
                           {entrySearch && (
                             <button
