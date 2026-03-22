@@ -143,9 +143,8 @@ export default function StatsView({ onBack }: Props) {
     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 -ml-1 shrink-0">
-          <ArrowLeft className="w-4 h-4" />
-          Back
+        <Button variant="ghost" size="icon" onClick={onBack} className="h-14 w-14 shrink-0 rounded-2xl bg-white/[0.04] border border-white/[0.06] active:scale-90 transition-all">
+          <ArrowLeft className="w-7 h-7" />
         </Button>
         <div>
           <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">

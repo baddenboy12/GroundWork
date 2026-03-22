@@ -600,9 +600,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       <div className="border-b border-border bg-card px-6 py-4 flex items-center gap-3">
         <button
           onClick={onBack ?? (() => navigate("/dashboard"))}
-          className="p-3 rounded-xl hover:bg-accent active:scale-90 transition-all text-muted-foreground hover:text-foreground"
+          className="p-3 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-accent active:scale-90 transition-all text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-7 h-7" />
         </button>
         <div>
           <h1 className="text-xl font-semibold text-foreground">Subscription</h1>

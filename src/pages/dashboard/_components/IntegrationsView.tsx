@@ -70,10 +70,10 @@ export default function IntegrationsView({ onBack }: Props) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-12 w-12 shrink-0 rounded-xl active:scale-90 transition-all"
+              className="h-14 w-14 shrink-0 rounded-2xl bg-white/[0.04] border border-white/[0.06] active:scale-90 transition-all"
               onClick={onBack}
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-7 h-7" />
             </Button>
             <div>
               <h1 className="text-xl font-semibold text-foreground">Integrations & API</h1>
