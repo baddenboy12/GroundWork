@@ -277,7 +277,7 @@ export default function CreateLogDialog({
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  className="h-14 text-xl"
+                  className="!h-[3.8rem] !text-[24px]"
                   required
                 />
                 {showSuggestions && siteName.trim().length > 0 && !exactMatch && (
