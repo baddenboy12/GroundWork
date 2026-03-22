@@ -368,7 +368,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     <button
                       type="button"
                       className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
-                      onClick={() => setThemePopoverOpen(!themePopoverOpen)}
+                      onClick={() => { setThemePopoverOpen(!themePopoverOpen); setSitesPopoverOpen(false); setCategoryOpen(false); }}
                     >
                       <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
                       <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
@@ -413,7 +413,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     "w-full flex items-center gap-2.5 rounded-2xl border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors",
                     !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
                   )}
-                  onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
+                  onClick={() => { setSitesPopoverOpen(!sitesPopoverOpen); setThemePopoverOpen(false); setCategoryOpen(false); }}
                 >
                   <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
                   <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
@@ -494,7 +494,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   <button
                     type="button"
                     className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
-                    onClick={() => setCategoryOpen(!categoryOpen)}
+                    onClick={() => { setCategoryOpen(!categoryOpen); setThemePopoverOpen(false); setSitesPopoverOpen(false); }}
                   >
                     <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
                     <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
