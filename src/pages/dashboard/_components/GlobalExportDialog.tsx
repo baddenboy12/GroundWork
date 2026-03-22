@@ -512,10 +512,10 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                       </div>
                     ) : (
                       <>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-lg text-muted-foreground">
                           Entries
                         </span>
-                        <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
+                        <span className={cn("text-2xl font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
                           {count}
                         </span>
                       </>
