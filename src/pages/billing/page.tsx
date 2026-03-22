@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import PlanCarousel from "./_components/PlanCarousel.tsx";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
@@ -140,6 +141,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(1); // Pro starts front
   const [cancelPending, setCancelPending] = useState(false);
   const [initPending, setInitPending] = useState(false);
   const [cleanupPending, setCleanupPending] = useState(false);
@@ -1119,8 +1121,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               : "Initialize PayPal above to enable real payment processing."}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            {TIER_ORDER.map((t) => {
+          <PlanCarousel
+            frontIndex={carouselIndex}
+            onFrontIndexChange={setCarouselIndex}
+            items={TIER_ORDER.map((t) => {
               const cfg = TIER_CONFIG[t];
               const isCurrent = t === tier;
               const isUpgrade =
@@ -1299,7 +1303,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 </div>
               );
             })}
-          </div>
+          />
 
           {hasActivePayPalSub && (
             <p className="text-xs text-muted-foreground mt-4">
