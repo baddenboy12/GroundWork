@@ -376,7 +376,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
                       >
                         <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
-                        <span className="text-base text-muted-foreground shrink-0 text-left">Theme</span>
+                        <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
                         <ThemeSwatch theme={selectedTheme} />
                         <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
                         <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -396,7 +396,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   {/* Report title */}
                   <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
                     <Type className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-base text-muted-foreground shrink-0">Title</span>
+                    <span className="text-base text-muted-foreground shrink-0 w-20">Title</span>
                     <input
                       type="text"
                       value={reportTitle}
@@ -422,7 +422,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                   onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
                 >
                   <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <span className="text-base text-muted-foreground shrink-0 text-left">Sites</span>
+                  <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
                   <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
                   <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
                 </button>
@@ -487,11 +487,11 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
 
               {/* Category — only in filter mode */}
               {selectionMode === "filter" && (
-                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-1">
+                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
                   <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <span className="text-base text-muted-foreground shrink-0">Category</span>
+                  <span className="text-base text-muted-foreground shrink-0 w-20">Category</span>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="border-0 shadow-none h-14 px-0 flex-1 text-lg font-medium focus:ring-0">
+                    <SelectTrigger className="border-0 shadow-none h-auto px-0 flex-1 text-lg font-medium focus:ring-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -512,7 +512,7 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     onClick={() => setEntriesPopoverOpen(!entriesPopoverOpen)}
                   >
                     <ListChecks className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-base text-muted-foreground shrink-0 text-left">Entries</span>
+                    <span className="text-base text-muted-foreground shrink-0 text-left w-20">Entries</span>
                     <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
                     <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", entriesPopoverOpen && "rotate-180")} />
                   </button>
