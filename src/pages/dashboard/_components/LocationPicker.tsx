@@ -180,7 +180,7 @@ export default function LocationPicker({
     <div className="space-y-2">
       {/* Input row */}
       <div className="relative flex items-center">
-        <MapPin className="absolute left-3 w-5 h-5 text-muted-foreground pointer-events-none shrink-0" />
+        <MapPin className="absolute left-4 w-7 h-7 text-muted-foreground pointer-events-none shrink-0" />
         <Input
           ref={inputRef}
           id={id}
@@ -188,7 +188,7 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="pl-10 pr-14 h-12 text-base"
+          className="pl-14 pr-18 h-[5rem] text-2xl rounded-2xl"
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}
@@ -198,20 +198,20 @@ export default function LocationPicker({
           disabled={gps.status === "loading"}
           onClick={handleGps}
           className={cn(
-            "absolute right-2 h-9 w-9 flex items-center justify-center rounded-lg transition-all",
+            "absolute right-3 h-12 w-12 flex items-center justify-center rounded-xl transition-all",
             gps.status === "loading"
               ? "bg-primary/20 text-primary animate-pulse cursor-wait"
               : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
           )}
         >
-          <LocateFixed className="w-5 h-5" />
+          <LocateFixed className="w-7 h-7" />
         </button>
       </div>
 
       {/* GPS error */}
       {gps.status === "error" && (
-        <p className="text-sm text-destructive flex items-start gap-1.5">
-          <Navigation className="w-4 h-4 shrink-0 mt-0.5" />
+        <p className="text-lg text-destructive flex items-start gap-2">
+          <Navigation className="w-5 h-5 shrink-0 mt-0.5" />
           {gps.message}
         </p>
       )}
@@ -220,27 +220,27 @@ export default function LocationPicker({
       {showMap && coords && (
         <div className="rounded-xl overflow-hidden border border-border shadow-sm">
           {/* Map header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="bg-primary rounded-full p-1 shrink-0">
-                <Navigation className="w-3.5 h-3.5 text-primary-foreground" />
+          <div className="flex items-center justify-between px-5 py-4 bg-muted/50 border-b border-border">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="bg-primary rounded-full p-1.5 shrink-0">
+                <Navigation className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-sm font-semibold text-foreground">Location confirmed</span>
+              <span className="text-lg font-semibold text-foreground">Location confirmed</span>
               {accuracy !== null && (
-                <span className="text-xs text-primary bg-primary/10 rounded-full px-2.5 py-1 font-medium">
+                <span className="text-sm text-primary bg-primary/10 rounded-full px-3 py-1 font-medium">
                   ±{accuracy}m
                 </span>
               )}
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-base text-muted-foreground font-mono">
                 {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               </span>
             </div>
             <button
               type="button"
               onClick={handleDismissMap}
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 ml-2"
+              className="w-12 h-12 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 ml-2"
             >
-              <X className="w-5 h-5" />
+              <X className="w-7 h-7" />
             </button>
           </div>
 
@@ -262,8 +262,8 @@ export default function LocationPicker({
           </MapContainer>
 
           {/* Hint */}
-          <div className="px-4 py-3 bg-muted/30 border-t border-border">
-            <p className="text-xs text-muted-foreground">
+          <div className="px-5 py-4 bg-muted/30 border-t border-border">
+            <p className="text-base text-muted-foreground">
               Drag the pin or tap anywhere on the map to fine-tune the location.
             </p>
           </div>
