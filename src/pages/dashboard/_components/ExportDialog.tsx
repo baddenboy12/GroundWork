@@ -243,7 +243,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md top-[5%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="!max-w-none w-[90%] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -255,7 +255,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
           >
-            <DialogTitle>Export logs — {siteName}</DialogTitle>
+            <DialogTitle className="text-3xl font-bold">Export logs — {siteName}</DialogTitle>
           </motion.div>
         </DialogHeader>
 
@@ -266,33 +266,33 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               type="button"
               onClick={() => setSelectionMode("filter")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-base font-medium transition-all",
                 selectionMode === "filter"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Filter className="w-3.5 h-3.5" />
+              <Filter className="w-5 h-5" />
               Bulk filter
             </button>
             <button
               type="button"
               onClick={() => setSelectionMode("individual")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-base font-medium transition-all",
                 selectionMode === "individual"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <ListChecks className="w-3.5 h-3.5" />
+              <ListChecks className="w-5 h-5" />
               Select entries
             </button>
           </div>
 
           {/* Format selector */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Format</Label>
+            <Label className="text-base text-muted-foreground uppercase tracking-wide">Format</Label>
             <div className="grid grid-cols-3 gap-2">
               {FORMAT_OPTIONS.map((opt) => (
                 <button
@@ -300,7 +300,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                   type="button"
                   onClick={() => setFormat_(opt.id)}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all",
+                    "flex flex-col items-center gap-1.5 rounded-xl border p-4 text-center transition-all",
                     format_ === opt.id
                       ? cn("border-2", opt.accent)
                       : "border-border bg-card hover:border-muted-foreground/40"
@@ -309,8 +309,8 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                   <span className={cn(format_ === opt.id ? opt.accent.split(" ")[0] : "text-muted-foreground")}>
                     {opt.icon}
                   </span>
-                  <span className="text-[11px] font-semibold text-foreground leading-tight">{opt.label}</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">{opt.description}</span>
+                  <span className="text-base font-semibold text-foreground leading-tight">{opt.label}</span>
+                  <span className="text-sm text-muted-foreground leading-tight">{opt.description}</span>
                 </button>
               ))}
             </div>
@@ -318,7 +318,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
           {/* Options */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Options</Label>
+            <Label className="text-base text-muted-foreground uppercase tracking-wide">Options</Label>
             <div className="space-y-2">
 
               {/* Theme — Full Report only */}
@@ -328,13 +328,13 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
                       >
-                        <Palette className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Theme</span>
+                        <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
+                        <span className="text-base text-muted-foreground w-14 shrink-0 text-left">Theme</span>
                         <ThemeSwatch theme={selectedTheme} />
                         <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[380px] p-3" align="start" sideOffset={4}>
@@ -351,16 +351,16 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                   </Popover>
 
                   {/* Report title */}
-                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2">
-                    <Type className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-xs text-muted-foreground w-14 shrink-0">Title</span>
+                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
+                    <Type className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-base text-muted-foreground w-14 shrink-0">Title</span>
                     <input
                       type="text"
                       value={reportTitle}
                       onChange={(e) => setReportTitle(e.target.value)}
                       placeholder="e.g. Field Log Report"
                       maxLength={80}
-                      className="flex-1 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
+                      className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
                     />
                   </div>
                 </>
@@ -369,7 +369,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               {/* Date range */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Label className="text-base text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" /> From
                   </Label>
                   <Input
@@ -377,11 +377,11 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
                     max={dateTo || undefined}
-                    className="text-xs h-9"
+                    className="text-base h-14"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Label className="text-base text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" /> To
                   </Label>
                   <Input
@@ -389,18 +389,18 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
                     min={dateFrom || undefined}
-                    className="text-xs h-9"
+                    className="text-base h-14"
                   />
                 </div>
               </div>
 
               {/* Category — bulk filter mode only */}
               {selectionMode === "filter" && (
-                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-0">
-                  <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground w-14 shrink-0">Category</span>
+                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-0">
+                  <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <span className="text-base text-muted-foreground w-14 shrink-0">Category</span>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="border-0 shadow-none h-9 px-0 flex-1 text-sm font-medium focus:ring-0">
+                    <SelectTrigger className="border-0 shadow-none h-14 px-0 flex-1 text-lg font-medium focus:ring-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -418,12 +418,12 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
                     >
-                      <ListChecks className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground w-14 shrink-0 text-left">Entries</span>
+                      <ListChecks className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <span className="text-base text-muted-foreground w-14 shrink-0 text-left">Entries</span>
                       <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-96 p-0" align="start" sideOffset={4}>
@@ -542,12 +542,12 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <DialogFooter className="gap-5 pt-4">
+          <Button variant="secondary" onClick={onClose} className="h-16 text-xl px-8 rounded-2xl">Cancel</Button>
           <Button
             onClick={handleExport}
             disabled={isExporting || isLoading || count === 0}
-            className="gap-1.5"
+            className="gap-1.5 h-16 text-xl px-8 rounded-2xl"
           >
             {isExporting ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Exporting...</>
