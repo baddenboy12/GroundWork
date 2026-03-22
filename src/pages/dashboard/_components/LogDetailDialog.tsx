@@ -245,7 +245,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                         whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         className={cn(
-                          "flex items-center gap-4 w-full py-5 px-4 text-2xl rounded-xl hover:bg-accent transition-colors text-left bg-white/[0.04]",
+                          "flex items-center gap-4 w-full py-5 px-4 text-[28px] rounded-xl hover:bg-accent transition-colors text-left bg-white/[0.04]",
                           !isOnline && "opacity-50"
                         )}
                         onClick={() => {
