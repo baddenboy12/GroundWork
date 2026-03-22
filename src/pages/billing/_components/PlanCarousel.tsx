@@ -24,7 +24,7 @@ export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: 
   return (
     <div className="w-full">
       <div
-        style={{ perspective: 1000, height: 520 }}
+        style={{ perspective: 1000, height: 580 }}
         className="relative mx-auto max-w-3xl overflow-visible"
       >
         <motion.div
@@ -61,7 +61,7 @@ export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: 
                   position: "absolute",
                   zIndex: pos.zIndex,
                   transform: `translateZ(${pos.z}px)`,
-                  width: 280,
+                  width: 340,
                 }}
               >
                 {item}
