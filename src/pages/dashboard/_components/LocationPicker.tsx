@@ -106,6 +106,8 @@ type Props = {
   required?: boolean;
   /** Whether to show the map on mount when initialCoords are provided. Defaults to true. */
   showMapByDefault?: boolean;
+  /** Extra classes for the location input (e.g. font size overrides per dialog) */
+  inputClassName?: string;
 };
 
 /**
@@ -124,6 +126,7 @@ export default function LocationPicker({
   id,
   required,
   showMapByDefault = true,
+  inputClassName,
 }: Props) {
   const [gps, setGps] = useState<GpsState>({ status: "idle" });
   const [coords, setCoords] = useState<Coords | null>(
@@ -190,7 +193,7 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[26px]"
+          className={cn("pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[22px]", inputClassName)}
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}

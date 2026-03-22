@@ -85,6 +85,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               onCoordsChange={setCoords}
               initialCoords={coords}
               placeholder="123 Main St, City"
+              inputClassName="!text-[26px]"
             />
           </div>
           <DialogFooter className="gap-5 pt-4">
