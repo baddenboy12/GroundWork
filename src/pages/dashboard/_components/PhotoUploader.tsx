@@ -80,7 +80,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     onChange(photos.filter((_, i) => i !== index));
   };
 
-  const { dragIndex, containerRef, handlePointerDown, handlePointerMove, handlePointerUp } = useDragReorder(photos, onChange);
+  const { dragIndex, swappedIndex, containerRef, handlePointerDown, handlePointerMove, handlePointerUp } = useDragReorder(photos, onChange);
   const atLimit = photos.length >= maxPhotos;
 
   return (
@@ -157,11 +157,19 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                 data-reorder-index={i}
                 onPointerDown={handlePointerDown(i)}
                 className={cn(
-                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab transition-all duration-150",
-                  dragIndex === i && "ring-2 ring-primary/50 shadow-lg scale-105 z-10 opacity-90",
-                  dragIndex !== null && dragIndex !== i && "ring-1 ring-primary/30 opacity-80"
+                  "relative group rounded-lg overflow-hidden aspect-square bg-muted cursor-grab",
+                  dragIndex === i && "ring-2 ring-primary/50 shadow-lg z-10",
+                  dragIndex !== null && dragIndex !== i && "ring-1 ring-primary/30"
                 )}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                animate={{
+                  scale: dragIndex === i ? 1.08 : swappedIndex === i ? 0.92 : 1,
+                  opacity: dragIndex === i ? 0.85 : dragIndex !== null && dragIndex !== i ? 0.75 : 1,
+                }}
+                transition={{
+                  layout: { type: "spring", stiffness: 250, damping: 22, mass: 0.8 },
+                  scale: { type: "spring", stiffness: 350, damping: 15, mass: 0.6 },
+                  opacity: { duration: 0.15 },
+                }}
               >
                 <img
                   src={photo.previewUrl}

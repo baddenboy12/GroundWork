@@ -9,12 +9,14 @@ function arrayMove<T>(arr: T[], from: number, to: number): T[] {
 
 export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // Track which index just received a swapped-in item (for pulse animation)
+  const [swappedIndex, setSwappedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swapCooldownRef = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const currentIndex = useRef<number | null>(null);
-  const pendingPointerId = useRef<number | null>(null);
 
   // Block ALL touch scrolling on the container while a long-press timer is pending or dragging
   useEffect(() => {
@@ -22,13 +24,11 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
     if (!container) return;
 
     const preventScroll = (e: TouchEvent) => {
-      // If we're actively dragging OR waiting for long-press threshold, block scroll
       if (isDragging.current || timerRef.current) {
         e.preventDefault();
       }
     };
 
-    // Must be non-passive to allow preventDefault
     container.addEventListener("touchmove", preventScroll, { passive: false });
     return () => container.removeEventListener("touchmove", preventScroll);
   }, []);
@@ -40,9 +40,9 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
     }
     isDragging.current = false;
     currentIndex.current = null;
-    pendingPointerId.current = null;
+    swapCooldownRef.current = false;
     setDragIndex(null);
-    // Re-enable touch-action
+    setSwappedIndex(null);
     if (containerRef.current) {
       containerRef.current.style.touchAction = "";
     }
@@ -57,6 +57,29 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
     return null;
   }, []);
 
+  const performSwap = useCallback(
+    (from: number, to: number) => {
+      if (swapCooldownRef.current) return;
+
+      // Brief cooldown to let the animation play before another swap
+      swapCooldownRef.current = true;
+      setTimeout(() => {
+        swapCooldownRef.current = false;
+      }, 200);
+
+      const newItems = arrayMove(items, from, to);
+      // The dragged item moves to `to`, the displaced item lands at `from`
+      setSwappedIndex(from);
+      currentIndex.current = to;
+      setDragIndex(to);
+      onChange(newItems);
+
+      // Clear swapped highlight after animation completes
+      setTimeout(() => setSwappedIndex(null), 400);
+    },
+    [items, onChange]
+  );
+
   const handlePointerDown = useCallback(
     (index: number) => (e: React.PointerEvent) => {
       if (e.button !== 0) return;
@@ -64,9 +87,7 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
 
       startPos.current = { x: e.clientX, y: e.clientY };
       currentIndex.current = index;
-      pendingPointerId.current = e.pointerId;
 
-      // Immediately set touch-action none to prevent scroll from starting
       if (containerRef.current) {
         containerRef.current.style.touchAction = "none";
       }
@@ -94,7 +115,6 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           clearTimeout(timerRef.current);
           timerRef.current = null;
-          // Re-enable scrolling since user is scrolling, not dragging
           if (containerRef.current) {
             containerRef.current.style.touchAction = "";
           }
@@ -107,25 +127,15 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
       const overIdx = getIndexAtPoint(e.clientX, e.clientY);
 
       if (overIdx !== null && overIdx !== currentIndex.current) {
-        // Swap with another photo
-        const from = currentIndex.current;
-        const newItems = arrayMove(items, from, overIdx);
-        currentIndex.current = overIdx;
-        setDragIndex(overIdx);
-        onChange(newItems);
+        performSwap(currentIndex.current, overIdx);
       } else if (overIdx === null && containerRef.current) {
-        // Pointer is in empty grid space — move to end of list
         const lastIndex = items.length - 1;
         if (currentIndex.current !== lastIndex) {
-          const from = currentIndex.current;
-          const newItems = arrayMove(items, from, lastIndex);
-          currentIndex.current = lastIndex;
-          setDragIndex(lastIndex);
-          onChange(newItems);
+          performSwap(currentIndex.current, lastIndex);
         }
       }
     },
-    [items, onChange, getIndexAtPoint]
+    [items, getIndexAtPoint, performSwap]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -134,6 +144,7 @@ export function useDragReorder<T>(items: T[], onChange: (items: T[]) => void) {
 
   return {
     dragIndex,
+    swappedIndex,
     containerRef,
     handlePointerDown,
     handlePointerMove,
