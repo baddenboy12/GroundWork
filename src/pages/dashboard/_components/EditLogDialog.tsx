@@ -199,28 +199,28 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="edit-log-title" className="text-base">Title *</Label>
+            <Label htmlFor="edit-log-title" className="text-xl font-semibold">Title *</Label>
             <Input
               id="edit-log-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-xl h-14"
+              className="h-16 !text-[22px]"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-base">Site *</Label>
+            <Label className="text-xl font-semibold">Site *</Label>
             <Select
               value={siteId}
               onValueChange={(v) => setSiteId(v as Id<"sites">)}
             >
-              <SelectTrigger className="h-14 text-base">
+              <SelectTrigger className="h-16 text-lg">
                 <SelectValue placeholder="Select a site" />
               </SelectTrigger>
               <SelectContent>
                 {(sites ?? []).map((s) => (
-                  <SelectItem key={s._id} value={s._id} className="text-base py-3">
+                  <SelectItem key={s._id} value={s._id} className="text-lg py-3">
                     {s.name}
                   </SelectItem>
                 ))}
@@ -230,14 +230,14 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-base">Category *</Label>
+              <Label className="text-xl font-semibold">Category *</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                <SelectTrigger className="h-14 text-base">
+                <SelectTrigger className="h-16 text-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {LOG_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c} className="text-base py-3">
+                    <SelectItem key={c} value={c} className="text-lg py-3">
                       {CATEGORY_LABELS[c]}
                     </SelectItem>
                   ))}
@@ -245,20 +245,20 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-log-date" className="text-base">Date & Time *</Label>
+              <Label htmlFor="edit-log-date" className="text-xl font-semibold">Date & Time *</Label>
               <Input
                 id="edit-log-date"
                 type="datetime-local"
                 value={loggedAt}
                 onChange={(e) => setLoggedAt(e.target.value)}
-                className="h-14 text-base"
+                className="h-16 text-lg"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-base">Location</Label>
+            <Label className="text-xl font-semibold">Location</Label>
             <LocationPicker
               value={location}
               onChange={setLocation}
@@ -266,11 +266,12 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               initialCoords={coords}
               showMapByDefault={false}
               placeholder="e.g. Tower 12 – Roof East, 123 Main St"
+              inputClassName="!h-14"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-log-content" className="text-base">Notes *</Label>
+            <Label htmlFor="edit-log-content" className="text-xl font-semibold">Notes *</Label>
             <Textarea
               id="edit-log-content"
               value={content}
@@ -284,7 +285,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
           {/* Photos — available on all tiers */}
           <div className="space-y-2">
-            <Label className="text-base flex items-center gap-2">
+            <Label className="text-xl font-semibold flex items-center gap-2">
               Photos
             </Label>
             <PhotoUploader
