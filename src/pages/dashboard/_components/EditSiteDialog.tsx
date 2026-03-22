@@ -84,6 +84,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               onChange={setLocation}
               onCoordsChange={setCoords}
               initialCoords={coords}
+              showMapByDefault={false}
               placeholder="123 Main St, City"
               inputClassName="!text-[26px]"
             />
