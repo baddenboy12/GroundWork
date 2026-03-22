@@ -80,15 +80,21 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const [siteSearch, setSiteSearch] = useState("");
   const siteDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close site dropdown on outside click
+  // Close site dropdown on outside click/touch
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       if (siteDropdownRef.current && !siteDropdownRef.current.contains(e.target as Node)) {
         setSiteDropdownOpen(false);
       }
     };
-    if (siteDropdownOpen) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    if (siteDropdownOpen) {
+      document.addEventListener("mousedown", handler);
+      document.addEventListener("touchstart", handler);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, [siteDropdownOpen]);
 
   // Reset state whenever the dialog opens with a (potentially different) log
@@ -247,7 +253,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -4 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
-                    className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden origin-top-left"
+                    className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-3xl border border-border bg-popover shadow-lg overflow-hidden origin-top-left"
                   >
                     <div
                       className="py-1"
@@ -284,7 +290,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 <SelectTrigger className="!h-[3.8rem] !text-[24px] rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-3xl">
                   {LOG_CATEGORIES.map((c) => (
                     <SelectItem key={c} value={c} className="!text-[20px] py-4">
                       {CATEGORY_LABELS[c]}
