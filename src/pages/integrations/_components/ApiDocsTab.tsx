@@ -17,20 +17,20 @@ function CodeBlock({ code, language = "bash" }: CodeBlockProps) {
   };
   return (
     <div className="relative group rounded-lg bg-muted/60 border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/40">
-        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/40">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider font-mono">
           {language}
         </span>
         <Button
           size="icon"
           variant="ghost"
-          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={handleCopy}
         >
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+          {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
         </Button>
       </div>
-      <pre className="text-xs p-4 overflow-x-auto text-foreground/90 font-mono whitespace-pre leading-relaxed">
+      <pre className="text-sm p-4 overflow-x-auto text-foreground/90 font-mono whitespace-pre leading-relaxed">
         {code}
       </pre>
     </div>
@@ -41,7 +41,7 @@ type SectionProps = { title: string; children: React.ReactNode };
 function Section({ title, children }: SectionProps) {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">{title}</h3>
+      <h3 className="text-xl font-semibold text-foreground border-b border-border pb-2">{title}</h3>
       {children}
     </section>
   );
@@ -56,7 +56,7 @@ function MethodBadge({ method }: MethodBadgeProps) {
     DELETE: "bg-red-500/15 text-red-400",
   };
   return (
-    <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded font-mono", colors[method])}>
+    <span className={cn("text-sm font-bold px-2.5 py-1 rounded font-mono", colors[method])}>
       {method}
     </span>
   );
@@ -76,10 +76,10 @@ function Endpoint({ method, path, description, body, response, notes }: Endpoint
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <MethodBadge method={method} />
-        <code className="text-sm font-mono text-foreground">{path}</code>
+        <code className="text-base font-mono text-foreground">{path}</code>
       </div>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      {notes && <p className="text-xs text-muted-foreground/70 italic">{notes}</p>}
+      <p className="text-base text-muted-foreground">{description}</p>
+      {notes && <p className="text-base text-muted-foreground/70 italic">{notes}</p>}
       {body && <CodeBlock code={body} language="json — request body" />}
       {response && <CodeBlock code={response} language="json — response" />}
     </div>
@@ -92,8 +92,8 @@ export default function ApiDocsTab() {
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
-        <h2 className="font-semibold text-foreground">REST API Documentation</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <h2 className="font-semibold text-foreground text-2xl">REST API Documentation</h2>
+        <p className="text-base text-muted-foreground mt-1">
           Use the GroundWork REST API to read and write data from any external system.
           Requires a <strong>Business plan</strong> and an active API key.
         </p>
@@ -102,7 +102,7 @@ export default function ApiDocsTab() {
       {/* Base URL */}
       <Section title="Base URL">
         <CodeBlock code={base} language="url" />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Find the exact URL under{" "}
           <span className="text-foreground font-medium">More → Backend → HTTP Actions URL</span>{" "}
           in your Convex dashboard.
@@ -111,9 +111,9 @@ export default function ApiDocsTab() {
 
       {/* Auth */}
       <Section title="Authentication">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Include your API key in the{" "}
-          <code className="text-xs bg-muted px-1 rounded">Authorization</code> header of every request.
+          <code className="text-sm bg-muted px-1.5 rounded">Authorization</code> header of every request.
           Keys are created on the API Keys tab.
         </p>
         <CodeBlock code={`Authorization: Bearer lv_<your_api_key>`} language="header" />
