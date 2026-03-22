@@ -69,7 +69,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              style={{ fontSize: "26px" }}
+              style={{ fontSize: "22px" }}
               className="h-[5rem] rounded-2xl px-6"
             />
             <p className="text-xl text-muted-foreground">
