@@ -241,23 +241,6 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               </button>
               {siteDropdownOpen && (
                 <div className="absolute left-0 top-full mt-1 z-50 w-[65%] rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
-                  <div className="px-3 py-2.5 border-b border-border">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        placeholder="Search sites…"
-                        value={siteSearch}
-                        onChange={(e) => setSiteSearch(e.target.value)}
-                        className="pl-10 pr-10 text-lg h-12 rounded-xl"
-                        autoFocus
-                      />
-                      {siteSearch && (
-                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSiteSearch("")}>
-                          <X className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
                   <div
                     className="py-1"
                     style={{ maxHeight: "320px", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
