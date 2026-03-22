@@ -96,18 +96,18 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
   const atSiteLimit = config.maxSites !== null && ownSiteCount >= config.maxSites;
   const selectedSite = sites?.find((s) => s._id === selectedSiteId);
 
-  // Track whether any dropdown menu inside the list is open
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Track which site's dropdown menu is open (null = none)
+  const [menuOpenSiteId, setMenuOpenSiteId] = useState<string | null>(null);
   const menuClosedAt = useRef(0);
 
-  const handleMenuOpenChange = (isOpen: boolean) => {
-    setMenuOpen(isOpen);
+  const handleMenuOpenChange = (siteId: string, isOpen: boolean) => {
+    setMenuOpenSiteId(isOpen ? siteId : null);
     if (!isOpen) menuClosedAt.current = Date.now();
   };
 
   // Close when clicking outside the whole wrapper (skip while dropdown menu is open)
   useEffect(() => {
-    if (!open || menuOpen) return;
+    if (!open || menuOpenSiteId) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       // Ignore clicks that happen right after the dropdown menu closed
       if (Date.now() - menuClosedAt.current < 200) return;
@@ -121,7 +121,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
     };
-  }, [open, menuOpen]);
+  }, [open, menuOpenSiteId]);
 
   // Scroll to selected site when panel opens
   useEffect(() => {
@@ -322,6 +322,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                     const isSelected = selectedSiteId === site._id;
                     const isTeamSite = !!site.teamKeyId;
                     const activeVote = activeVotesBySite.get(site._id);
+                    const isMenuOpen = menuOpenSiteId === site._id;
                     return (
                       <motion.div
                         key={site._id}
@@ -336,9 +337,11 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         className={cn(
                           "group relative flex items-center gap-3 mx-2 px-4 py-5 rounded-xl cursor-pointer",
                           "border transition-all duration-200",
-                          isSelected
-                            ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
-                            : "border-border/20 hover:border-border/55 text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                          isMenuOpen
+                            ? "border-primary/40 bg-primary/8 text-foreground shadow-sm"
+                            : isSelected
+                              ? "border-primary/35 bg-primary/12 text-foreground shadow-sm"
+                              : "border-border/20 hover:border-border/55 text-muted-foreground hover:text-foreground hover:bg-accent/40"
                         )}
                         onClick={() => {
                           onSelectSite(site._id);
@@ -396,15 +399,17 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                         )}
 
                         {/* ⋮ actions menu */}
-                        <DropdownMenu onOpenChange={handleMenuOpenChange}>
+                        <DropdownMenu onOpenChange={(isOpen) => handleMenuOpenChange(site._id, isOpen)}>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
                               className={cn(
                                 "w-12 h-12 flex items-center justify-center rounded-xl shrink-0 transition-colors active:scale-90",
-                                "bg-transparent hover:bg-accent active:bg-accent",
-                                isSelected
+                                isMenuOpen
+                                  ? "bg-primary/20 text-primary"
+                                  : "bg-transparent hover:bg-accent active:bg-accent",
+                                !isMenuOpen && (isSelected
                                   ? "text-primary/50 hover:text-primary"
-                                  : "text-muted-foreground/40 hover:text-foreground"
+                                  : "text-muted-foreground/40 hover:text-foreground")
                               )}
                               aria-label="Site actions"
                             >
