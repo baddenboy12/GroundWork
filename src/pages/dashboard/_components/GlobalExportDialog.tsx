@@ -156,7 +156,9 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   // Close dropdowns on outside click/tap (no backdrop needed)
   useEffect(() => {
     if (!sitesPopoverOpen && !categoryOpen) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
+
+    let handlerAttached = false;
+    const handler = (e: Event) => {
       const target = e.target as Node;
       if (sitesPopoverOpen) {
         if (
@@ -175,11 +177,20 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
         }
       }
     };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
+
+    // Delay so the opening tap/click doesn't immediately trigger close
+    const timeoutId = setTimeout(() => {
+      handlerAttached = true;
+      document.addEventListener("mousedown", handler);
+      document.addEventListener("touchend", handler);
+    }, 150);
+
     return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
+      clearTimeout(timeoutId);
+      if (handlerAttached) {
+        document.removeEventListener("mousedown", handler);
+        document.removeEventListener("touchend", handler);
+      }
     };
   }, [sitesPopoverOpen, categoryOpen]);
 
