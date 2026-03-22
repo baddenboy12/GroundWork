@@ -1112,8 +1112,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </div>
         ) : (
         <div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Choose your plan</h2>
-          <p className="text-muted-foreground mb-8 text-sm">
+          <h2 className="text-3xl font-bold text-foreground mb-2">Choose your plan</h2>
+          <p className="text-muted-foreground mb-8 text-lg">
             {isPayPalConfigured
               ? "Subscribe securely via PayPal. Cancel any time."
               : "Initialize PayPal above to enable real payment processing."}
@@ -1141,7 +1141,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 >
                   {cfg.highlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5">
+                      <Badge className="bg-primary text-primary-foreground text-sm px-3 py-1">
                         Most popular
                       </Badge>
                     </div>
@@ -1149,65 +1149,65 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
                   {isCurrent && (
                     <div className="absolute -top-3 right-4">
-                      <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                      <Badge variant="secondary" className="text-sm px-3 py-1">
                         Current
                       </Badge>
                     </div>
                   )}
 
                   <div>
-                    <p className="font-bold text-foreground text-base">{cfg.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{cfg.tagline}</p>
+                    <p className="font-bold text-foreground text-xl">{cfg.name}</p>
+                    <p className="text-base text-muted-foreground mt-0.5">{cfg.tagline}</p>
                   </div>
 
                   <div>
-                    <span className="text-3xl font-black text-foreground">{cfg.price}</span>
-                    <span className="text-xs text-muted-foreground ml-1">{cfg.period}</span>
+                    <span className="text-4xl font-black text-foreground">{cfg.price}</span>
+                    <span className="text-base text-muted-foreground ml-1">{cfg.period}</span>
                   </div>
 
                   {/* Feature list */}
-                  <ul className="space-y-1.5 flex-1">
-                    <li className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <ul className="space-y-2 flex-1">
+                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
                       {cfg.maxSites === null
                         ? "Unlimited sites"
                         : `${cfg.maxSites} site${cfg.maxSites > 1 ? "s" : ""}`}
                     </li>
-                    <li className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
                       {cfg.maxLogsPerSite === null
                         ? "Unlimited logs per site"
                         : `${cfg.maxLogsPerSite} log${cfg.maxLogsPerSite > 1 ? "s" : ""} per site`}
                     </li>
-                    <li className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <li className="flex items-center gap-2 text-base text-muted-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
                       Up to {cfg.maxPhotosPerEntry} photos per entry
                     </li>
                     <li
                       className={cn(
-                        "flex items-center gap-2 text-xs",
+                        "flex items-center gap-2 text-base",
                         cfg.export ? "text-muted-foreground" : "text-muted-foreground/40"
                       )}
                     >
                       {cfg.export ? (
-                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <Check className="w-4 h-4 text-primary shrink-0" />
                       ) : (
-                        <X className="w-3.5 h-3.5 shrink-0" />
+                        <X className="w-4 h-4 shrink-0" />
                       )}
                       PDF, Excel & CSV export
                     </li>
                     <li
                       className={cn(
-                        "flex items-center gap-2 text-xs",
+                        "flex items-center gap-2 text-base",
                         cfg.integrations
                           ? "text-muted-foreground"
                           : "text-muted-foreground/40"
                       )}
                     >
                       {cfg.integrations ? (
-                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <Check className="w-4 h-4 text-primary shrink-0" />
                       ) : (
-                        <X className="w-3.5 h-3.5 shrink-0" />
+                        <X className="w-4 h-4 shrink-0" />
                       )}
                       Integrations & API
                     </li>
@@ -1310,8 +1310,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           {/* Prompt for current paid users who don't have a team yet */}
           {!myKeyInfo && (tier === "pro" || tier === "business") && (
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-              <Users className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-sm text-muted-foreground flex-1">
+              <Users className="w-5 h-5 text-primary shrink-0" />
+              <p className="text-lg text-muted-foreground flex-1">
                 You are on an individual plan. Want to create a team workspace?
               </p>
               <Button size="sm" variant="secondary" onClick={() => setCreateTeamOpen(true)}>
@@ -1324,19 +1324,19 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
         {/* Feature comparison table */}
         <div>
-          <h2 className="text-xl font-bold text-foreground mb-6">Full comparison</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-6">Full comparison</h2>
           <div className="rounded-2xl border border-border overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 text-muted-foreground font-medium text-sm w-[40%]">
+                  <th className="text-left px-4 py-3 text-muted-foreground font-medium text-base w-[40%]">
                     Feature
                   </th>
                   {TIER_ORDER.map((t) => (
                     <th
                       key={t}
                       className={cn(
-                        "text-center px-3 py-3 font-semibold text-sm whitespace-nowrap",
+                        "text-center px-3 py-3 font-semibold text-base whitespace-nowrap",
                         t === tier ? "text-primary" : "text-foreground"
                       )}
                     >
@@ -1359,11 +1359,11 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       i % 2 === 0 ? "bg-background" : "bg-muted/20"
                     )}
                   >
-                    <td className="px-4 py-3 text-muted-foreground font-medium text-sm leading-snug">
+                    <td className="px-4 py-3 text-muted-foreground font-medium text-base leading-snug">
                       {row.label}
                     </td>
                     {TIER_ORDER.map((t) => (
-                      <td key={t} className="px-3 py-3 text-center text-foreground text-sm">
+                      <td key={t} className="px-3 py-3 text-center text-foreground text-base">
                         {featureValue(row.key, t)}
                       </td>
                     ))}
@@ -1374,7 +1374,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground pb-8">
+        <p className="text-center text-base text-muted-foreground pb-8">
           Payments are processed securely via PayPal.
           <br />
           Questions? Contact us at{" "}
