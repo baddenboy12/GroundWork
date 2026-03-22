@@ -57,7 +57,8 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-[95%] w-[540px] p-10 top-[12%] translate-y-0 left-1/2 -translate-x-1/2" style={{ transform: "translateX(-50%) scale(1.25)", transformOrigin: "top center" }} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-[95%] w-[540px] p-0 top-[12%] translate-y-0" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+        <div className="p-10" style={{ transform: "scale(1.25)", transformOrigin: "top center" }}>
         <DialogHeader>
           <DialogTitle className="text-4xl font-bold">Edit site</DialogTitle>
         </DialogHeader>
@@ -95,6 +96,7 @@ export default function EditSiteDialog({ open, onClose, site }: Props) {
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
