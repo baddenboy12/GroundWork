@@ -1138,7 +1138,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   className={cn(
                     "relative rounded-2xl border p-5 flex flex-col gap-4 transition-colors",
                     cfg.highlight
-                      ? "border-primary/60 bg-primary/5"
+                      ? "border-primary/60 bg-card"
                       : "border-border bg-card",
                     isCurrent && "ring-2 ring-primary/40"
                   )}
