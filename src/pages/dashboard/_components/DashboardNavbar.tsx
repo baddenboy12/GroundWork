@@ -274,25 +274,28 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
 
       {/* Set / edit name dialog */}
       <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md !top-[5%] !translate-y-0 rounded-3xl"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle>{isMissingName ? "Set your name" : "Edit name"}</DialogTitle>
+            <DialogTitle className="text-3xl">{isMissingName ? "Set your name" : "Edit name"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSaveName} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label>Display name</Label>
+          <form onSubmit={handleSaveName} className="space-y-5 pt-2">
+            <div className="space-y-2">
+              <Label className="text-xl font-semibold">Display name</Label>
               <Input
                 placeholder="e.g. Corey Butler"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
-                autoFocus
+                className="h-16 !text-[22px] rounded-xl"
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setNameDialogOpen(false)}>
+              <Button type="button" variant="secondary" className="text-lg py-5 px-6 rounded-xl" onClick={() => setNameDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={nameSaving || !nameInput.trim()}>
+              <Button type="submit" className="text-lg py-5 px-6 rounded-xl" disabled={nameSaving || !nameInput.trim()}>
                 {nameSaving ? "Saving…" : "Save name"}
               </Button>
             </DialogFooter>
