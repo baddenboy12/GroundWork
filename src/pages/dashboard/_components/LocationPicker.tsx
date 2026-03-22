@@ -180,7 +180,7 @@ export default function LocationPicker({
     <div className="space-y-2">
       {/* Input row */}
       <div className="relative flex items-center">
-        <MapPin className="absolute left-4 w-7 h-7 text-muted-foreground pointer-events-none shrink-0" />
+        <MapPin className="absolute left-5 w-8 h-8 text-muted-foreground pointer-events-none shrink-0" />
         <Input
           ref={inputRef}
           id={id}
@@ -188,7 +188,7 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="pl-14 pr-18 h-[5rem] text-3xl rounded-2xl"
+          className="pl-16 pr-20 h-[6rem] text-4xl rounded-2xl"
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}
@@ -198,7 +198,7 @@ export default function LocationPicker({
           disabled={gps.status === "loading"}
           onClick={handleGps}
           className={cn(
-            "absolute right-3 h-12 w-12 flex items-center justify-center rounded-xl transition-all",
+            "absolute right-4 h-14 w-14 flex items-center justify-center rounded-xl transition-all",
             gps.status === "loading"
               ? "bg-primary/20 text-primary animate-pulse cursor-wait"
               : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
