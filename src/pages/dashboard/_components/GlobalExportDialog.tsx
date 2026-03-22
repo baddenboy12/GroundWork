@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -131,53 +130,6 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
   const [entriesPopoverOpen, setEntriesPopoverOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
 
-  // Refs for portal-based floating dropdowns
-  const sitesBtnRef = useRef<HTMLButtonElement>(null);
-  const categoryBtnRef = useRef<HTMLButtonElement>(null);
-  const sitesDropdownRef = useRef<HTMLDivElement>(null);
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [sitesRect, setSitesRect] = useState<DOMRect | null>(null);
-  const [categoryRect, setCategoryRect] = useState<DOMRect | null>(null);
-
-  const toggleSitesDropdown = useCallback(() => {
-    setSitesPopoverOpen((prev) => {
-      if (!prev && sitesBtnRef.current) setSitesRect(sitesBtnRef.current.getBoundingClientRect());
-      return !prev;
-    });
-  }, []);
-
-  const toggleCategoryDropdown = useCallback(() => {
-    setCategoryOpen((prev) => {
-      if (!prev && categoryBtnRef.current) setCategoryRect(categoryBtnRef.current.getBoundingClientRect());
-      return !prev;
-    });
-  }, []);
-
-  // Close dropdowns on outside click (desktop only — mobile closes via button toggle)
-  useEffect(() => {
-    if (!sitesPopoverOpen && !categoryOpen) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (sitesPopoverOpen) {
-        if (
-          !sitesDropdownRef.current?.contains(target) &&
-          !sitesBtnRef.current?.contains(target)
-        ) {
-          setSitesPopoverOpen(false);
-        }
-      }
-      if (categoryOpen) {
-        if (
-          !categoryDropdownRef.current?.contains(target) &&
-          !categoryBtnRef.current?.contains(target)
-        ) {
-          setCategoryOpen(false);
-        }
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [sitesPopoverOpen, categoryOpen]);
 
   // When sites load, default to all selected
   useEffect(() => {
@@ -452,28 +404,24 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </>
               )}
 
-              {/* Sites — portal floating dropdown */}
+              {/* Sites — inline collapsible */}
+              <div className={cn(
+                "rounded-2xl border bg-card overflow-hidden",
+                !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
+              )}>
               <button
-                ref={sitesBtnRef}
                 type="button"
-                className={cn(
-                  "w-full flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors",
-                  !allSitesSelected && selectedSiteIds.size === 0 ? "border-destructive" : "border-border"
-                )}
-                onClick={toggleSitesDropdown}
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-lg hover:bg-accent transition-colors"
+                onClick={() => setSitesPopoverOpen(!sitesPopoverOpen)}
               >
                 <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
                 <span className="text-base text-muted-foreground shrink-0 text-left w-20">Sites</span>
                 <span className="flex-1 text-left font-medium text-foreground truncate">{sitesSummary}</span>
                 <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", sitesPopoverOpen && "rotate-180")} />
               </button>
-              {sitesPopoverOpen && sitesRect && createPortal(
-                  <div
-                    ref={sitesDropdownRef}
-                    className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg"
-                    style={{ top: sitesRect.bottom + 4, left: sitesRect.left, width: sitesRect.width }}
-                  >
-                    <div className="px-3 py-2.5 border-b border-border">
+              {sitesPopoverOpen && (
+                  <>
+                    <div className="px-3 py-2.5 border-t border-border">
                       <button
                         type="button"
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors text-left"
@@ -519,9 +467,9 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                         ))
                       )}
                     </div>
-                  </div>,
-                document.body
+                  </>
               )}
+              </div>
 
               {/* Date range */}
               <div className="grid grid-cols-2 gap-2">
@@ -539,14 +487,13 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Category — portal floating dropdown */}
+              {/* Category — inline collapsible */}
               {selectionMode === "filter" && (
-                <>
+                <div className="rounded-2xl border border-border bg-card overflow-hidden">
                   <button
-                    ref={categoryBtnRef}
                     type="button"
-                    className="w-full flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
-                    onClick={toggleCategoryDropdown}
+                    className="w-full flex items-center gap-3 px-5 py-4 text-xl hover:bg-accent transition-colors"
+                    onClick={() => setCategoryOpen(!categoryOpen)}
                   >
                     <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
                     <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
@@ -555,37 +502,30 @@ export default function GlobalExportDialog({ open, onClose }: Props) {
                     </span>
                     <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
                   </button>
-                  {categoryOpen && categoryRect && createPortal(
-                      <div
-                        ref={categoryDropdownRef}
-                        className="fixed z-[100] rounded-2xl border border-border bg-popover shadow-lg p-3"
-                        style={{ top: categoryRect.bottom + 4, left: categoryRect.left, width: categoryRect.width }}
-                      >
-                        <div className="space-y-1">
-                          {CATEGORIES.map((c) => (
-                            <button
-                              key={c.value}
-                              type="button"
-                              className={cn(
-                                "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
-                                category === c.value && "bg-accent"
-                              )}
-                              onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
-                            >
-                              {c.value !== "all" && (
-                                <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
-                              )}
-                              <span className="text-lg text-foreground">{c.label}</span>
-                              {category === c.value && (
-                                <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>,
-                    document.body
+                  {categoryOpen && (
+                    <div className="border-t border-border p-3 space-y-1">
+                      {CATEGORIES.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
+                            category === c.value && "bg-accent"
+                          )}
+                          onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
+                        >
+                          {c.value !== "all" && (
+                            <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
+                          )}
+                          <span className="text-lg text-foreground">{c.label}</span>
+                          {category === c.value && (
+                            <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </>
+                </div>
               )}
 
               {/* Entries selector — individual mode, inline collapsible */}
