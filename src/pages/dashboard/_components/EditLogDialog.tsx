@@ -207,7 +207,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent
-        className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[5%] translate-y-0 [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform"
+        className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[5%] translate-y-0 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -221,7 +221,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               id="edit-log-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="h-16 !text-[22px]"
+              className="h-16 !text-[22px] rounded-xl"
               required
             />
           </div>
@@ -231,7 +231,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="relative" ref={siteDropdownRef}>
               <button
                 type="button"
-                className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-md border border-input bg-transparent px-3 !text-[24px] shadow-xs active:scale-95 transition-transform"
+                className="w-fit max-w-[65%] flex items-center justify-between gap-2 !h-[3.8rem] rounded-xl border border-input bg-transparent px-3 !text-[24px] shadow-xs active:scale-95 transition-transform"
                 onClick={() => { setSiteDropdownOpen(!siteDropdownOpen); setSiteSearch(""); }}
               >
                 <span className="truncate">
@@ -272,7 +272,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <div className="space-y-2">
               <Label className="text-xl font-semibold">Category *</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as LogCategory)}>
-                <SelectTrigger className="!h-[3.8rem] !text-[24px]">
+                <SelectTrigger className="!h-[3.8rem] !text-[24px] rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -291,7 +291,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                 type="datetime-local"
                 value={loggedAt}
                 onChange={(e) => setLoggedAt(e.target.value)}
-                className="h-16 !text-[20px]"
+                className="h-16 !text-[20px] rounded-xl"
                 required
               />
             </div>
@@ -318,7 +318,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
               onChange={(e) => setContent(e.target.value)}
               rows={7}
               style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
-              className="!text-[18px] min-h-[180px] resize-none"
+              className="!text-[18px] min-h-[180px] resize-none rounded-xl"
               required
             />
           </div>
