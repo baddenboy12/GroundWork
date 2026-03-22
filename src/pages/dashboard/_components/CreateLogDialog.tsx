@@ -213,7 +213,7 @@ export default function CreateLogDialog({
     <>
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent
-          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto !top-[12%] !translate-y-0 [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform"
+          className="sm:max-w-2xl max-h-[92vh] overflow-y-auto top-[12%] translate-y-0 [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
