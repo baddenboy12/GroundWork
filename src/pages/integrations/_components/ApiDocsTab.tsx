@@ -78,7 +78,7 @@ function Endpoint({ method, path, description, body, response, notes }: Endpoint
         <MethodBadge method={method} />
         <code className="text-base font-mono text-foreground">{path}</code>
       </div>
-      <p className="text-base text-muted-foreground">{description}</p>
+      <p className="text-base text-muted-foreground whitespace-pre-line">{description}</p>
       {notes && <p className="text-base text-muted-foreground/70 italic">{notes}</p>}
       {body && <CodeBlock code={body} language="json — request body" />}
       {response && <CodeBlock code={response} language="json — response" />}
@@ -95,7 +95,7 @@ export default function ApiDocsTab() {
         <h2 className="font-semibold text-foreground text-2xl">REST API Documentation</h2>
         <p className="text-base text-muted-foreground mt-1">
           Use the GroundWork REST API to read and write data from any external system.
-          Requires a <strong>Business plan</strong> and an active API key.
+          <br />Requires a <strong>Business plan</strong> and an active API key.
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default function ApiDocsTab() {
         <p className="text-base text-muted-foreground">
           Include your API key in the{" "}
           <code className="text-sm bg-muted px-1.5 rounded">Authorization</code> header of every request.
-          Keys are created on the API Keys tab.
+          <br />Keys are created on the API Keys tab.
         </p>
         <CodeBlock code={`Authorization: Bearer lv_<your_api_key>`} language="header" />
         <CodeBlock
@@ -161,7 +161,7 @@ export default function ApiDocsTab() {
           <Endpoint
             method="PATCH"
             path="/api/v1/sites/:id"
-            description="Update a site. Only include fields you want to change."
+            description={"Update a site.\nOnly include fields you want to change."}
             body={`{
   "name": "Updated Name",  // any combination of fields
   "location": "New location"
@@ -172,7 +172,7 @@ export default function ApiDocsTab() {
           <Endpoint
             method="DELETE"
             path="/api/v1/sites/:id"
-            description="Permanently delete a site and all its log entries. R2 photos are also cleaned up."
+            description={"Permanently delete a site and all its log entries.\nR2 photos are also cleaned up."}
             response={`{ "deleted": true }`}
           />
         </div>
@@ -232,7 +232,7 @@ export default function ApiDocsTab() {
           <Endpoint
             method="POST"
             path="/api/v1/logs"
-            description="Create a new log entry. Fires matching webhooks automatically."
+            description={"Create a new log entry.\nFires matching webhooks automatically."}
             body={`{
   "siteId": "...",               // required
   "title": "Quarterly review",   // required
@@ -249,7 +249,7 @@ export default function ApiDocsTab() {
           <Endpoint
             method="PATCH"
             path="/api/v1/logs/:id"
-            description="Update a log entry. Only include fields you want to change. Photos cannot be changed via API."
+            description={"Update a log entry.\nOnly include fields you want to change. Photos cannot be changed via API."}
             body={`{
   "title": "Updated title",   // any combination of fields
   "category": "maintenance",
@@ -261,7 +261,7 @@ export default function ApiDocsTab() {
           <Endpoint
             method="DELETE"
             path="/api/v1/logs/:id"
-            description="Permanently delete a log entry. R2 photos are also cleaned up."
+            description={"Permanently delete a log entry.\nR2 photos are also cleaned up."}
             response={`{ "deleted": true }`}
           />
         </div>
@@ -272,7 +272,7 @@ export default function ApiDocsTab() {
         <Endpoint
           method="GET"
           path="/api/v1/stats"
-          description="Get a summary of your account — site count, log count, and storage usage."
+          description={"Get a summary of your account.\nSite count, log count, and storage usage."}
           response={`{
   "totalSites": 12,
   "totalLogs": 347,
@@ -285,10 +285,10 @@ export default function ApiDocsTab() {
 
       {/* Webhook signatures */}
       <Section title="Webhook Signatures">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Every webhook delivery includes an{" "}
-          <code className="text-xs bg-muted px-1 rounded">X-GroundWork-Signature</code> header.
-          Verify it to ensure the payload was sent by GroundWork.
+          <code className="text-sm bg-muted px-1.5 rounded">X-GroundWork-Signature</code> header.
+          <br />Verify it to ensure the payload was sent by GroundWork.
         </p>
         <CodeBlock
           code={`// Node.js verification example
