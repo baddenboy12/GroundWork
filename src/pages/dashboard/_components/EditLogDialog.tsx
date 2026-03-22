@@ -295,13 +295,13 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="secondary" size="lg" onClick={handleClose}>
+          <DialogFooter className="gap-5 pt-4">
+            <Button type="button" variant="secondary" onClick={handleClose} className="h-20 text-2xl px-10 rounded-2xl">
               Cancel
             </Button>
             <Button
               type="submit"
-              size="lg"
+              className="h-20 text-2xl px-10 rounded-2xl"
               disabled={loading || !title.trim() || !content.trim() || !isOnline}
             >
               {loading
