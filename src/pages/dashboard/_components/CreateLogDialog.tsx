@@ -77,12 +77,27 @@ export default function CreateLogDialog({
   const siteInputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
 
-  // Sync initialSiteName when dialog opens
+  // Sync initialSiteName when dialog opens and auto-fill location from site
   useEffect(() => {
     if (open) {
       setSiteName(initialSiteName ?? "");
+      // Auto-fill location/coordinates from the matching site
+      if (initialSiteName && sites) {
+        const match = sites.find(
+          (s) => s.name.toLowerCase() === initialSiteName.toLowerCase()
+        );
+        if (match) {
+          if (match.location) {
+            setLocation(match.location);
+            setLocationFromSite(true);
+          }
+          if (match.latitude != null && match.longitude != null) {
+            setCoords({ lat: match.latitude, lng: match.longitude });
+          }
+        }
+      }
     }
-  }, [open, initialSiteName]);
+  }, [open, initialSiteName, sites]);
 
   const filteredSites =
     sites?.filter((s) =>
