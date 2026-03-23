@@ -377,19 +377,54 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         toast.error("An active Pro or Business subscription is required to create a team.");
         return;
       }
-      // Pre-commit seat count server-side before createSelfKey so the backend
-      // can verify it wasn't tampered with (matches the PayPal subscribe flow).
-      if (createTeamSeats > 1) {
-        await storePendingTeamSeatsMutation({ seats: createTeamSeats });
+
+      const hasPayPalSub =
+        user.paypalSubscriptionStatus === "ACTIVE" ||
+        user.paypalSubscriptionStatus === "APPROVED";
+
+      if (createTeamSeats > 1 && hasPayPalSub) {
+        // Multi-seat team with active PayPal: create team with 1 seat first,
+        // then revise the subscription to charge for extra seats via PayPal.
+        const { keyId, code } = await createSelfKeyMutation({
+          tier: activeTier,
+          maxMembers: 1,
+        });
+        toast.info(`Team created (key: ${code}). Redirecting to PayPal to add ${createTeamSeats - 1} extra seat(s)…`);
+
+        // Use the existing seat revision flow to charge for extra seats
+        sessionStorage.setItem("gw_pending_key_id", keyId);
+        const origin = window.location.origin;
+        const { approvalUrl, applied } = await reviseSubscriptionSeatsAction({
+          keyId: keyId as Parameters<typeof reviseSubscriptionSeatsAction>[0]["keyId"],
+          maxMembers: createTeamSeats,
+          returnUrl: `${origin}/paypal/return`,
+          cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+        });
+
+        if (applied) {
+          // Price decrease or no change — applied immediately
+          sessionStorage.removeItem("gw_pending_key_id");
+          toast.success(`Team workspace created with ${createTeamSeats} seats!`);
+          setCreateTeamOpen(false);
+          setCreateTeamSeats(1);
+        } else if (approvalUrl) {
+          // Redirect to PayPal for approval of the seat charge increase
+          window.location.href = approvalUrl;
+        }
+      } else {
+        // Single seat team or no PayPal sub — create directly
+        if (createTeamSeats > 1) {
+          await storePendingTeamSeatsMutation({ seats: createTeamSeats });
+        }
+        const { code } = await createSelfKeyMutation({
+          tier: activeTier,
+          maxMembers: createTeamSeats > 0 ? createTeamSeats : undefined,
+        });
+        const seatsLabel = createTeamSeats > 1 ? ` (${createTeamSeats} seats)` : "";
+        toast.success(`Team workspace created${seatsLabel}! Share this key with your team: ${code}`);
+        setCreateTeamOpen(false);
+        setCreateTeamSeats(1);
       }
-      const { code } = await createSelfKeyMutation({
-        tier: activeTier,
-        maxMembers: createTeamSeats > 0 ? createTeamSeats : undefined,
-      });
-      const seatsLabel = createTeamSeats > 1 ? ` (${createTeamSeats} seats)` : "";
-      toast.success(`Team workspace created${seatsLabel}! Share this key with your team: ${code}`);
-      setCreateTeamOpen(false);
-      setCreateTeamSeats(1);
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
