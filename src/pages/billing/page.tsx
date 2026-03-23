@@ -369,12 +369,12 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
       if (
         hasPayPalSub &&
-        myKeyInfo.selfCreated &&
         myKeyInfo.maxMembers &&
         (myKeyInfo.memberCount - 1) < myKeyInfo.maxMembers
       ) {
         toast.info(
-          "The open seat is still available for a replacement. Use 'Edit Seats' to reduce your seat count if you don't need it."
+          "The open seat is still available for a replacement. Use 'Edit Seats' to reduce your seat count if you don't need it.",
+          { duration: 8000 }
         );
       }
     } catch (err) {
