@@ -200,7 +200,7 @@ export default function Hero() {
             </Authenticated>
             <Unauthenticated>
               <SignInButton size="lg" />
-              <Button size="lg" variant="secondary" asChild>
+              <Button size="lg" variant="secondary" className="text-base px-6" asChild>
                 <Link to="/features">Explore Features</Link>
               </Button>
             </Unauthenticated>
