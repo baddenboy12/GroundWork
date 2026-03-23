@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import PlanCarousel from "./_components/PlanCarousel.tsx";
 import { useNavigate } from "react-router-dom";
@@ -278,14 +278,23 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       return;
     }
 
-    // ── Landing page sign-up with tier intent ───────────────────────────────
-    const signupTier = sessionStorage.getItem("gw_signup_tier");
-    if (signupTier && (signupTier === "pro" || signupTier === "business")) {
-      sessionStorage.removeItem("gw_signup_tier");
-      setSubTypeDialogTier(signupTier as SubscriptionTier);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Landing page sign-up with tier intent ─────────────────────────────────
+  // Runs once tier is loaded so we can skip the dialog if user already has the plan.
+  const signupTierHandled = useRef(false);
+  useEffect(() => {
+    if (isLoading || signupTierHandled.current) return;
+    const signupTier = sessionStorage.getItem("gw_signup_tier");
+    if (!signupTier || (signupTier !== "pro" && signupTier !== "business")) return;
+    signupTierHandled.current = true;
+    sessionStorage.removeItem("gw_signup_tier");
+    // Only prompt if user doesn't already have this tier (or higher)
+    const tierRank = { free: 0, starter: 1, pro: 2, business: 3 };
+    if ((tierRank[tier] ?? 0) >= (tierRank[signupTier as SubscriptionTier] ?? 0)) return;
+    setSubTypeDialogTier(signupTier as SubscriptionTier);
+  }, [isLoading, tier]);
 
   const handlePayPalSubscribe = async (newTier: SubscriptionTier, isTeam: boolean, maxMembers: number) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
