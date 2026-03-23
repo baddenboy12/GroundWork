@@ -75,25 +75,31 @@ export default function CreateLogDialog({
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
 
   const siteInputRef = useRef<HTMLInputElement>(null);
+  const didAutoFillRef = useRef(false);
   const isOnline = useOnlineStatus();
 
-  // Sync initialSiteName when dialog opens and auto-fill location from site
+  // Reset site name and auto-fill flag when dialog opens/closes
   useEffect(() => {
     if (open) {
       setSiteName(initialSiteName ?? "");
-      // Auto-fill location/coordinates from the matching site
-      if (initialSiteName && sites) {
-        const match = sites.find(
-          (s) => s.name.toLowerCase() === initialSiteName.toLowerCase()
-        );
-        if (match) {
-          if (match.location) {
-            setLocation(match.location);
-            setLocationFromSite(true);
-          }
-          if (match.latitude != null && match.longitude != null) {
-            setCoords({ lat: match.latitude, lng: match.longitude });
-          }
+      didAutoFillRef.current = false;
+    }
+  }, [open, initialSiteName]);
+
+  // Auto-fill location from site once sites data is available
+  useEffect(() => {
+    if (open && initialSiteName && sites && !didAutoFillRef.current) {
+      const match = sites.find(
+        (s) => s.name.toLowerCase() === initialSiteName.toLowerCase()
+      );
+      if (match) {
+        didAutoFillRef.current = true;
+        if (match.location) {
+          setLocation(match.location);
+          setLocationFromSite(true);
+        }
+        if (match.latitude != null && match.longitude != null) {
+          setCoords({ lat: match.latitude, lng: match.longitude });
         }
       }
     }
