@@ -359,6 +359,39 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       await kickMemberMutation({ keyId: myKeyInfo.keyId, targetUserId: kickTarget.userId });
       toast.success(`${kickTarget.name} has been removed from the team.`);
       setKickTarget(null);
+
+      // Auto-reduce seat count and revise PayPal billing if applicable.
+      // The new seat count = current members minus the one just kicked.
+      const newSeatCount = myKeyInfo.memberCount - 1;
+      const hasPayPalSub =
+        user?.paypalSubscriptionStatus === "ACTIVE" ||
+        user?.paypalSubscriptionStatus === "APPROVED";
+
+      if (
+        hasPayPalSub &&
+        myKeyInfo.selfCreated &&
+        myKeyInfo.maxMembers &&
+        newSeatCount < myKeyInfo.maxMembers
+      ) {
+        try {
+          const origin = window.location.origin;
+          // Price decrease — PayPal applies without approval on next billing cycle
+          await reviseSubscriptionSeatsAction({
+            keyId: myKeyInfo.keyId,
+            maxMembers: newSeatCount,
+            returnUrl: `${origin}/paypal/return`,
+            cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+          });
+          toast.success(
+            `Seat count reduced to ${newSeatCount}. The lower price will take effect on your next billing cycle.`
+          );
+        } catch {
+          // Non-fatal: member was already removed, billing revision is secondary
+          toast.info(
+            "Member removed, but seat billing could not be auto-adjusted. You can update seats manually."
+          );
+        }
+      }
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
