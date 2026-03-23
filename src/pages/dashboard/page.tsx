@@ -271,9 +271,9 @@ function DashboardInner() {
       <UpgradeDialog
         open={exportUpgradeOpen}
         onClose={() => setExportUpgradeOpen(false)}
-        requiredTier="pro"
+        requiredTier="business"
         featureName="PDF & CSV Export"
-        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Pro plan."
+        featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Business plan."
       />
     </div>
   );
