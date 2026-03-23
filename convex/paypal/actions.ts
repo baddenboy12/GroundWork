@@ -904,17 +904,18 @@ export const reviseSubscriptionTier = action({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
     }
 
-    // The PayPal subscription belongs to the key creator (may differ from
+    // The PayPal subscription belongs to the subscriber (may differ from
     // the current admin after a transfer).
-    const keyCreator = key.createdBy === user._id
+    const subscriberId = key.paypalSubscriberId ?? key.createdBy;
+    const subscriber = subscriberId === user._id
       ? user
-      : await ctx.runQuery(internal.users._getById, { userId: key.createdBy });
+      : await ctx.runQuery(internal.users._getById, { userId: subscriberId });
 
-    const subscriptionId = keyCreator?.paypalSubscriptionId;
+    const subscriptionId = subscriber?.paypalSubscriptionId;
     if (!subscriptionId) {
       throw new ConvexError({
         code: "BAD_REQUEST",
-        message: "No active PayPal subscription to revise.",
+        message: "No active PayPal subscription to revise. The admin needs to set up payment first.",
       });
     }
 

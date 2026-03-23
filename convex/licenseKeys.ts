@@ -718,6 +718,52 @@ export const _getKeyById = internalQuery({
 
 // ── Internal: find self-created key by admin user ID ──────────────────────────
 
+// Internal debug: list all keys with full details (CLI/dashboard only)
+export const _debugListAllKeys = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const keys = await ctx.db.query("licenseKeys").collect();
+    return Promise.all(keys.map(async (k) => {
+      const memberships = await ctx.db
+        .query("keyMemberships")
+        .withIndex("by_key", (q) => q.eq("keyId", k._id))
+        .collect();
+      return {
+        id: k._id,
+        code: k.code,
+        tier: k.tier,
+        status: k.status,
+        selfCreated: k.selfCreated,
+        maxMembers: k.maxMembers,
+        memberCount: memberships.length,
+        adminUserId: k.adminUserId,
+        createdBy: k.createdBy,
+        paypalSubscriberId: k.paypalSubscriberId,
+        pendingPaymentTransfer: k.pendingPaymentTransfer,
+        suspendedAt: k.suspendedAt,
+      };
+    }));
+  },
+});
+
+// Internal debug: list all users with subscription info (CLI/dashboard only)
+export const _debugListUsers = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.map((u) => ({
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      tier: u.subscriptionTier,
+      paypalStatus: u.paypalSubscriptionStatus,
+      paypalSubId: u.paypalSubscriptionId,
+      cancelDate: u.paypalCancelEffectiveDate,
+      appliedKeyId: u.appliedLicenseKeyId,
+    }));
+  },
+});
+
 export const _getSelfCreatedKeyByAdmin = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
