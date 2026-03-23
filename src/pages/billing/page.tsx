@@ -488,11 +488,12 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     if (!myKeyInfo) return;
     setEditSeatsPending(true);
     try {
-      const hasPayPalSub =
-        user?.paypalSubscriptionStatus === "ACTIVE" ||
-        user?.paypalSubscriptionStatus === "APPROVED";
+      // If the key was created via PayPal (selfCreated), seat changes must
+      // always go through PayPal — even if the current admin isn't the
+      // original subscriber (e.g. after an admin transfer).
+      const isPayPalBackedTeam = myKeyInfo.selfCreated;
 
-      if (hasPayPalSub) {
+      if (isPayPalBackedTeam) {
         // Store only the keyId in sessionStorage (not the seat count — that is stored
         // server-side by reviseSubscriptionSeats to prevent sessionStorage tampering)
         sessionStorage.setItem("gw_pending_key_id", myKeyInfo.keyId);
@@ -536,10 +537,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     // Determine if this is an upgrade on an active PayPal subscription
     const tierRank: Record<string, number> = { free: 0, starter: 0, pro: 1, business: 2 };
     const isUpgrade = (tierRank[newTier] ?? 0) > (tierRank[myKeyInfo.tier] ?? 0);
-    const hasPayPalSub =
-      user?.paypalSubscriptionStatus === "ACTIVE" ||
-      user?.paypalSubscriptionStatus === "APPROVED";
-    const needsPayPalRevision = isUpgrade && hasPayPalSub && myKeyInfo.selfCreated;
+    // If the key was created via PayPal (selfCreated), tier changes must
+    // always go through PayPal — even after admin transfer.
+    const needsPayPalRevision = isUpgrade && myKeyInfo.selfCreated;
 
     try {
       if (needsPayPalRevision) {

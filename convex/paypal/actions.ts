@@ -524,12 +524,6 @@ export const reviseSubscriptionSeats = action({
     if (!user) {
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
-    if (!user.paypalSubscriptionId) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "No active PayPal subscription to revise.",
-      });
-    }
 
     // Fetch the license key and verify this user is the team admin
     const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
@@ -541,6 +535,20 @@ export const reviseSubscriptionSeats = action({
     const currentAdmin = key.adminUserId ?? key.createdBy;
     if (currentAdmin !== user._id) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
+    }
+
+    // The PayPal subscription belongs to the key creator (may differ from
+    // the current admin after a transfer).  Look it up from the creator.
+    const keyCreator = key.createdBy === user._id
+      ? user
+      : await ctx.runQuery(internal.users._getById, { userId: key.createdBy });
+
+    const subscriptionId = keyCreator?.paypalSubscriptionId;
+    if (!subscriptionId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "No active PayPal subscription to revise.",
+      });
     }
 
     const tier = key.tier as "pro" | "business";
@@ -604,7 +612,7 @@ export const reviseSubscriptionSeats = action({
 
     // Submit subscription revision request
     const reviseRes = await fetch(
-      `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}/revise`,
+      `${base}/v1/billing/subscriptions/${subscriptionId}/revise`,
       {
         method: "POST",
         headers: {
@@ -738,12 +746,6 @@ export const reviseSubscriptionTier = action({
     if (!user) {
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
     }
-    if (!user.paypalSubscriptionId) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "No active PayPal subscription to revise.",
-      });
-    }
 
     const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
       keyId: args.keyId,
@@ -754,6 +756,20 @@ export const reviseSubscriptionTier = action({
     const currentAdmin = key.adminUserId ?? key.createdBy;
     if (currentAdmin !== user._id) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
+    }
+
+    // The PayPal subscription belongs to the key creator (may differ from
+    // the current admin after a transfer).
+    const keyCreator = key.createdBy === user._id
+      ? user
+      : await ctx.runQuery(internal.users._getById, { userId: key.createdBy });
+
+    const subscriptionId = keyCreator?.paypalSubscriptionId;
+    if (!subscriptionId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "No active PayPal subscription to revise.",
+      });
     }
 
     // Use current seat count to calculate new price at the new tier
@@ -818,7 +834,7 @@ export const reviseSubscriptionTier = action({
 
     // Submit subscription revision request
     const reviseRes = await fetch(
-      `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}/revise`,
+      `${base}/v1/billing/subscriptions/${subscriptionId}/revise`,
       {
         method: "POST",
         headers: {
