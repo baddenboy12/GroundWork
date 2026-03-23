@@ -62,7 +62,7 @@ const FORMAT_OPTIONS: {
 ];
 
 const CATEGORIES = [
-  { value: "all", label: "All categories" },
+  { value: "all", label: "All Categories" },
   { value: "inspection", label: CATEGORY_LABELS.inspection },
   { value: "maintenance", label: CATEGORY_LABELS.maintenance },
   { value: "incident", label: CATEGORY_LABELS.incident },
@@ -262,7 +262,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               )}
             >
               <Filter className="w-5 h-5" />
-              Bulk filter
+              Bulk Filter
             </button>
             <button
               type="button"
@@ -275,7 +275,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               )}
             >
               <ListChecks className="w-5 h-5" />
-              Select entries
+              Select Entries
             </button>
           </div>
 
