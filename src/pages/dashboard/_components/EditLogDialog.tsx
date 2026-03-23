@@ -272,7 +272,17 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
                               s._id === siteId ? "bg-primary/10 border border-primary/20" : "bg-white/[0.04]"
                             )}
                             style={{ width: "calc(100% - 16px)" }}
-                            onClick={() => { setSiteId(s._id); setSiteDropdownOpen(false); }}
+                            onClick={() => {
+                              setSiteId(s._id);
+                              setSiteDropdownOpen(false);
+                              // Auto-fill location from the selected site
+                              if (s.location) {
+                                setLocation(s.location);
+                              }
+                              if (s.latitude != null && s.longitude != null) {
+                                setCoords({ lat: s.latitude, lng: s.longitude });
+                              }
+                            }}
                           >
                             {s._id === siteId && <Check className="w-5 h-5 text-primary shrink-0" />}
                             <span className="truncate">{s.name}</span>
