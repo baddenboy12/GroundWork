@@ -271,8 +271,9 @@ export const createSubscription = action({
       },
       body: JSON.stringify({
         plan_id: planIdToUse,
-        // Store user's Convex ID so webhook can find them
-        custom_id: user._id,
+        // Store user's Convex ID and intended tier so syncSubscription can
+        // determine the tier even when a custom seat-adjusted plan is used
+        custom_id: `${user._id}:${args.tier}`,
         subscriber: {
           name: {
             given_name: user.name?.split(" ")[0] ?? "GroundWork",
@@ -364,8 +365,13 @@ export const syncSubscription = action({
       custom_id: string;
     };
 
-    // Security: verify this subscription belongs to this user
-    if (sub.custom_id !== user._id) {
+    // Security: verify this subscription belongs to this user.
+    // custom_id may be "userId" (legacy) or "userId:tier" (new format with embedded tier)
+    const customParts = (sub.custom_id ?? "").split(":");
+    const customUserId = customParts[0];
+    const embeddedTier = customParts[1] as SubscriptionTier | undefined;
+
+    if (customUserId !== user._id) {
       throw new ConvexError({
         code: "FORBIDDEN",
         message: "Subscription does not belong to this user.",
@@ -377,10 +383,10 @@ export const syncSubscription = action({
     });
 
     const isActive = sub.status === "ACTIVE" || sub.status === "APPROVED";
-    // For revised subscriptions the plan may be a dynamic one not in our table.
-    // Preserve the user's existing tier if the plan is unknown.
+    // For custom seat-adjusted plans (not in the plans table), use the tier
+    // embedded in custom_id. Falls back to user's existing tier for legacy subs.
     const tier: SubscriptionTier = isActive
-      ? ((plan?.tier ?? user.subscriptionTier ?? "free") as SubscriptionTier)
+      ? ((plan?.tier ?? embeddedTier ?? user.subscriptionTier ?? "free") as SubscriptionTier)
       : "free";
 
     await ctx.runMutation(internal.users._setPaypalSubscription, {
@@ -940,7 +946,9 @@ export const processWebhook = internalAction({
     const event = JSON.parse(args.body) as WebhookEvent;
     const { event_type, resource } = event;
 
-    const userId = resource.custom_id as Id<"users">;
+    // custom_id may be "userId" (legacy) or "userId:tier" (new format)
+    const rawCustomId = resource.custom_id ?? "";
+    const userId = rawCustomId.split(":")[0] as Id<"users">;
     if (!userId) {
       console.error("PayPal webhook: missing custom_id");
       return;
