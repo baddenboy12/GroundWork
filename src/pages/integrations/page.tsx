@@ -33,8 +33,8 @@ function IntegrationsGate({ children }: { children: React.ReactNode }) {
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-5">
           <Lock className="w-6 h-6 text-amber-500" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">Business plan required</h2>
-        <p className="text-sm text-muted-foreground mb-6">
+        <h2 className="text-2xl font-semibold text-foreground mb-2">Business plan required</h2>
+        <p className="text-base text-muted-foreground mb-6">
           Integrations & API access is available on the Business plan. Upgrade to connect
           GroundWork with your own systems via REST API and webhooks.
         </p>
