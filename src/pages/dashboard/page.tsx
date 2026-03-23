@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, FileDown, Lock, WifiOff, ChevronLeft } from "lucide-react";
+import { Plus, FileDown, Lock, WifiOff, ChevronLeft, AlertCircle } from "lucide-react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -95,7 +95,7 @@ function DashboardInner() {
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
   const offlineQueue = useOfflineQueueState();
-  const { isAtLeast } = useSubscription();
+  const { isAtLeast, isPaymentSuspended, graceDaysLeft } = useSubscription();
   const canExport = isAtLeast("business");
 
   // Site info for per-site export dialog
@@ -136,6 +136,21 @@ function DashboardInner() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <BackBlocker />
+
+      {/* Payment failure warning banner */}
+      {isPaymentSuspended && (
+        <div className="flex items-start gap-2.5 mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-200">
+            <span className="font-semibold">Payment failed</span> — your team is in read-only mode.
+            Update your payment method in PayPal to restore full access.
+            {graceDaysLeft !== null && (
+              <span className="font-semibold"> {graceDaysLeft} day{graceDaysLeft !== 1 ? "s" : ""} remaining.</span>
+            )}
+          </p>
+        </div>
+      )}
+
       <DashboardNavbar
         onNewLog={() => setGlobalCreateOpen(true)}
         onHome={() => {
@@ -238,10 +253,11 @@ function DashboardInner() {
       {/* Floating new log button */}
       {!showStats && !showIntegrations && !showBilling && (
         <button
-          className="fixed bottom-36 right-12 w-[5.25rem] h-[5.25rem] rounded-full text-primary-foreground shadow-2xl flex items-center justify-center hover:brightness-110 active:scale-90 transition-all z-50 border border-white/15"
+          className={`fixed bottom-36 right-12 w-[5.25rem] h-[5.25rem] rounded-full text-primary-foreground shadow-2xl flex items-center justify-center hover:brightness-110 active:scale-90 transition-all z-50 border border-white/15 ${isPaymentSuspended ? "opacity-40 pointer-events-none" : ""}`}
           style={{ background: "linear-gradient(145deg, hsl(30 25% 70%) 0%, hsl(30 20% 55%) 50%, hsl(30 22% 62%) 100%)" }}
-          onClick={() => setGlobalCreateOpen(true)}
+          onClick={() => !isPaymentSuspended && setGlobalCreateOpen(true)}
           aria-label="New log"
+          disabled={isPaymentSuspended}
         >
           <Plus style={{ width: 48, height: 48 }} strokeWidth={3} />
         </button>

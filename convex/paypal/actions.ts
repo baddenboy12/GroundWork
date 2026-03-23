@@ -976,10 +976,10 @@ export const processWebhook = internalAction({
       "BILLING.SUBSCRIPTION.UPDATED",
       "BILLING.SUBSCRIPTION.RE_ACTIVATED",
     ]);
-    const deactivatingEvents = new Set([
+    // Hard deactivation: immediate downgrade (intentional cancel or expiry)
+    const hardDeactivatingEvents = new Set([
       "BILLING.SUBSCRIPTION.CANCELLED",
       "BILLING.SUBSCRIPTION.EXPIRED",
-      "BILLING.SUBSCRIPTION.SUSPENDED",
     ]);
 
     let newTier: SubscriptionTier | null = null;
@@ -991,9 +991,49 @@ export const processWebhook = internalAction({
       });
       newTier = (plan?.tier ?? "free") as SubscriptionTier;
       newStatus = "ACTIVE";
-    } else if (deactivatingEvents.has(event_type)) {
+
+      // If reactivating after a payment-failure suspension, restore the team key
+      if (event_type === "BILLING.SUBSCRIPTION.RE_ACTIVATED") {
+        const selfKey = await ctx.runQuery(
+          internal.licenseKeys._getSelfCreatedKeyByAdmin,
+          { userId }
+        );
+        if (selfKey) {
+          await ctx.runMutation(internal.licenseKeys._reactivateKey, {
+            keyId: selfKey._id,
+          });
+        }
+      }
+    } else if (event_type === "BILLING.SUBSCRIPTION.SUSPENDED") {
+      // Payment failure — enter grace period (don't downgrade tier yet)
+      newStatus = "SUSPENDED";
+      // Keep tier as-is (null = don't change) so members retain read access
+      newTier = null;
+
+      // Suspend the team key with a 14-day grace period
+      const selfKey = await ctx.runQuery(
+        internal.licenseKeys._getSelfCreatedKeyByAdmin,
+        { userId }
+      );
+      if (selfKey) {
+        await ctx.runMutation(internal.licenseKeys._suspendKeyForPaymentFailure, {
+          keyId: selfKey._id,
+        });
+      }
+    } else if (hardDeactivatingEvents.has(event_type)) {
       newTier = "free";
       newStatus = event_type.split(".").pop() ?? resource.status;
+
+      // Expire the team key immediately (intentional cancel)
+      const selfKey = await ctx.runQuery(
+        internal.licenseKeys._getSelfCreatedKeyByAdmin,
+        { userId }
+      );
+      if (selfKey) {
+        await ctx.runMutation(internal.licenseKeys._expireKey, {
+          keyId: selfKey._id,
+        });
+      }
     } else {
       // Unhandled event — log and skip
       console.log("PayPal webhook: unhandled event_type", event_type);

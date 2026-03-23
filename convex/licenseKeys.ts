@@ -116,6 +116,15 @@ export const updateStatus = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change key status" });
     }
 
+    // Reject manual reactivation when suspended for payment failure —
+    // only PayPal reactivation (RE_ACTIVATED webhook) should clear that state
+    if (key.suspendedReason === "payment_failed" && args.status === "active" && !isSuperAdmin) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "This key is suspended due to a failed payment. Resolve your PayPal subscription to reactivate it.",
+      });
+    }
+
     // Simple toggle — members stay attached, no kicking
     await ctx.db.patch(args.keyId, { status: args.status });
   },
@@ -326,6 +335,12 @@ export const getMyKeyInfo = query({
       })
     );
 
+    // Calculate grace period deadline if payment-suspended
+    const GRACE_DAYS = 14;
+    const graceDeadline = key.suspendedAt
+      ? new Date(new Date(key.suspendedAt).getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
     return {
       keyId: key._id,
       code: key.code,
@@ -337,6 +352,9 @@ export const getMyKeyInfo = query({
       adminUserId: key.adminUserId ?? key.createdBy,
       isAdmin: (key.adminUserId ?? key.createdBy) === user._id,
       selfCreated: key.selfCreated ?? false,
+      suspendedAt: key.suspendedAt ?? null,
+      suspendedReason: key.suspendedReason ?? null,
+      graceDeadline,
     };
   },
 });
@@ -786,13 +804,72 @@ export const _applyPendingSeats = internalMutation({
   },
 });
 
-// ── Internal: suspend key and remove all members (for PayPal payment failure) ─
+// ── Internal: suspend key for payment failure (14-day grace period) ────────────
+// Members stay attached and keep their tier (read-only mode).
+// A scheduled job auto-expires the key after 14 days if payment isn't resolved.
+
+const GRACE_PERIOD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+export const _suspendKeyForPaymentFailure = internalMutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key || key.status === "suspended") return;
+
+    // Schedule auto-expiry after grace period
+    const scheduledId = await ctx.scheduler.runAfter(
+      GRACE_PERIOD_MS,
+      internal.licenseKeys._expireKey,
+      { keyId: args.keyId }
+    );
+
+    await ctx.db.patch(args.keyId, {
+      status: "suspended",
+      suspendedAt: new Date().toISOString(),
+      suspendedReason: "payment_failed",
+      gracePeriodScheduledId: scheduledId,
+    });
+  },
+});
+
+// ── Internal: reactivate a suspended key (payment resolved) ───────────────────
+// Clears suspension state and cancels the scheduled auto-expiry.
+
+export const _reactivateKey = internalMutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key || key.status === "active") return;
+
+    // Cancel the scheduled auto-expiry if it exists
+    if (key.gracePeriodScheduledId) {
+      try {
+        await ctx.scheduler.cancel(key.gracePeriodScheduledId);
+      } catch {
+        // Already fired or cancelled — safe to ignore
+      }
+    }
+
+    await ctx.db.patch(args.keyId, {
+      status: "active",
+      suspendedAt: undefined,
+      suspendedReason: undefined,
+      gracePeriodScheduledId: undefined,
+    });
+  },
+});
+
+// ── Internal: fully expire key — remove all members and delete (admin cancel / grace period end) ─
 
 export const _expireKey = internalMutation({
   args: { keyId: v.id("licenseKeys") },
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
+
+    // Safety net: if the key was reactivated before the scheduled expiry fired, skip
+    if (key.status === "active") return;
+
     await ctx.db.patch(args.keyId, { status: "suspended" });
 
     const memberships = await ctx.db
@@ -811,7 +888,7 @@ export const _expireKey = internalMutation({
       await ctx.db.delete(m._id);
     }
 
-    // Auto-delete suspended keys with no remaining members
+    // Auto-delete expired keys with no remaining members
     await ctx.db.delete(args.keyId);
   },
 });

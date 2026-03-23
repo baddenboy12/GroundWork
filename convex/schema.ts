@@ -60,6 +60,12 @@ export default defineSchema({
     pendingMaxMembers: v.optional(v.number()),
     // Pending tier stored server-side by reviseSubscriptionTier before PayPal approval
     pendingTier: v.optional(v.union(v.literal("pro"), v.literal("business"))),
+    // ISO timestamp when key was suspended due to payment failure
+    suspendedAt: v.optional(v.string()),
+    // Why the key was suspended: payment_failed (grace period) vs admin (manual)
+    suspendedReason: v.optional(v.union(v.literal("payment_failed"), v.literal("admin"))),
+    // Scheduled function ID for auto-expiry after grace period (cancellable on reactivation)
+    gracePeriodScheduledId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_code", ["code"])
     .index("by_creator", ["createdBy"]),

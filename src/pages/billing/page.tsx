@@ -765,6 +765,29 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
         }}
       >
+        {/* Payment failure warning banner */}
+        {myKeyInfo?.suspendedReason === "payment_failed" && (() => {
+          const deadline = myKeyInfo.graceDeadline;
+          const daysLeft = deadline
+            ? Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+            : null;
+          return (
+            <motion.div
+              className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3"
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+            >
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-200">
+                <span className="font-semibold">Payment failed</span> — your team is in read-only mode.
+                Update your payment method in PayPal to restore full access.
+                {daysLeft !== null && (
+                  <span className="font-semibold"> {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining before your team is removed.</span>
+                )}
+              </p>
+            </motion.div>
+          );
+        })()}
+
         {/* Current plan banner */}
         {!isLoading && (() => {
           const bannerColors = {

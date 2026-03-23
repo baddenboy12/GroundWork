@@ -476,6 +476,17 @@ export const create = mutation({
       throw new ConvexError({ message: "You don't have access to this site", code: "FORBIDDEN" });
     }
 
+    // Block creation if team key is suspended due to payment failure
+    if (user.appliedLicenseKeyId) {
+      const key = await ctx.db.get(user.appliedLicenseKeyId);
+      if (key && key.status === "suspended" && key.suspendedReason === "payment_failed") {
+        throw new ConvexError({
+          code: "PAYMENT_SUSPENDED",
+          message: "Your team subscription payment has failed. New content creation is disabled until payment is resolved.",
+        });
+      }
+    }
+
     // Enforce per-tier photo limit per entry
     const photoLimits: Record<string, number> = {
       free: 5,

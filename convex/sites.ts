@@ -71,6 +71,17 @@ export const create = mutation({
       .unique();
     if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
+    // Block creation if team key is suspended due to payment failure
+    if (user.appliedLicenseKeyId) {
+      const key = await ctx.db.get(user.appliedLicenseKeyId);
+      if (key && key.status === "suspended" && key.suspendedReason === "payment_failed") {
+        throw new ConvexError({
+          code: "PAYMENT_SUSPENDED",
+          message: "Your team subscription payment has failed. New content creation is disabled until payment is resolved.",
+        });
+      }
+    }
+
     // Enforce per-tier site limit (mode-aware: team or personal)
     const tier = user.subscriptionTier ?? "free";
     const siteLimits: Record<string, number | null> = { free: 1, pro: 15, business: null };
@@ -189,6 +200,17 @@ export const findOrCreate = mutation({
       if (args.longitude != null && existing.longitude == null) patch.longitude = args.longitude;
       if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch);
       return existing._id;
+    }
+
+    // Block creation if team key is suspended due to payment failure
+    if (user.appliedLicenseKeyId) {
+      const key = await ctx.db.get(user.appliedLicenseKeyId);
+      if (key && key.status === "suspended" && key.suspendedReason === "payment_failed") {
+        throw new ConvexError({
+          code: "PAYMENT_SUSPENDED",
+          message: "Your team subscription payment has failed. New content creation is disabled until payment is resolved.",
+        });
+      }
     }
 
     // Check tier limit before creating a new site
