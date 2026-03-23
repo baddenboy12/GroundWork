@@ -101,18 +101,18 @@ export default function FilterBar({ filters, onChange }: Props) {
             <div className="p-5 space-y-5">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Filters</h3>
+                <h3 className="text-2xl font-semibold text-foreground">Filters</h3>
                 <button
-                  className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
+                  className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white/10 active:scale-75 transition-transform"
                   onClick={() => setOpen(false)}
                 >
-                  <X className="w-5 h-5" />
+                  <X style={{ width: 36, height: 36 }} />
                 </button>
               </div>
 
               {/* Search */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
+                <Label className="text-base font-medium flex items-center gap-2">
                   <Search className="w-4 h-4" />
                   Search
                 </Label>
@@ -127,7 +127,7 @@ export default function FilterBar({ filters, onChange }: Props) {
 
               {/* Category */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
+                <Label className="text-base font-medium flex items-center gap-2">
                   <Tag className="w-4 h-4" />
                   Category
                 </Label>
@@ -160,11 +160,11 @@ export default function FilterBar({ filters, onChange }: Props) {
                 </div>
               </div>
 
-              {/* Date range */}
+              {/* Date Range */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
+                <Label className="text-base font-medium flex items-center gap-2">
                   <CalendarDays className="w-4 h-4" />
-                  Date range
+                  Date Range
                 </Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
