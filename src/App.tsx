@@ -10,6 +10,9 @@ import DashboardPage from "./pages/dashboard/page.tsx";
 import BillingPage from "./pages/billing/page.tsx";
 import IntegrationsPage from "./pages/integrations/page.tsx";
 import PayPalReturn from "./pages/paypal/return.tsx";
+import FeaturesPage from "./pages/landing/FeaturesPage.tsx";
+import PricingPage from "./pages/landing/PricingPage.tsx";
+import UseCasesPage from "./pages/landing/UseCasesPage.tsx";
 
 // Register service worker at module level — outside the React tree.
 registerServiceWorker();
@@ -96,6 +99,9 @@ function AppInner() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />

@@ -65,8 +65,8 @@ export default function UseCases() {
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
               </div>
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-foreground mb-2">{c.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{c.description}</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">{c.title}</h3>
+                <p className="text-base text-muted-foreground leading-relaxed">{c.description}</p>
               </div>
             </motion.div>
           ))}

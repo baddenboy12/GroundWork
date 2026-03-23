@@ -85,8 +85,8 @@ export default function Pricing() {
                 )}
 
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-1">{cfg.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{cfg.tagline}</p>
+                  <h3 className="text-xl font-semibold text-foreground mb-1">{cfg.name}</h3>
+                  <p className="text-base text-muted-foreground mb-4">{cfg.tagline}</p>
                   <div className="flex items-end gap-1">
                     <span className="text-4xl font-bold text-foreground">{cfg.price}</span>
                     <span className="text-muted-foreground mb-1">{cfg.period}</span>
@@ -99,7 +99,7 @@ export default function Pricing() {
                     return (
                       <li
                         key={row.label}
-                        className={`flex items-center gap-2.5 text-sm ${
+                        className={`flex items-center gap-2.5 text-base ${
                           included ? "text-muted-foreground" : "text-muted-foreground/35"
                         }`}
                       >
@@ -116,6 +116,7 @@ export default function Pricing() {
 
                 <Authenticated>
                   <Button
+                    size="lg"
                     className="w-full"
                     variant={cfg.highlight ? "default" : "secondary"}
                     onClick={() => navigate(tier === "free" ? "/dashboard" : "/billing")}
@@ -125,6 +126,7 @@ export default function Pricing() {
                 </Authenticated>
                 <Unauthenticated>
                   <Button
+                    size="lg"
                     className="w-full"
                     variant={cfg.highlight ? "default" : "secondary"}
                     onClick={() => handleSignUp(tier)}

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -6,7 +8,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <img
               src="/icon/icon-192.png"
               alt="GroundWork"
@@ -15,13 +17,13 @@ export default function Footer() {
             <span className="font-bold text-foreground">
               Ground<span className="text-primary">Work</span>
             </span>
-          </div>
+          </Link>
 
           {/* Links */}
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="#usecases" className="hover:text-foreground transition-colors">Use Cases</a>
+            <Link to="/features" className="hover:text-foreground transition-colors">Features</Link>
+            <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+            <Link to="/use-cases" className="hover:text-foreground transition-colors">Use Cases</Link>
           </div>
 
           {/* Copyright */}
