@@ -201,7 +201,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const isPayPalConfigured = paypalStatus?.isInitialized ?? false;
   const hasActivePayPalSub =
     user?.paypalSubscriptionStatus === "ACTIVE" ||
-    user?.paypalSubscriptionStatus === "APPROVED";
+    user?.paypalSubscriptionStatus === "APPROVED" ||
+    user?.paypalSubscriptionStatus === "CANCEL_PENDING";
 
   // Is the current user the last member of their team?
   const isLastTeamMember = myKeyInfo?.memberCount === 1;
@@ -818,11 +819,15 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   ) : (user?.paypalSubscriptionStatus === "ACTIVE" ||
                     user?.paypalSubscriptionStatus === "APPROVED") ? (
                     <PayPalBadge status={user.paypalSubscriptionStatus} />
+                  ) : user?.paypalSubscriptionStatus === "CANCEL_PENDING" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-xs font-semibold border border-amber-500/30">
+                      Cancelling
+                    </span>
                   ) : null}
                 </div>
               </div>
             </div>
-            {hasActivePayPalSub && (
+            {hasActivePayPalSub && user?.paypalSubscriptionStatus !== "CANCEL_PENDING" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -835,6 +840,20 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </motion.div>
           );
         })()}
+
+        {/* Cancel-pending banner */}
+        {user?.paypalSubscriptionStatus === "CANCEL_PENDING" && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-base text-amber-200">
+              Your subscription has been cancelled. Your current plan remains active until{" "}
+              {user.paypalCancelEffectiveDate
+                ? <strong>{new Date(user.paypalCancelEffectiveDate).toLocaleDateString()}</strong>
+                : <strong>the end of your billing cycle</strong>}
+              . After that, your account will be downgraded to Free.
+            </p>
+          </div>
+        )}
 
         {/* ── License Key / Team Section ─────────────────────────────── */}
         <div className="space-y-4">

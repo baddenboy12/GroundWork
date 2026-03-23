@@ -443,6 +443,24 @@ export const cancelSubscription = action({
     const token = await getToken();
     const base = getBaseUrl();
 
+    // Query PayPal for the subscription's next billing time before cancelling
+    // so we know when the current paid period ends.
+    let cancelEffectiveDate: string | null = null;
+    const detailsRes = await fetch(
+      `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (detailsRes.ok) {
+      const details = (await detailsRes.json()) as {
+        billing_info?: { next_billing_time?: string };
+      };
+      cancelEffectiveDate =
+        details.billing_info?.next_billing_time ?? null;
+    }
+
     // Cancel via PayPal API (ignore errors — already cancelled / expired is fine)
     await fetch(
       `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}/cancel`,
@@ -456,22 +474,22 @@ export const cancelSubscription = action({
       }
     );
 
+    // Don't downgrade immediately — keep the tier active until the billing
+    // cycle ends.  Mark as CANCEL_PENDING so the UI can show a countdown.
+    // The actual downgrade happens when PayPal sends BILLING.SUBSCRIPTION.CANCELLED
+    // at the end of the paid period.
     await ctx.runMutation(internal.users._setPaypalSubscription, {
       userId: user._id,
       paypalSubscriptionId: user.paypalSubscriptionId,
-      paypalSubscriptionStatus: "CANCELLED",
-      subscriptionTier: "free",
+      paypalSubscriptionStatus: "CANCEL_PENDING",
+      subscriptionTier: null, // keep current tier unchanged
     });
 
-    // If the user owns a self-created team key, expire it so all team members
-    // are downgraded to free and removed from the team.
-    const selfKey = await ctx.runQuery(
-      internal.licenseKeys._getSelfCreatedKeyByAdmin,
-      { userId: user._id }
-    );
-    if (selfKey) {
-      await ctx.runMutation(internal.licenseKeys._expireKey, {
-        keyId: selfKey._id,
+    // Store the effective cancellation date
+    if (cancelEffectiveDate) {
+      await ctx.runMutation(internal.users._setCancelEffectiveDate, {
+        userId: user._id,
+        date: cancelEffectiveDate,
       });
     }
   },
@@ -1024,7 +1042,7 @@ export const processWebhook = internalAction({
       newTier = "free";
       newStatus = event_type.split(".").pop() ?? resource.status;
 
-      // Expire the team key immediately (intentional cancel)
+      // Expire the team key and clear the pending cancel date
       const selfKey = await ctx.runQuery(
         internal.licenseKeys._getSelfCreatedKeyByAdmin,
         { userId }
@@ -1034,6 +1052,11 @@ export const processWebhook = internalAction({
           keyId: selfKey._id,
         });
       }
+      // Clear the cancel effective date
+      await ctx.runMutation(internal.users._setCancelEffectiveDate, {
+        userId,
+        date: "",
+      });
     } else {
       // Unhandled event — log and skip
       console.log("PayPal webhook: unhandled event_type", event_type);

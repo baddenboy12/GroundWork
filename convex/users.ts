@@ -363,3 +363,12 @@ export const _setPaypalSubscription = internalMutation({
     }
   },
 });
+
+export const _setCancelEffectiveDate = internalMutation({
+  args: { userId: v.id("users"), date: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      paypalCancelEffectiveDate: args.date || undefined,
+    });
+  },
+});

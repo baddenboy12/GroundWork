@@ -24,6 +24,8 @@ export default defineSchema({
     // PayPal subscription tracking
     paypalSubscriptionId: v.optional(v.string()),
     paypalSubscriptionStatus: v.optional(v.string()),
+    // ISO date when a cancelled subscription's current billing cycle ends
+    paypalCancelEffectiveDate: v.optional(v.string()),
     // R2 photo storage usage tracking (bytes)
     storageUsedBytes: v.optional(v.number()),
     // Applied license key (if the user joined a team via a key)
