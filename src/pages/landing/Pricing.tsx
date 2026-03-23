@@ -1,9 +1,10 @@
 import { motion } from "motion/react";
-import { CheckCircle, X, Zap } from "lucide-react";
+import { CheckCircle, X, Zap, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Unauthenticated, Authenticated } from "convex/react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth.ts";
 import {
   TIER_CONFIG,
   type SubscriptionTier,
@@ -29,6 +30,16 @@ const FEATURE_ROWS: FeatureRow[] = [
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const { signinRedirect } = useAuth();
+
+  const handleSignUp = (tier: SubscriptionTier) => {
+    if (tier !== "free") {
+      sessionStorage.setItem("gw_signup_tier", tier);
+    }
+    void signinRedirect({
+      extraQueryParams: { kc_action: "register" },
+    });
+  };
 
   return (
     <section id="pricing" className="py-28 bg-background">
@@ -115,15 +126,14 @@ export default function Pricing() {
                   </Button>
                 </Authenticated>
                 <Unauthenticated>
-                  <SignInButton
+                  <Button
                     className="w-full"
-                    signInText={tier === "free" ? "Sign Up Free" : "Sign Up"}
-                    onClick={() => {
-                      if (tier !== "free") {
-                        sessionStorage.setItem("gw_signup_tier", tier);
-                      }
-                    }}
-                  />
+                    variant={cfg.highlight ? "default" : "secondary"}
+                    onClick={() => handleSignUp(tier)}
+                  >
+                    <LogIn className="size-4" />
+                    {tier === "free" ? "Sign Up Free" : "Sign Up"}
+                  </Button>
                 </Unauthenticated>
               </motion.div>
             );
