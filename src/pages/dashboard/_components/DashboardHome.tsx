@@ -138,8 +138,8 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
               </>
             ) : (
               <>
-                <p className="font-medium text-foreground">No entries yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-lg font-medium text-foreground">No entries yet</p>
+                <p className="text-base text-muted-foreground mt-1">
                   Create your first log entry to get started
                 </p>
               </>
