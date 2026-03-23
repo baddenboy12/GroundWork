@@ -721,6 +721,26 @@ export const _setPendingMaxMembers = internalMutation({
 
 // ── Internal: set/apply pending tier (used by PayPal tier revision flow) ──────
 
+export const clearPendingTier = mutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return;
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) return;
+    if (key.pendingTier) {
+      await ctx.db.patch(args.keyId, { pendingTier: undefined });
+    }
+  },
+});
+
 export const _setPendingTier = internalMutation({
   args: { keyId: v.id("licenseKeys"), pendingTier: v.union(v.literal("pro"), v.literal("business")) },
   handler: async (ctx, args) => {

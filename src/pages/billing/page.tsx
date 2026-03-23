@@ -135,6 +135,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
   const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
+  const clearPendingTierMutation = useMutation(api.licenseKeys.clearPendingTier);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
   const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
   const storePendingTeamSeatsMutation = useMutation(api.users.storePendingTeamSeats);
@@ -220,15 +221,23 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     sessionStorage.removeItem("gw_pending_tier_key_id");
 
     if (paypalCancelled === "1") {
-      sessionStorage.removeItem("gw_pending_tier_key_id");
       toast.info("PayPal update not completed — no changes made.");
       return;
     }
 
+    // If user navigated back without approving (no subscriptionId), clear pending tier
+    if (pendingTierKeyId && !subscriptionId) {
+      // User backed out — clear the pending tier from the DB
+      clearPendingTierMutation({
+        keyId: pendingTierKeyId as Parameters<typeof clearPendingTierMutation>[0]["keyId"],
+      }).catch(() => {});
+      return;
+    }
+
     // ── Tier revision return ──────────────────────────────────────────────────
-    // pendingTierKeyId is just the team key ID. The actual tier comes from the
-    // DB (key.pendingTier), NOT sessionStorage, so it cannot be manipulated.
-    if (pendingTierKeyId) {
+    // Only apply when BOTH pendingTierKeyId AND subscriptionId are present,
+    // meaning PayPal redirected back after approval (not browser back button).
+    if (pendingTierKeyId && subscriptionId) {
       setSyncPending(true);
       (async () => {
         try {
