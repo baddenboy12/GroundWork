@@ -22,7 +22,6 @@ export default function Footer() {
           {/* Links */}
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <Link to="/features" className="hover:text-foreground transition-colors">Features</Link>
-            <a href="/#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </div>
 
           {/* Copyright */}

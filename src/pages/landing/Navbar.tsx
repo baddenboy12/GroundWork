@@ -24,7 +24,6 @@ export default function Navbar() {
         {/* Nav Links */}
         <div className="flex items-center gap-6 text-base text-muted-foreground">
           <Link to="/features" className="hover:text-foreground active:text-foreground transition-colors py-2">Features</Link>
-          <a href="#pricing" className="hover:text-foreground active:text-foreground transition-colors py-2">Pricing</a>
         </div>
 
         {/* CTA */}

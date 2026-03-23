@@ -4,7 +4,6 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import Navbar from "./landing/Navbar.tsx";
 import Hero from "./landing/Hero.tsx";
-import Pricing from "./landing/Pricing.tsx";
 import Footer from "./landing/Footer.tsx";
 
 function RedirectToDashboard() {
@@ -30,7 +29,6 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Hero />
-      <Pricing />
       <Footer />
     </div>
   );
