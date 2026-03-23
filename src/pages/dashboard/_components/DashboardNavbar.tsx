@@ -121,7 +121,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
               alt="GroundWork"
               className="w-12 h-12 rounded-lg"
             />
-            <span className="font-bold text-[1.4rem] text-foreground hidden sm:block">
+            <span className="font-bold text-[1.55rem] text-foreground hidden sm:block">
               Ground<span className="text-primary">Work</span>
             </span>
           </button>
