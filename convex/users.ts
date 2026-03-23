@@ -372,3 +372,64 @@ export const _setCancelEffectiveDate = internalMutation({
     });
   },
 });
+
+/**
+ * Safety-net: downgrades any CANCEL_PENDING users whose billing cycle has
+ * ended (paypalCancelEffectiveDate is in the past). Called by a daily cron.
+ */
+export const _processExpiredCancelPending = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = new Date().toISOString();
+    const allUsers = await ctx.db.query("users").collect();
+    let processed = 0;
+
+    for (const user of allUsers) {
+      if (
+        user.paypalSubscriptionStatus === "CANCEL_PENDING" &&
+        user.paypalCancelEffectiveDate &&
+        user.paypalCancelEffectiveDate <= now
+      ) {
+        // Downgrade to free and clear cancel state
+        await ctx.db.patch(user._id, {
+          subscriptionTier: "free",
+          paypalSubscriptionStatus: "CANCELLED",
+          paypalCancelEffectiveDate: undefined,
+        });
+
+        // Expire any self-created team key
+        const keys = await ctx.db.query("licenseKeys").collect();
+        const selfKey = keys.find(
+          (k) =>
+            k.selfCreated &&
+            k.createdBy === user._id &&
+            k.status === "active"
+        );
+        if (selfKey) {
+          // Remove all members and delete the key
+          const memberships = await ctx.db
+            .query("keyMemberships")
+            .withIndex("by_key", (q) => q.eq("keyId", selfKey._id))
+            .collect();
+          for (const m of memberships) {
+            const member = await ctx.db.get(m.userId);
+            if (member) {
+              await ctx.db.patch(m.userId, {
+                subscriptionTier: "free",
+                appliedLicenseKeyId: undefined,
+              });
+            }
+            await ctx.db.delete(m._id);
+          }
+          await ctx.db.delete(selfKey._id);
+        }
+
+        processed++;
+      }
+    }
+
+    if (processed > 0) {
+      console.log(`[cron] Processed ${processed} expired CANCEL_PENDING user(s)`);
+    }
+  },
+});
