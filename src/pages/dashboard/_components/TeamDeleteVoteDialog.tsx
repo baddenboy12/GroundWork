@@ -49,10 +49,20 @@ export default function TeamDeleteVoteDialog({
     return () => clearInterval(id);
   }, [open]);
 
+  const sites = useQuery(api.sites.list, {});
   const vote = useQuery(
     api.siteDeleteVotes.getForSite,
     siteId ? { siteId } : "skip"
   );
+
+  // Auto-close if the site was deleted by another member's vote
+  useEffect(() => {
+    if (open && siteId && sites && !sites.some((s) => s._id === siteId)) {
+      toast.success("Site has been deleted");
+      onDeleted?.(siteId);
+      onClose();
+    }
+  }, [open, siteId, sites, onClose, onDeleted]);
 
   const proposeMutation = useMutation(api.siteDeleteVotes.propose);
   const castVoteMutation = useMutation(api.siteDeleteVotes.castVote);
