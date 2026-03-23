@@ -200,6 +200,67 @@ export const createSubscription = action({
     const token = await getToken();
     const base = getBaseUrl();
 
+    // If the user has pending team seats > 1, create a custom plan with
+    // seat-adjusted pricing instead of using the stock plan
+    const pendingSeats = user.pendingTeamSeats ?? 0;
+    let planIdToUse = plan.planId;
+
+    if (pendingSeats > 1) {
+      const totalPrice = calcTotalPrice(args.tier, pendingSeats);
+      const tierLabel = args.tier === "pro" ? "Pro" : "Business";
+      const seatLabel = `${pendingSeats} seat${pendingSeats !== 1 ? "s" : ""}`;
+
+      const existingPlans = await ctx.runQuery(internal.paypal.plans._getAllPlans);
+      const productId = existingPlans[0]?.productId;
+      if (!productId) {
+        throw new ConvexError({
+          code: "BAD_REQUEST",
+          message: "PayPal plans not initialized.",
+        });
+      }
+
+      const planRes = await fetch(`${base}/v1/billing/plans`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "PayPal-Request-Id": `gw-plan-${args.tier}-${pendingSeats}seats-new-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          product_id: productId,
+          name: `GroundWork ${tierLabel} — ${seatLabel}`,
+          description: `GroundWork ${tierLabel} team subscription with ${seatLabel}`,
+          status: "ACTIVE",
+          billing_cycles: [
+            {
+              frequency: { interval_unit: "MONTH", interval_count: 1 },
+              tenure_type: "REGULAR",
+              sequence: 1,
+              total_cycles: 0,
+              pricing_scheme: {
+                fixed_price: { value: totalPrice, currency_code: "USD" },
+              },
+            },
+          ],
+          payment_preferences: {
+            auto_bill_outstanding: true,
+            setup_fee_failure_action: "CONTINUE",
+            payment_failure_threshold: 3,
+          },
+        }),
+      });
+
+      if (!planRes.ok) {
+        const txt = await planRes.text();
+        throw new ConvexError({
+          code: "EXTERNAL_SERVICE_ERROR",
+          message: `Failed to create seat-adjusted PayPal plan: ${txt}`,
+        });
+      }
+      const newPlan = (await planRes.json()) as { id: string };
+      planIdToUse = newPlan.id;
+    }
+
     const subRes = await fetch(`${base}/v1/billing/subscriptions`, {
       method: "POST",
       headers: {
@@ -209,7 +270,7 @@ export const createSubscription = action({
         Prefer: "return=representation",
       },
       body: JSON.stringify({
-        plan_id: plan.planId,
+        plan_id: planIdToUse,
         // Store user's Convex ID so webhook can find them
         custom_id: user._id,
         subscriber: {
