@@ -519,38 +519,42 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const handleChangeTeamTier = async (newTier: "pro" | "business") => {
     if (!myKeyInfo) return;
     setChangeTeamTierPending(true);
+
+    // Determine if this is an upgrade on an active PayPal subscription
+    const tierRank: Record<string, number> = { free: 0, starter: 0, pro: 1, business: 2 };
+    const isUpgrade = (tierRank[newTier] ?? 0) > (tierRank[myKeyInfo.tier] ?? 0);
+    const hasPayPalSub =
+      user?.paypalSubscriptionStatus === "ACTIVE" ||
+      user?.paypalSubscriptionStatus === "APPROVED";
+    const needsPayPalRevision = isUpgrade && hasPayPalSub && myKeyInfo.selfCreated;
+
     try {
-      await changeTierForTeamMutation({ keyId: myKeyInfo.keyId, tier: newTier });
-      toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
-      setChangeTeamTierOpen(false);
-    } catch (err) {
-      const msg = extractErrorMessage(err);
-      // If the backend says we need PayPal approval for an upgrade, use the revision flow
-      if (msg.includes("REQUIRES_PAYPAL_REVISION") || msg.includes("tier revision flow")) {
-        try {
-          sessionStorage.setItem("gw_pending_tier_key_id", myKeyInfo.keyId);
-          const { approvalUrl, applied } = await reviseSubscriptionTierAction({
-            keyId: myKeyInfo.keyId,
-            newTier,
-            returnUrl: `${window.location.origin}/paypal/return`,
-            cancelUrl: `${window.location.origin}/paypal/return?paypal_cancelled=1`,
-          });
-          if (applied) {
-            sessionStorage.removeItem("gw_pending_tier_key_id");
-            toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
-            setChangeTeamTierOpen(false);
-          } else if (approvalUrl) {
-            // Redirect to PayPal for approval
-            window.location.href = approvalUrl;
-            return; // Don't clear pending state — user is leaving the page
-          }
-        } catch (reviseErr) {
+      if (needsPayPalRevision) {
+        // Go directly to PayPal revision — don't call the mutation first
+        sessionStorage.setItem("gw_pending_tier_key_id", myKeyInfo.keyId);
+        const { approvalUrl, applied } = await reviseSubscriptionTierAction({
+          keyId: myKeyInfo.keyId,
+          newTier,
+          returnUrl: `${window.location.origin}/paypal/return`,
+          cancelUrl: `${window.location.origin}/paypal/return?paypal_cancelled=1`,
+        });
+        if (applied) {
           sessionStorage.removeItem("gw_pending_tier_key_id");
-          toast.error(extractErrorMessage(reviseErr));
+          toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
+          setChangeTeamTierOpen(false);
+        } else if (approvalUrl) {
+          window.location.href = approvalUrl;
+          return; // Don't clear pending state — user is leaving the page
         }
       } else {
-        toast.error(msg);
+        // Downgrade or no PayPal sub — apply directly
+        await changeTierForTeamMutation({ keyId: myKeyInfo.keyId, tier: newTier });
+        toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
+        setChangeTeamTierOpen(false);
       }
+    } catch (err) {
+      sessionStorage.removeItem("gw_pending_tier_key_id");
+      toast.error(extractErrorMessage(err));
     } finally {
       setChangeTeamTierPending(false);
     }
