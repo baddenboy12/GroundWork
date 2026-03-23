@@ -322,7 +322,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
             <div className="space-y-2">
 
               {/* Site name */}
-              <p className="text-lg italic text-amber-700/70 px-1">{siteName}</p>
+              <p className="text-2xl font-bold italic text-amber-700/70 px-1">{siteName}</p>
 
               {/* Theme — Full Report only */}
               {format_ === "full-pdf" && (
