@@ -46,6 +46,7 @@ import {
   ArrowRightLeft,
   UserMinus,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -178,6 +179,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   // Change team tier dialog
   const [changeTeamTierOpen, setChangeTeamTierOpen] = useState(false);
   const [changeTeamTierPending, setChangeTeamTierPending] = useState(false);
+  const [changeTeamTierTarget, setChangeTeamTierTarget] = useState<"pro" | "business" | null>(null);
 
   // Delete key state (admin: remove orphaned 0-member keys)
   const [deleteKeyTarget, setDeleteKeyTarget] = useState<{ keyId: Id<"licenseKeys">; code: string } | null>(null);
@@ -528,6 +530,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const handleChangeTeamTier = async (newTier: "pro" | "business") => {
     if (!myKeyInfo) return;
     setChangeTeamTierPending(true);
+    setChangeTeamTierTarget(newTier);
 
     // Determine if this is an upgrade on an active PayPal subscription
     const tierRank: Record<string, number> = { free: 0, starter: 0, pro: 1, business: 2 };
@@ -566,6 +569,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       toast.error(extractErrorMessage(err));
     } finally {
       setChangeTeamTierPending(false);
+      setChangeTeamTierTarget(null);
     }
   };
 
@@ -1752,18 +1756,24 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                     "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border transition-colors text-left",
                     isCurrent
                       ? "border-primary bg-primary/5"
-                      : "border-border bg-card hover:border-primary/40"
+                      : "border-border bg-card hover:border-primary/40",
+                    changeTeamTierPending && changeTeamTierTarget === t && "opacity-70"
                   )}
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">{cfg.name}</p>
                     <p className="text-xs text-muted-foreground">{cfg.tagline}</p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-foreground">{cfg.price}/mo</p>
-                    {isCurrent && (
-                      <span className="text-[10px] text-primary font-medium">current</span>
+                  <div className="text-right shrink-0 flex items-center gap-2">
+                    {changeTeamTierPending && changeTeamTierTarget === t && (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     )}
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{cfg.price}/mo</p>
+                      {isCurrent && (
+                        <span className="text-[10px] text-primary font-medium">current</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
