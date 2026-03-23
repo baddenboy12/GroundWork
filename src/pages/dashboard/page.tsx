@@ -84,6 +84,7 @@ function DashboardInner() {
   const [showStats, setShowStats] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
+  const [homeKey, setHomeKey] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -137,6 +138,13 @@ function DashboardInner() {
       <BackBlocker />
       <DashboardNavbar
         onNewLog={() => setGlobalCreateOpen(true)}
+        onHome={() => {
+          setShowStats(false);
+          setShowIntegrations(false);
+          setShowBilling(false);
+          selectSite(null);
+          setHomeKey((k) => k + 1);
+        }}
         onStats={() => {
           setShowStats((v) => !v);
           setShowIntegrations(false);
@@ -220,6 +228,7 @@ function DashboardInner() {
           <LogList siteId={selectedSiteId} filters={filters} />
         ) : (
           <DashboardHome
+            key={homeKey}
             filters={filters}
             onSelectSite={selectSite}
           />

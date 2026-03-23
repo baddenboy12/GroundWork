@@ -42,6 +42,7 @@ type Props = {
   onStats: () => void;
   onIntegrations: () => void;
   onBilling: () => void;
+  onHome: () => void;
   /** Mobile only: opens the site list sheet */
   onMenuClick?: () => void;
 };
@@ -51,7 +52,7 @@ const METALLIC_STYLE: React.CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)",
 };
 
-export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onBilling, onMenuClick }: Props) {
+export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onBilling, onHome, onMenuClick }: Props) {
   const { user, removeUser } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
@@ -113,14 +114,14 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
           )}
           <button
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            onClick={() => navigate("/")}
+            onClick={onHome}
           >
             <img
               src="/icon/icon-192.png"
               alt="GroundWork"
               className="w-12 h-12 rounded-lg"
             />
-            <span className="font-bold text-xl text-foreground hidden sm:block">
+            <span className="font-bold text-[1.4rem] text-foreground hidden sm:block">
               Ground<span className="text-primary">Work</span>
             </span>
           </button>
