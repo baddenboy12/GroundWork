@@ -115,7 +115,15 @@ export default function Pricing() {
                   </Button>
                 </Authenticated>
                 <Unauthenticated>
-                  <SignInButton className="w-full" />
+                  <SignInButton
+                    className="w-full"
+                    signInText={tier === "free" ? "Sign Up Free" : "Sign Up"}
+                    onClick={() => {
+                      if (tier !== "free") {
+                        sessionStorage.setItem("gw_signup_tier", tier);
+                      }
+                    }}
+                  />
                 </Unauthenticated>
               </motion.div>
             );

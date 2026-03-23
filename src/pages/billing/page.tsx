@@ -275,6 +275,14 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           toast.error(extractErrorMessage(err));
         })
         .finally(() => setSyncPending(false));
+      return;
+    }
+
+    // ── Landing page sign-up with tier intent ───────────────────────────────
+    const signupTier = sessionStorage.getItem("gw_signup_tier");
+    if (signupTier && (signupTier === "pro" || signupTier === "business")) {
+      sessionStorage.removeItem("gw_signup_tier");
+      setSubTypeDialogTier(signupTier as SubscriptionTier);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

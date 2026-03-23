@@ -13,8 +13,16 @@ export default function AuthCallback() {
   const updateCurrentUser = useMutation(api.users.updateCurrentUser);
 
   const synced = useRef(false);
-  const navigateHome = useCallback(
-    () => navigate("/", { replace: true }),
+  const navigateAfterAuth = useCallback(
+    () => {
+      const signupTier = sessionStorage.getItem("gw_signup_tier");
+      if (signupTier) {
+        // User signed up from a paid plan card — go to billing to start PayPal flow
+        navigate("/billing", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    },
     [navigate],
   );
 
@@ -25,16 +33,16 @@ export default function AuthCallback() {
     // If there are no auth params in the URL, just go home
     const params = new URLSearchParams(window.location.search);
     if (!params.has("code") && !params.has("error")) {
-      navigateHome();
+      navigateAfterAuth();
     }
-  }, [auth.isLoading, navigateHome]);
+  }, [auth.isLoading, navigateAfterAuth]);
 
   // Once Convex is authenticated, sync the user and navigate
   useEffect(() => {
     if (!isConvexAuthenticated || synced.current) return;
     synced.current = true;
-    updateCurrentUser().then(navigateHome).catch(navigateHome);
-  }, [isConvexAuthenticated, updateCurrentUser, navigateHome]);
+    updateCurrentUser().then(navigateAfterAuth).catch(navigateAfterAuth);
+  }, [isConvexAuthenticated, updateCurrentUser, navigateAfterAuth]);
 
   if (auth.error) {
     return (
@@ -46,7 +54,7 @@ export default function AuthCallback() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={navigateHome}>
+          <Button variant="secondary" onClick={() => navigate("/", { replace: true })}>
             Return home
           </Button>
           <Button onClick={() => auth.signinRedirect()}>Try again</Button>
