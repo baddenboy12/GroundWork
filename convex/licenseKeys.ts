@@ -810,5 +810,8 @@ export const _expireKey = internalMutation({
       }
       await ctx.db.delete(m._id);
     }
+
+    // Auto-delete suspended keys with no remaining members
+    await ctx.db.delete(args.keyId);
   },
 });
