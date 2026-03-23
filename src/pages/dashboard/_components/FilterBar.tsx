@@ -200,7 +200,7 @@ export default function FilterBar({ filters, onChange }: Props) {
                   </Button>
                 )}
                 <Button
-                  className="flex-1 h-14 text-lg rounded-xl active:scale-95 transition-transform"
+                  className="flex-1 h-14 text-xl rounded-xl active:scale-95 transition-transform"
                   onClick={() => setOpen(false)}
                 >
                   Done
