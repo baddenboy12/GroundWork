@@ -96,7 +96,7 @@ function DashboardInner() {
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();
   const offlineQueue = useOfflineQueueState();
   const { isAtLeast } = useSubscription();
-  const canExport = isAtLeast("pro");
+  const canExport = isAtLeast("business");
 
   // Site info for per-site export dialog
   const sitesRaw = useQuery(api.sites.list, {});
