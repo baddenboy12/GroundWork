@@ -4,7 +4,6 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import Navbar from "./landing/Navbar.tsx";
 import Hero from "./landing/Hero.tsx";
-import Footer from "./landing/Footer.tsx";
 
 function RedirectToDashboard() {
   const navigate = useNavigate();
@@ -26,10 +25,9 @@ function RedirectToDashboard() {
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-hidden">
       <Navbar />
       <Hero />
-      <Footer />
     </div>
   );
 }

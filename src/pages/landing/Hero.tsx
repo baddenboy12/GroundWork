@@ -119,7 +119,7 @@ export default function Hero() {
   });
 
   return (
-    <section className="relative flex flex-col justify-start overflow-hidden pt-24 pb-4">
+    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-20 pb-4">
       {/* Background image with overlay */}
       <div className="absolute inset-0 z-0">
         <img
