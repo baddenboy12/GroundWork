@@ -324,9 +324,24 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
               {/* Site name */}
               <p className="text-2xl font-bold italic text-amber-700/70 px-1">{siteName}</p>
 
-              {/* Theme — Full Report only */}
+              {/* Title & Theme — Full Report only */}
               {format_ === "full-pdf" && (
                 <>
+                  {/* Report title */}
+                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
+                    <Type className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-base text-muted-foreground shrink-0 w-20">Title</span>
+                    <input
+                      type="text"
+                      value={reportTitle}
+                      onChange={(e) => setReportTitle(e.target.value)}
+                      placeholder="e.g. Field Log Report"
+                      maxLength={80}
+                      className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
+                    />
+                  </div>
+
+                  {/* Theme */}
                   <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
                     <PopoverTrigger asChild>
                       <button
@@ -352,20 +367,6 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                       </div>
                     </PopoverContent>
                   </Popover>
-
-                  {/* Report title */}
-                  <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
-                    <Type className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-base text-muted-foreground shrink-0 w-20">Title</span>
-                    <input
-                      type="text"
-                      value={reportTitle}
-                      onChange={(e) => setReportTitle(e.target.value)}
-                      placeholder="e.g. Field Log Report"
-                      maxLength={80}
-                      className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground outline-none min-w-0"
-                    />
-                  </div>
                 </>
               )}
 
