@@ -1201,18 +1201,28 @@ export const processWebhook = internalAction({
         });
       }
     } else if (hardDeactivatingEvents.has(event_type)) {
-      newTier = "free";
       newStatus = event_type.split(".").pop() ?? resource.status;
 
-      // Expire the team key and clear the pending cancel date
       const selfKey = await ctx.runQuery(
         internal.licenseKeys._getSelfCreatedKeyByAdmin,
         { userId }
       );
-      if (selfKey) {
-        await ctx.runMutation(internal.licenseKeys._expireKey, {
+
+      if (selfKey?.pendingPaymentTransfer) {
+        // Admin was transferred — don't dissolve the team. Suspend with grace
+        // period so the new admin has time to set up their own payment.
+        newTier = null; // keep current tier
+        await ctx.runMutation(internal.licenseKeys._suspendKeyForPaymentFailure, {
           keyId: selfKey._id,
         });
+      } else {
+        // Intentional cancel or expiry — expire the key
+        newTier = "free";
+        if (selfKey) {
+          await ctx.runMutation(internal.licenseKeys._expireKey, {
+            keyId: selfKey._id,
+          });
+        }
       }
       // Clear the cancel effective date
       await ctx.runMutation(internal.users._setCancelEffectiveDate, {

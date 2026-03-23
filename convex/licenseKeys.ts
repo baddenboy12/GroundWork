@@ -721,18 +721,19 @@ export const _getKeyById = internalQuery({
 export const _getSelfCreatedKeyByAdmin = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    // Find a self-created key where this user is the admin
+    // Find a self-created key where this user is the admin, creator, or subscriber
     const keys = await ctx.db
       .query("licenseKeys")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    // Also check keys where adminUserId was transferred
+    // Also check keys where adminUserId was transferred or user is paypalSubscriber
     const allKeys = await ctx.db.query("licenseKeys").collect();
     const transferred = allKeys.filter(
-      (k) => k.adminUserId === args.userId && k.createdBy !== args.userId
+      (k) => (k.adminUserId === args.userId || k.paypalSubscriberId === args.userId)
+        && k.createdBy !== args.userId
     );
     const candidates = [...keys, ...transferred];
-    return candidates.find((k) => k.selfCreated && k.status === "active") ?? null;
+    return candidates.find((k) => k.selfCreated && (k.status === "active" || k.status === "suspended")) ?? null;
   },
 });
 
