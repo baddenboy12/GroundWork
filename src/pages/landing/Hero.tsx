@@ -119,7 +119,7 @@ export default function Hero() {
   });
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-20 pb-8">
+    <section className="relative flex flex-col justify-start overflow-hidden pt-24 pb-4">
       {/* Background image with overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -142,7 +142,7 @@ export default function Hero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
         {/* Hero text — compact */}
-        <div className="text-center max-w-3xl mx-auto mb-8">
+        <div className="text-center max-w-3xl mx-auto mb-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -155,7 +155,7 @@ export default function Hero() {
           </motion.div>
 
           <motion.h1
-            className="text-4xl md:text-6xl font-bold leading-tight tracking-tight text-balance mb-4"
+            className="text-4xl md:text-6xl font-bold leading-tight tracking-tight text-balance mb-2"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -164,7 +164,7 @@ export default function Hero() {
           </motion.h1>
 
           <motion.p
-            className="text-base text-muted-foreground mb-5 max-w-xl mx-auto leading-relaxed"
+            className="text-base text-muted-foreground mb-3 max-w-xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -174,7 +174,7 @@ export default function Hero() {
           </motion.p>
 
           <motion.div
-            className="flex flex-wrap justify-center gap-3 mb-6"
+            className="flex flex-wrap justify-center gap-3 mb-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
