@@ -1347,7 +1347,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           {!myKeyInfo && (tier === "pro" || tier === "business") && (
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <Users className="w-5 h-5 text-primary shrink-0" />
-              <p className="text-base text-muted-foreground flex-1">
+              <p className="text-base font-semibold text-muted-foreground flex-1">
                 You are on an individual plan. Want to create a team workspace?
               </p>
               <Button variant="secondary" className="text-lg px-6 h-12 rounded-xl" onClick={() => setCreateTeamOpen(true)}>
