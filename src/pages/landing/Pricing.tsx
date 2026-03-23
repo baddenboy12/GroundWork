@@ -89,7 +89,7 @@ export default function Pricing() {
                   <p className="text-sm text-muted-foreground mb-4">{cfg.tagline}</p>
                   <div className="flex items-end gap-1">
                     <span className="text-4xl font-bold text-foreground">{cfg.price}</span>
-                    <span className="text-muted-foreground mb-1">/{cfg.period.replace("per ", "")}</span>
+                    <span className="text-muted-foreground mb-1">{cfg.period}</span>
                   </div>
                 </div>
 
