@@ -199,8 +199,8 @@ export default function Hero() {
               </Button>
             </Authenticated>
             <Unauthenticated>
-              <SignInButton size="lg" />
-              <Button size="lg" variant="secondary" className="text-base px-6" asChild>
+              <SignInButton size="lg" className="text-lg px-8 py-3 h-auto" />
+              <Button size="lg" variant="secondary" className="text-lg px-8 py-3 h-auto" asChild>
                 <Link to="/features">Explore Features</Link>
               </Button>
             </Unauthenticated>
