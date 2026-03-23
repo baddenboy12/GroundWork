@@ -36,9 +36,7 @@ export default function Pricing() {
     if (tier !== "free") {
       sessionStorage.setItem("gw_signup_tier", tier);
     }
-    void signinRedirect({
-      extraQueryParams: { kc_action: "register" },
-    });
+    void signinRedirect({ prompt: "create" });
   };
 
   return (
