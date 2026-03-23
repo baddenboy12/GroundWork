@@ -1333,7 +1333,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               <p className="text-lg text-muted-foreground flex-1">
                 You are on an individual plan. Want to create a team workspace?
               </p>
-              <Button size="sm" variant="secondary" onClick={() => setCreateTeamOpen(true)}>
+              <Button variant="secondary" className="text-lg px-6 h-12 rounded-xl" onClick={() => setCreateTeamOpen(true)}>
                 Create Team
               </Button>
             </div>
