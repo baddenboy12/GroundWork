@@ -243,7 +243,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="!max-w-none w-[90%] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="!max-w-none w-[90%] top-[5%] translate-y-0 p-8 rounded-3xl [&>button]:w-20 [&>button]:h-20 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-14 [&>button>svg]:!h-14 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -255,7 +255,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
           >
-            <DialogTitle className="text-3xl font-bold">Export logs — {siteName}</DialogTitle>
+            <DialogTitle className="text-3xl font-bold">Export logs</DialogTitle>
           </motion.div>
         </DialogHeader>
 
@@ -320,6 +320,9 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
           <div className="space-y-2">
             <Label className="text-base text-muted-foreground uppercase tracking-wide">Options</Label>
             <div className="space-y-2">
+
+              {/* Site name */}
+              <p className="text-lg italic text-amber-700/70 px-1">{siteName}</p>
 
               {/* Theme — Full Report only */}
               {format_ === "full-pdf" && (
