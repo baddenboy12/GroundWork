@@ -188,7 +188,7 @@ export default function StatsView({ onBack }: Props) {
                     <p className="text-2xl font-bold text-foreground leading-none">
                       {card.value.toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">{card.label}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{card.label}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -205,11 +205,11 @@ export default function StatsView({ onBack }: Props) {
       >
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">30-Day Activity</CardTitle>
+            <CardTitle className="text-lg font-semibold">30-Day Activity</CardTitle>
           </CardHeader>
           <CardContent>
             {stats.totalEntries === 0 ? (
-              <div className="h-40 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              <div className="h-40 flex flex-col items-center justify-center gap-2 text-base text-muted-foreground">
                 <BarChart2 className="w-8 h-8 opacity-20" />
                 Start logging entries to see your activity chart
               </div>
@@ -254,11 +254,11 @@ export default function StatsView({ onBack }: Props) {
         >
           <Card className="h-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">By Category</CardTitle>
+              <CardTitle className="text-lg font-semibold">By Category</CardTitle>
             </CardHeader>
             <CardContent>
               {categoryData.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="h-52 flex items-center justify-center text-base text-muted-foreground">
                   No entries yet
                 </div>
               ) : (
@@ -307,11 +307,11 @@ export default function StatsView({ onBack }: Props) {
         >
           <Card className="h-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Top Sites</CardTitle>
+              <CardTitle className="text-lg font-semibold">Top Sites</CardTitle>
             </CardHeader>
             <CardContent>
               {stats.topSites.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="h-52 flex items-center justify-center text-base text-muted-foreground">
                   No sites yet
                 </div>
               ) : (
