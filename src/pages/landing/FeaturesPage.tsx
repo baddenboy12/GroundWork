@@ -3,15 +3,11 @@ import {
   Camera,
   MapPin,
   FileDown,
-  Tag,
   Search,
-  ShieldCheck,
   Users,
   BarChart3,
   WifiOff,
-  Globe,
   Navigation,
-  RefreshCw,
 } from "lucide-react";
 import Navbar from "./Navbar.tsx";
 import Footer from "./Footer.tsx";
@@ -30,10 +26,10 @@ const features = [
       "Organize logs by site or location. Switch between sites instantly and keep all records neatly separated with unique site codes.",
   },
   {
-    icon: Tag,
-    title: "Custom Categories",
+    icon: Users,
+    title: "Team Workspaces",
     description:
-      "Create your own log types — inspections, maintenance, incidents, audits — and filter by them instantly across all your sites.",
+      "Create teams, share sites, and manage members with license keys. Control seat counts, transfer admin roles, and collaborate across shared sites.",
   },
   {
     icon: FileDown,
@@ -48,18 +44,6 @@ const features = [
       "Find any entry instantly by date, site, category, keyword, or author. Filter across all sites or drill into a single location.",
   },
   {
-    icon: ShieldCheck,
-    title: "Audit-Ready Records",
-    description:
-      "Every log is timestamped, author-stamped, and immutable. Your records stay trustworthy and tamper-evident for compliance or legal needs.",
-  },
-  {
-    icon: Users,
-    title: "Team Workspaces",
-    description:
-      "Create teams, share sites, and manage members with license keys. Control seat counts, transfer admin roles, and collaborate across shared sites.",
-  },
-  {
     icon: BarChart3,
     title: "Statistics Dashboard",
     description:
@@ -72,22 +56,34 @@ const features = [
       "Works without an internet connection. Create logs, attach photos, and browse your data offline. Everything syncs automatically when you reconnect.",
   },
   {
-    icon: Globe,
-    title: "REST API & Webhooks",
-    description:
-      "Integrate GroundWork with your existing systems. Push log data to external services, trigger automations, and build custom workflows.",
-  },
-  {
     icon: Navigation,
     title: "GPS Location Tagging",
     description:
       "Auto-capture GPS coordinates with every log entry or pick a location from the map. Site locations auto-fill when creating new entries.",
   },
+];
+
+const cases = [
   {
-    icon: RefreshCw,
-    title: "Real-Time Collaboration",
+    image:
+      "https://images.unsplash.com/photo-1697289936356-4ea59e238e41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
+    title: "Tower & Telecom Inspections",
     description:
-      "Team members see updates across shared sites instantly. Coordinate on site deletions with group voting, and manage roles in real time.",
+      "Log every tower visit with geo-tagged photos of antenna conditions, cable runs, and generator health. Track recurring issues across your tower portfolio.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1526593646509-03c680561a15?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
+    title: "Generator Maintenance",
+    description:
+      "Record fuel levels, oil changes, load tests, and fault codes with photo evidence. Build a complete service history for every generator unit.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1562601622-e3ea198a61e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
+    title: "Site Surveys & Audits",
+    description:
+      "Document site conditions before and after work. Attach before/after photos and generate compliance-ready PDF reports in one click.",
   },
 ];
 
@@ -95,6 +91,8 @@ export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      {/* Features */}
       <section className="pt-28 pb-20 bg-background">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
@@ -136,6 +134,56 @@ export default function FeaturesPage() {
           </div>
         </div>
       </section>
+
+      {/* Use Cases */}
+      <section className="py-20 bg-card/30">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-primary text-sm font-semibold uppercase tracking-widest">
+              Use Cases
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-4 tracking-tight">
+              Built for teams everywhere
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Whether you manage 3 sites or 300, GroundWork scales with your operations.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {cases.map((c, i) => (
+              <motion.div
+                key={c.title}
+                className="rounded-2xl overflow-hidden border border-border bg-card group"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <div className="relative overflow-hidden h-52">
+                  <img
+                    src={c.image}
+                    alt={c.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+                </div>
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">{c.title}</h3>
+                  <p className="text-base text-muted-foreground leading-relaxed">{c.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );

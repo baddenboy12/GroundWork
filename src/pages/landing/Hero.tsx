@@ -16,159 +16,119 @@ export default function Hero() {
   const navigate = useNavigate();
 
   return (
-    <>
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-        {/* Background image with overlay */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1554035042-34f354352d97?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080"
-            alt="Field workers"
-            className="w-full h-full object-cover opacity-20"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-        </div>
-
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 z-0 opacity-5"
-          style={{
-            backgroundImage: `linear-gradient(oklch(0.94 0.005 250) 1px, transparent 1px), linear-gradient(90deg, oklch(0.94 0.005 250) 1px, transparent 1px)`,
-            backgroundSize: "60px 60px",
-          }}
+    <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+      {/* Background image with overlay */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1554035042-34f354352d97?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080"
+          alt="Field workers"
+          className="w-full h-full object-cover opacity-20"
         />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+      </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-          <div className="max-w-3xl">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Structured Logging, Simplified
-              </span>
-            </motion.div>
+      {/* Grid pattern overlay */}
+      <div
+        className="absolute inset-0 z-0 opacity-5"
+        style={{
+          backgroundImage: `linear-gradient(oklch(0.94 0.005 250) 1px, transparent 1px), linear-gradient(90deg, oklch(0.94 0.005 250) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+        }}
+      />
 
-            <motion.h1
-              className="text-5xl md:text-7xl font-bold leading-tight tracking-tight text-balance mb-6"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              Log anything.
-              <br />
-              <span className="text-primary">From anywhere.</span>
-            </motion.h1>
-
-            <motion.p
-              className="text-lg text-muted-foreground mb-8 max-w-xl leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              GroundWork is the all-purpose log management platform for teams and individuals who need
-              more than sticky notes — photo evidence, structured entries, multi-site
-              tracking, and seamless exports. Whether you manage properties, equipment,
-              inspections, or anything in between.
-            </motion.p>
-
-            <motion.div
-              className="flex flex-wrap gap-3 mb-10"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              {highlights.map((item) => (
-                <span key={item} className="flex items-center gap-1.5 text-base text-muted-foreground">
-                  <CheckCircle className="w-4 h-4 text-primary" />
-                  {item}
-                </span>
-              ))}
-            </motion.div>
-
-            <motion.div
-              className="flex flex-wrap gap-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <Authenticated>
-                <Button size="lg" className="gap-2" onClick={() => navigate("/dashboard")}>
-                  Go to Dashboard <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Authenticated>
-              <Unauthenticated>
-                <SignInButton />
-                <Button size="lg" variant="secondary" asChild>
-                  <Link to="/pricing">View Pricing</Link>
-                </Button>
-              </Unauthenticated>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Floating stats */}
-        <motion.div
-          className="absolute bottom-12 right-8 md:right-16 z-10 hidden md:flex gap-6"
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, delay: 0.6 }}
-        >
-          {[
-            { value: "∞", label: "Log entries" },
-            { value: "20", label: "Photos/entry" },
-            { value: "3", label: "Plan tiers" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center bg-card/60 backdrop-blur-sm border border-border rounded-xl px-5 py-4">
-              <div className="text-2xl font-bold text-primary">{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
-            </div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* CTA Section — bridges to sub-pages */}
-      <section className="py-20 bg-card/30 border-t border-border">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight mb-4"
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-24">
+        <div className="max-w-3xl">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            See what GroundWork can do
-          </motion.h2>
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Structured Logging, Simplified
+            </span>
+          </motion.div>
+
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold leading-tight tracking-tight text-balance mb-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            Log anything.
+            <br />
+            <span className="text-primary">From anywhere.</span>
+          </motion.h1>
+
           <motion.p
-            className="text-muted-foreground text-lg mb-10 max-w-xl mx-auto"
+            className="text-lg text-muted-foreground mb-8 max-w-xl leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
           >
-            Explore the full feature set, find the right plan, or see how teams like yours use GroundWork.
+            GroundWork is the all-purpose log management platform for teams and individuals who need
+            more than sticky notes — photo evidence, structured entries, multi-site
+            tracking, and seamless exports. Whether you manage properties, equipment,
+            inspections, or anything in between.
           </motion.p>
+
           <motion.div
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-wrap gap-3 mb-10"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <Button size="lg" variant="secondary" asChild>
-              <Link to="/features">Explore Features</Link>
-            </Button>
-            <Button size="lg" variant="secondary" asChild>
-              <Link to="/pricing">View Pricing</Link>
-            </Button>
-            <Button size="lg" variant="secondary" asChild>
-              <Link to="/use-cases">Use Cases</Link>
-            </Button>
+            {highlights.map((item) => (
+              <span key={item} className="flex items-center gap-1.5 text-base text-muted-foreground">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                {item}
+              </span>
+            ))}
+          </motion.div>
+
+          <motion.div
+            className="flex flex-wrap gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <Authenticated>
+              <Button size="lg" className="gap-2" onClick={() => navigate("/dashboard")}>
+                Go to Dashboard <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Authenticated>
+            <Unauthenticated>
+              <SignInButton size="lg" />
+              <Button size="lg" variant="secondary" asChild>
+                <a href="#pricing">View Pricing</a>
+              </Button>
+              <Button size="lg" variant="secondary" asChild>
+                <Link to="/features">Explore Features</Link>
+              </Button>
+            </Unauthenticated>
           </motion.div>
         </div>
-      </section>
-    </>
+      </div>
+
+      {/* Floating stats */}
+      <motion.div
+        className="absolute bottom-12 right-8 md:right-16 z-10 hidden md:flex gap-6"
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, delay: 0.6 }}
+      >
+        {[
+          { value: "∞", label: "Log entries" },
+          { value: "20", label: "Photos/entry" },
+          { value: "3", label: "Plan tiers" },
+        ].map((stat) => (
+          <div key={stat.label} className="text-center bg-card/60 backdrop-blur-sm border border-border rounded-xl px-5 py-4">
+            <div className="text-2xl font-bold text-primary">{stat.value}</div>
+            <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+          </div>
+        ))}
+      </motion.div>
+    </section>
   );
 }
