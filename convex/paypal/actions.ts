@@ -379,6 +379,18 @@ export const cancelSubscription = action({
       paypalSubscriptionStatus: "CANCELLED",
       subscriptionTier: "free",
     });
+
+    // If the user owns a self-created team key, expire it so all team members
+    // are downgraded to free and removed from the team.
+    const selfKey = await ctx.runQuery(
+      internal.licenseKeys._getSelfCreatedKeyByAdmin,
+      { userId: user._id }
+    );
+    if (selfKey) {
+      await ctx.runMutation(internal.licenseKeys._expireKey, {
+        keyId: selfKey._id,
+      });
+    }
   },
 });
 

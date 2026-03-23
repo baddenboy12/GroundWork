@@ -687,6 +687,26 @@ export const _getKeyById = internalQuery({
   },
 });
 
+// ── Internal: find self-created key by admin user ID ──────────────────────────
+
+export const _getSelfCreatedKeyByAdmin = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Find a self-created key where this user is the admin
+    const keys = await ctx.db
+      .query("licenseKeys")
+      .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
+      .collect();
+    // Also check keys where adminUserId was transferred
+    const allKeys = await ctx.db.query("licenseKeys").collect();
+    const transferred = allKeys.filter(
+      (k) => k.adminUserId === args.userId && k.createdBy !== args.userId
+    );
+    const candidates = [...keys, ...transferred];
+    return candidates.find((k) => k.selfCreated && k.status === "active") ?? null;
+  },
+});
+
 // ── Internal: store a pending seat count before PayPal approval redirect ──────
 // reviseSubscriptionSeats writes here so the seat count lives in the DB,
 // not in client-controlled sessionStorage.
