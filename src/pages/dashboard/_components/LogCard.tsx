@@ -78,7 +78,7 @@ export default function LogCard({ log, siteName }: Props) {
           </p>
 
         </div>
-        <div className="absolute bottom-1.5 left-5 right-2 flex items-center text-sm text-muted-foreground">
+        <div className="absolute bottom-3 left-5 right-2 flex items-center text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
             {format(new Date(log.loggedAt), "MMM d, yyyy")}
