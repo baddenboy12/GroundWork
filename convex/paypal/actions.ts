@@ -383,11 +383,27 @@ export const syncSubscription = action({
     });
 
     const isActive = sub.status === "ACTIVE" || sub.status === "APPROVED";
-    // For custom seat-adjusted plans (not in the plans table), use the tier
-    // embedded in custom_id. Falls back to user's existing tier for legacy subs.
-    const tier: SubscriptionTier = isActive
-      ? ((plan?.tier ?? embeddedTier ?? user.subscriptionTier ?? "free") as SubscriptionTier)
-      : "free";
+
+    // Determine the correct tier. Priority:
+    // 1. Known plan in the plans table (stock plans)
+    // 2. If user owns a team key, use the key's tier (source of truth after revisions,
+    //    since custom_id still has the original tier and can't be updated)
+    // 3. Embedded tier in custom_id (for initial subscription before key creation)
+    // 4. User's existing tier
+    let resolvedTier: SubscriptionTier = "free";
+    if (isActive) {
+      if (plan?.tier) {
+        resolvedTier = plan.tier as SubscriptionTier;
+      } else if (user.appliedLicenseKeyId) {
+        const appliedKey = await ctx.runQuery(internal.licenseKeys._getKeyById, {
+          keyId: user.appliedLicenseKeyId,
+        });
+        resolvedTier = (appliedKey?.tier ?? embeddedTier ?? user.subscriptionTier ?? "free") as SubscriptionTier;
+      } else {
+        resolvedTier = (embeddedTier ?? user.subscriptionTier ?? "free") as SubscriptionTier;
+      }
+    }
+    const tier = resolvedTier;
 
     await ctx.runMutation(internal.users._setPaypalSubscription, {
       userId: user._id,
