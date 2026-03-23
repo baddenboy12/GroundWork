@@ -105,18 +105,21 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
       setCategory(log.category as LogCategory);
       setSiteId(log.siteId);
       setLoggedAt(new Date(log.loggedAt).toISOString().slice(0, 16));
-      setLocation(log.location ?? "");
-      setCoords(
-        log.latitude != null && log.longitude != null
-          ? { lat: log.latitude, lng: log.longitude }
-          : null
-      );
+
+      // Use the log's location, or fall back to the site's location
+      const site = sites?.find((s) => s._id === log.siteId);
+      const loc = log.location || site?.location || "";
+      const lat = log.latitude ?? site?.latitude;
+      const lng = log.longitude ?? site?.longitude;
+      setLocation(loc);
+      setCoords(lat != null && lng != null ? { lat, lng } : null);
+
       setPhotos(logPhotosToR2(log));
       setRemovedKeys([]);
       setSiteDropdownOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, log._id]);
+  }, [open, log._id, sites]);
 
   /** Track which existing (already-uploaded) photos the user removes */
   const handlePhotosChange = (newPhotos: R2Photo[]) => {
