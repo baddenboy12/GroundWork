@@ -1338,7 +1338,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           />
 
           {hasActivePayPalSub && (
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-sm text-muted-foreground mt-4">
               Switching plans will cancel your current subscription and start a new one via PayPal.
             </p>
           )}
