@@ -18,18 +18,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   exportCSV, exportXLSX, exportFullReportPDF,
@@ -129,6 +117,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
   // Popover open states
   const [themePopoverOpen, setThemePopoverOpen] = useState(false);
   const [entriesPopoverOpen, setEntriesPopoverOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   // Reset individual selection when switching modes
   useEffect(() => {
@@ -243,7 +232,7 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 px-8 pb-8 pt-12 rounded-3xl overflow-y-auto [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={cn("!max-w-none w-[90%] max-h-[90vh] top-[5%] translate-y-0 px-8 pb-8 pt-12 rounded-3xl [&>button]:w-16 [&>button]:h-16 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-2xl [&>button]:bg-white/10 [&>button>svg]:!w-10 [&>button>svg]:!h-10 [&>button]:active:scale-75 [&>button]:transition-transform", categoryOpen || themePopoverOpen || entriesPopoverOpen ? "overflow-visible" : "overflow-y-auto")} onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -342,31 +331,30 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                   </div>
 
                   {/* Theme */}
-                  <Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
-                      >
-                        <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
-                        <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
-                        <ThemeSwatch theme={selectedTheme} />
-                        <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
-                        <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[380px] p-3" align="start" sideOffset={4}>
-                      <p className="text-xs text-muted-foreground mb-2.5 font-medium uppercase tracking-wide">
-                        Choose a theme — {selectedTheme.name}
-                      </p>
-                      <div className="max-h-72 overflow-y-auto pr-0.5">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
+                      onClick={() => { setThemePopoverOpen(!themePopoverOpen); setCategoryOpen(false); setEntriesPopoverOpen(false); }}
+                    >
+                      <Palette className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <span className="text-base text-muted-foreground shrink-0 text-left w-20">Theme</span>
+                      <ThemeSwatch theme={selectedTheme} />
+                      <span className="flex-1 text-left font-medium text-foreground truncate">{selectedTheme.name}</span>
+                      <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", themePopoverOpen && "rotate-180")} />
+                    </button>
+                    {themePopoverOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg p-4">
+                        <p className="text-sm text-muted-foreground mb-3 font-medium uppercase tracking-wide">
+                          Choose a theme — {selectedTheme.name}
+                        </p>
                         <ThemePicker
                           value={selectedTheme.id}
                           onChange={(t) => { setSelectedTheme(t); setThemePopoverOpen(false); }}
                         />
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -398,152 +386,187 @@ export default function ExportDialog({ open, onClose, siteId, siteName, siteLoca
                 </div>
               </div>
 
-              {/* Category — bulk filter mode only */}
+              {/* Category — floating absolute dropdown */}
               {selectionMode === "filter" && (
-                <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3">
-                  <Tag className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <span className="text-base text-muted-foreground shrink-0 w-20">Category</span>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="border-0 shadow-none h-auto px-0 flex-1 text-lg font-medium focus:ring-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-xl hover:bg-accent transition-colors"
+                    onClick={() => { setCategoryOpen(!categoryOpen); setThemePopoverOpen(false); setEntriesPopoverOpen(false); }}
+                  >
+                    <Tag className="w-6 h-6 text-muted-foreground shrink-0" />
+                    <span className="text-lg text-muted-foreground shrink-0 text-left w-24">Category</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate text-xl">
+                      {CATEGORIES.find((c) => c.value === category)?.label ?? "All Categories"}
+                    </span>
+                    <ChevronDown className={cn("w-6 h-6 text-muted-foreground shrink-0 transition-transform", categoryOpen && "rotate-180")} />
+                  </button>
+                  {categoryOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg p-3">
+                      <div className="space-y-1">
+                        {CATEGORIES.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3.5 rounded-lg hover:bg-accent transition-colors text-left",
+                              category === c.value && "bg-accent"
+                            )}
+                            onClick={() => { setCategory(c.value); setCategoryOpen(false); }}
+                          >
+                            {c.value !== "all" && (
+                              <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", CATEGORY_BADGE_COLORS[c.value]?.split(" ")[0] ?? "bg-muted")} />
+                            )}
+                            <span className="text-lg text-foreground">{c.label}</span>
+                            {category === c.value && (
+                              <CheckSquare className="w-5 h-5 text-primary shrink-0 ml-auto" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Entries selector — individual mode */}
+              {/* Entries selector — individual mode, floating dropdown */}
               {selectionMode === "individual" && (
-                <Popover open={entriesPopoverOpen} onOpenChange={setEntriesPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
-                    >
-                      <ListChecks className="w-5 h-5 text-muted-foreground shrink-0" />
-                      <span className="text-base text-muted-foreground shrink-0 text-left w-20">Entries</span>
-                      <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
-                      <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 p-0" align="start" sideOffset={4}>
-                    {/* Search */}
-                    <div className="p-2 border-b border-border space-y-2">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                        <Input
-                          placeholder="Search entries by name…"
-                          value={entrySearch}
-                          onChange={(e) => setEntrySearch(e.target.value)}
-                          className="pl-8 pr-8 text-sm h-8"
-                        />
-                        {entrySearch && (
-                          <button
-                            type="button"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEntrySearch("")}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 text-lg hover:bg-accent transition-colors"
+                    onClick={() => { setEntriesPopoverOpen(!entriesPopoverOpen); setThemePopoverOpen(false); setCategoryOpen(false); }}
+                  >
+                    <ListChecks className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-base text-muted-foreground shrink-0 text-left w-20">Entries</span>
+                    <span className="flex-1 text-left font-medium text-foreground truncate">{entriesSummary}</span>
+                    <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform", entriesPopoverOpen && "rotate-180")} />
+                  </button>
+                  {entriesPopoverOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-2xl border border-border bg-popover shadow-lg overflow-hidden">
+                      {/* Search */}
+                      <div className="px-3 py-2.5 border-b border-border space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground pointer-events-none" />
+                          <Input
+                            placeholder="Search entries…"
+                            value={entrySearch}
+                            onChange={(e) => setEntrySearch(e.target.value)}
+                            className="pl-13 pr-12 h-14 rounded-xl !text-[22px]"
+                          />
+                          {entrySearch && (
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEntrySearch("")}
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                        {!isLoading && filteredEntries.length > 0 && (
+                          <div className="flex items-center justify-between px-0.5">
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={toggleAllFilteredEntries}
+                            >
+                              {allFilteredSelected
+                                ? <CheckSquare className="w-5 h-5 text-primary" />
+                                : <Square className="w-5 h-5" />}
+                              {allFilteredSelected ? "Deselect all" : "Select all"}
+                              {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
+                            </button>
+                            <span className="text-base text-muted-foreground">
+                              {selectedEntryIds.size} / {exportLogs?.length ?? 0}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      {!isLoading && filteredEntries.length > 0 && (
-                        <div className="flex items-center justify-between px-0.5">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={toggleAllFilteredEntries}
-                          >
-                            {allFilteredSelected
-                              ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                              : <Square className="w-3.5 h-3.5" />}
-                            {allFilteredSelected ? "Deselect all" : "Select all"}
-                            {entrySearch ? ` (${filteredEntries.length} shown)` : ""}
-                          </button>
-                          <span className="text-xs text-muted-foreground">
-                            {selectedEntryIds.size} / {exportLogs?.length ?? 0}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Entry list */}
-                    <div className="max-h-64 overflow-y-auto">
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
-                        </div>
-                      ) : filteredEntries.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                          {entrySearch ? "No entries match your search" : "No entries found"}
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-border/50 p-1">
-                          {filteredEntries.map((log) => {
-                            const isSelected = selectedEntryIds.has(log._id);
-                            return (
-                              <button
-                                key={log._id}
-                                type="button"
-                                className={cn(
-                                  "w-full flex items-start gap-2.5 px-2 py-2 text-left rounded-md transition-colors hover:bg-accent",
-                                  isSelected && "bg-primary/5"
-                                )}
-                                onClick={() => toggleEntry(log._id)}
-                              >
-                                {isSelected
-                                  ? <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                                  : <Square className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-                                <div className="min-w-0 flex-1 space-y-0.5">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-sm font-medium text-foreground truncate">{log.title}</span>
-                                    <span className={cn(
-                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                                      CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
-                                    )}>
-                                      {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
-                                    </span>
+                      {/* Entry list */}
+                      <div
+                        className="px-3 py-2.5 space-y-1"
+                        style={{
+                          maxHeight: "384px",
+                          overflowY: "auto",
+                          overscrollBehavior: "contain",
+                          touchAction: "pan-y",
+                          WebkitOverflowScrolling: "touch",
+                        }}
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading entries…
+                          </div>
+                        ) : filteredEntries.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            {entrySearch ? "No entries match your search" : "No entries found"}
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-border/50 p-1">
+                            {filteredEntries.map((log) => {
+                              const isSelected = selectedEntryIds.has(log._id);
+                              return (
+                                <button
+                                  key={log._id}
+                                  type="button"
+                                  className={cn(
+                                    "w-full flex items-start gap-3 px-3 py-3 text-left rounded-lg transition-colors hover:bg-accent",
+                                    isSelected && "bg-primary/5"
+                                  )}
+                                  onClick={() => toggleEntry(log._id)}
+                                >
+                                  {isSelected
+                                    ? <CheckSquare className="w-5 h-5 text-primary shrink-0 mt-1" />
+                                    : <Square className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />}
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-lg font-medium text-foreground truncate">{log.title}</span>
+                                      <span className={cn(
+                                        "text-xs px-2 py-0.5 rounded-full font-medium shrink-0",
+                                        CATEGORY_BADGE_COLORS[log.category] ?? "bg-muted text-muted-foreground"
+                                      )}>
+                                        {CATEGORY_LABELS[log.category as keyof typeof CATEGORY_LABELS] ?? log.category}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {format(new Date(log.loggedAt), "MMM d, yyyy")} · {log.authorName}
+                                    </div>
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground">
-                                    {format(new Date(log.loggedAt), "MMM d, yyyy")} · {log.authorName}
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </PopoverContent>
-                </Popover>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Live count */}
-          <div className={cn(
-            "rounded-lg border px-4 py-3 flex items-center justify-between",
-            isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
-          )}>
-            {isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Counting matching entries...
-              </div>
-            ) : (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {selectionMode === "individual" ? "Selected entries" : "Entries to export"}
-                </span>
-                <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
-                  {count}
-                </span>
-              </>
-            )}
-          </div>
+          {/* Live count — only shown standalone for individual mode */}
+          {selectionMode === "individual" && (
+            <div className={cn(
+              "rounded-lg border px-4 py-3 flex items-center justify-between",
+              isLoading ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"
+            )}>
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Loading entries…
+                </div>
+              ) : (
+                <>
+                  <span className="text-sm text-muted-foreground">Selected entries</span>
+                  <span className={cn("text-lg font-bold", count === 0 ? "text-muted-foreground" : "text-primary")}>
+                    {count}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-5 pt-4">
