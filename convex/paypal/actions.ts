@@ -496,6 +496,151 @@ export const cancelSubscription = action({
 });
 
 /**
+ * Creates a new PayPal subscription for a new team admin who received
+ * admin transfer. Uses the key's current tier and seat count. On PayPal
+ * approval, the key's paypalSubscriberId is updated to the new admin
+ * and pendingPaymentTransfer is cleared.
+ */
+export const takeOverSubscription = action({
+  args: {
+    keyId: v.id("licenseKeys"),
+    returnUrl: v.string(),
+    cancelUrl: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ approvalUrl: string }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+
+    const user = await ctx.runQuery(internal.users._getByToken, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+
+    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
+      keyId: args.keyId,
+    });
+    if (!key) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+    }
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can take over billing" });
+    }
+
+    const tier = key.tier as "pro" | "business";
+    const seats = key.maxMembers ?? 1;
+    const price = calcTotalPrice(tier, seats);
+    const tierLabel = tier === "pro" ? "Pro" : "Business";
+
+    const token = await getToken();
+    const base = getBaseUrl();
+
+    // Get the product ID from existing plans
+    const existingPlans = await ctx.runQuery(internal.paypal.plans._getAllPlans);
+    const productId = existingPlans[0]?.productId;
+    if (!productId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "PayPal plans not initialized.",
+      });
+    }
+
+    // Create a plan at the correct price for this tier + seat count
+    const planRes = await fetch(`${base}/v1/billing/plans`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `gw-takeover-${tier}-${seats}seats-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        product_id: productId,
+        name: `GroundWork ${tierLabel} — ${seats} seat${seats !== 1 ? "s" : ""}`,
+        description: `GroundWork ${tierLabel} team subscription (admin takeover)`,
+        status: "ACTIVE",
+        billing_cycles: [
+          {
+            frequency: { interval_unit: "MONTH", interval_count: 1 },
+            tenure_type: "REGULAR",
+            sequence: 1,
+            total_cycles: 0,
+            pricing_scheme: {
+              fixed_price: { value: price, currency_code: "USD" },
+            },
+          },
+        ],
+        payment_preferences: {
+          auto_bill_outstanding: true,
+          setup_fee_failure_action: "CONTINUE",
+          payment_failure_threshold: 3,
+        },
+      }),
+    });
+    if (!planRes.ok) {
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to create PayPal plan: ${await planRes.text()}`,
+      });
+    }
+    const newPlan = (await planRes.json()) as { id: string };
+
+    // Create the subscription
+    const subRes = await fetch(`${base}/v1/billing/subscriptions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        plan_id: newPlan.id,
+        custom_id: `${user._id}:${tier}`,
+        application_context: {
+          brand_name: "GroundWork",
+          locale: "en-US",
+          shipping_preference: "NO_SHIPPING",
+          user_action: "SUBSCRIBE_NOW",
+          return_url: args.returnUrl,
+          cancel_url: args.cancelUrl,
+        },
+      }),
+    });
+    if (!subRes.ok) {
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to create subscription: ${await subRes.text()}`,
+      });
+    }
+    const sub = (await subRes.json()) as {
+      id: string;
+      links: { rel: string; href: string }[];
+    };
+
+    // Store the subscription ID and key ID for the return callback
+    await ctx.runMutation(internal.users._setPaypalSubscription, {
+      userId: user._id,
+      paypalSubscriptionId: sub.id,
+      paypalSubscriptionStatus: "APPROVAL_PENDING",
+      subscriptionTier: null, // don't change tier yet
+    });
+
+    const approvalLink = sub.links.find((l) => l.rel === "approve");
+    if (!approvalLink) {
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: "No approval URL in PayPal response.",
+      });
+    }
+
+    return { approvalUrl: approvalLink.href };
+  },
+});
+
+/**
  * Revises a team's PayPal subscription to reflect a new seat count.
  * Creates a new PayPal plan priced at (base + extra_seats × $1.99) and submits
  * a subscription revision request. Returns an approval URL if subscriber
@@ -537,13 +682,14 @@ export const reviseSubscriptionSeats = action({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
     }
 
-    // The PayPal subscription belongs to the key creator (may differ from
-    // the current admin after a transfer).  Look it up from the creator.
-    const keyCreator = key.createdBy === user._id
+    // The PayPal subscription belongs to the subscriber (may differ from
+    // the current admin after a transfer).
+    const subscriberId = key.paypalSubscriberId ?? key.createdBy;
+    const subscriber = subscriberId === user._id
       ? user
-      : await ctx.runQuery(internal.users._getById, { userId: key.createdBy });
+      : await ctx.runQuery(internal.users._getById, { userId: subscriberId });
 
-    const subscriptionId = keyCreator?.paypalSubscriptionId;
+    const subscriptionId = subscriber?.paypalSubscriptionId;
     if (!subscriptionId) {
       throw new ConvexError({
         code: "BAD_REQUEST",

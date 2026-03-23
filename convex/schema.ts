@@ -66,6 +66,10 @@ export default defineSchema({
     suspendedAt: v.optional(v.string()),
     // Why the key was suspended: payment_failed (grace period) vs admin (manual)
     suspendedReason: v.optional(v.union(v.literal("payment_failed"), v.literal("admin"))),
+    // The user who owns the PayPal subscription backing this key
+    paypalSubscriberId: v.optional(v.id("users")),
+    // true when admin was transferred and the new admin hasn't set up payment yet
+    pendingPaymentTransfer: v.optional(v.boolean()),
     // Scheduled function ID for auto-expiry after grace period (cancellable on reactivation)
     gracePeriodScheduledId: v.optional(v.id("_scheduled_functions")),
   })

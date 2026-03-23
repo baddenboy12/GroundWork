@@ -125,6 +125,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
   const applyPendingSeatsFromRevisionAction = useAction(api.paypal.actions.applyPendingSeatsFromRevision);
   const reviseSubscriptionTierAction = useAction(api.paypal.actions.reviseSubscriptionTier);
+  const takeOverSubscriptionAction = useAction(api.paypal.actions.takeOverSubscription);
   const applyPendingTierFromRevisionAction = useAction(api.paypal.actions.applyPendingTierFromRevision);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
   const backfillUserMetadataMutation = useMutation(api.users.backfillUserMetadata);
@@ -139,6 +140,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const clearPendingTierMutation = useMutation(api.licenseKeys.clearPendingTier);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
   const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
+  const completePaymentTransferMutation = useMutation(api.licenseKeys.completePaymentTransfer);
   const storePendingTeamSeatsMutation = useMutation(api.users.storePendingTeamSeats);
 
   const convex = useConvex();
@@ -216,15 +218,37 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     const pendingKeyId = sessionStorage.getItem("gw_pending_key_id");
     // NOTE: gw_pending_seats removed — pending seat count is now in DB via reviseSubscriptionSeats
     const pendingTierKeyId = sessionStorage.getItem("gw_pending_tier_key_id");
+    const pendingTakeoverKeyId = sessionStorage.getItem("gw_pending_takeover_key_id");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
     sessionStorage.removeItem("gw_sub_team");
     sessionStorage.removeItem("gw_pending_key_id");
     sessionStorage.removeItem("gw_pending_tier_key_id");
+    sessionStorage.removeItem("gw_pending_takeover_key_id");
 
     if (paypalCancelled === "1") {
       toast.info("PayPal update not completed — no changes made.");
+      return;
+    }
+
+    // ── Payment takeover return ───────────────────────────────────────────────
+    if (pendingTakeoverKeyId && subscriptionId) {
+      setSyncPending(true);
+      (async () => {
+        try {
+          await syncSubscriptionAction({ subscriptionId });
+          // Complete the payment transfer on the key
+          await completePaymentTransferMutation({
+            keyId: pendingTakeoverKeyId as Parameters<typeof completePaymentTransferMutation>[0]["keyId"],
+          });
+          toast.success("Payment setup complete! You are now the billing owner.");
+        } catch (err) {
+          toast.error(extractErrorMessage(err));
+        } finally {
+          setSyncPending(false);
+        }
+      })();
       return;
     }
 
@@ -389,7 +413,22 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     setTransferAdminPending(true);
     try {
       await transferAdminMutation({ keyId: myKeyInfo.keyId, newAdminUserId: transferAdminTarget });
-      toast.success("Admin role transferred successfully.");
+
+      // If this is a PayPal-backed team, cancel the old admin's subscription
+      // at end of billing cycle so the new admin can set up their own payment.
+      const hasPayPalSub =
+        user?.paypalSubscriptionStatus === "ACTIVE" ||
+        user?.paypalSubscriptionStatus === "APPROVED";
+      if (hasPayPalSub && myKeyInfo.selfCreated) {
+        try {
+          await cancelSubscriptionAction();
+        } catch {
+          // Non-fatal — the transfer succeeded even if cancel fails
+          console.warn("Failed to cancel old admin subscription after transfer");
+        }
+      }
+
+      toast.success("Admin role transferred. The new admin will need to set up payment to continue the subscription.");
       setTransferAdminOpen(false);
       setTransferAdminTarget(null);
     } catch (err) {
@@ -852,6 +891,40 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 : <strong>the end of your billing cycle</strong>}
               . After that, your account will be downgraded to Free.
             </p>
+          </div>
+        )}
+
+        {/* Payment transfer banner — new admin needs to set up payment */}
+        {myKeyInfo?.pendingPaymentTransfer && myKeyInfo.isAdmin && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-base text-red-200">
+                <strong>Payment setup required.</strong> You are the new team admin. The previous
+                admin's subscription will end at the close of their billing cycle. Set up your own
+                payment to continue the team subscription.
+              </p>
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground"
+                onClick={async () => {
+                  try {
+                    const origin = window.location.origin;
+                    sessionStorage.setItem("gw_pending_takeover_key_id", myKeyInfo.keyId);
+                    const { approvalUrl } = await takeOverSubscriptionAction({
+                      keyId: myKeyInfo.keyId,
+                      returnUrl: `${origin}/paypal/return`,
+                      cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+                    });
+                    window.location.href = approvalUrl;
+                  } catch (err) {
+                    toast.error(extractErrorMessage(err));
+                  }
+                }}
+              >
+                Set Up Payment via PayPal
+              </Button>
+            </div>
           </div>
         )}
 

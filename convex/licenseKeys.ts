@@ -352,6 +352,8 @@ export const getMyKeyInfo = query({
       adminUserId: key.adminUserId ?? key.createdBy,
       isAdmin: (key.adminUserId ?? key.createdBy) === user._id,
       selfCreated: key.selfCreated ?? false,
+      pendingPaymentTransfer: key.pendingPaymentTransfer ?? false,
+      paypalSubscriberId: key.paypalSubscriberId ?? key.createdBy,
       suspendedAt: key.suspendedAt ?? null,
       suspendedReason: key.suspendedReason ?? null,
       graceDeadline,
@@ -496,6 +498,7 @@ export const createSelfKey = mutation({
       note: `Team — ${user.name ?? user.email ?? "subscriber"}`,
       selfCreated: true,
       maxMembers: args.maxMembers,
+      paypalSubscriberId: user._id,
     });
 
     // Creator joins their own key automatically
@@ -613,7 +616,15 @@ export const transferAdmin = mutation({
       throw new ConvexError({ code: "NOT_FOUND", message: "User is not a member of this team" });
     }
 
-    await ctx.db.patch(args.keyId, { adminUserId: args.newAdminUserId });
+    await ctx.db.patch(args.keyId, {
+      adminUserId: args.newAdminUserId,
+      // Flag that the new admin needs to set up their own payment
+      pendingPaymentTransfer: key.selfCreated ? true : undefined,
+    });
+
+    // Schedule the old admin's PayPal subscription cancellation (handled by
+    // the action layer since mutations can't call external APIs).
+    // The action will cancel at end of billing cycle (CANCEL_PENDING).
   },
 });
 
@@ -834,6 +845,47 @@ export const _suspendKeyForPaymentFailure = internalMutation({
 
 // ── Internal: reactivate a suspended key (payment resolved) ───────────────────
 // Clears suspension state and cancels the scheduled auto-expiry.
+
+// Called after a transferred admin successfully sets up their PayPal subscription
+export const _completePaymentTransfer = internalMutation({
+  args: { keyId: v.id("licenseKeys"), newSubscriberId: v.id("users") },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+    await ctx.db.patch(args.keyId, {
+      paypalSubscriberId: args.newSubscriberId,
+      pendingPaymentTransfer: undefined,
+    });
+  },
+});
+
+// Public mutation for the new admin to complete payment transfer after PayPal approval
+export const completePaymentTransfer = mutation({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError({ code: "NOT_FOUND", message: "Key not found" });
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can complete payment transfer" });
+    }
+
+    await ctx.db.patch(args.keyId, {
+      paypalSubscriberId: user._id,
+      pendingPaymentTransfer: undefined,
+    });
+  },
+});
 
 export const _reactivateKey = internalMutation({
   args: { keyId: v.id("licenseKeys") },
