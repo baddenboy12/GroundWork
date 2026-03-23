@@ -45,6 +45,7 @@ import {
   Crown,
   ArrowRightLeft,
   UserMinus,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -362,21 +363,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
       // Don't auto-reduce seat count — the admin may want to swap in a
       // replacement before the next billing cycle. They can manually reduce
-      // seats via "Edit Seats" when they're done.
-      const hasPayPalSub =
-        user?.paypalSubscriptionStatus === "ACTIVE" ||
-        user?.paypalSubscriptionStatus === "APPROVED";
-
-      if (
-        hasPayPalSub &&
-        myKeyInfo.maxMembers &&
-        (myKeyInfo.memberCount - 1) < myKeyInfo.maxMembers
-      ) {
-        toast.info(
-          "The open seat is still available for a replacement. Use 'Edit Seats' to reduce your seat count if you don't need it.",
-          { duration: 8000 }
-        );
-      }
+      // seats via "Edit Seats" when they're done. A persistent inline banner
+      // in the team section handles the notification (no toast needed).
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -916,6 +904,20 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   ))}
                 </div>
               </div>
+
+              {/* Persistent open-seat banner — shown when members < maxMembers */}
+              {myKeyInfo.isAdmin &&
+                myKeyInfo.maxMembers !== null &&
+                myKeyInfo.memberCount < myKeyInfo.maxMembers && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-200">
+                    You have {myKeyInfo.maxMembers - myKeyInfo.memberCount} open seat{myKeyInfo.maxMembers - myKeyInfo.memberCount !== 1 ? "s" : ""}.
+                    {" "}Invite a replacement or use <button type="button" onClick={() => { setEditSeatsValue(myKeyInfo.memberCount); setEditSeatsOpen(true); }} className="underline font-semibold hover:text-amber-100 transition-colors">Edit Seats</button> to
+                    reduce your seat count and lower your next bill.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             /* No key — show input form */
