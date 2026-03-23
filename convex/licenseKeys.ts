@@ -519,10 +519,10 @@ export const changeTierForTeam = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change the team tier" });
     }
 
-    // ── Billing enforcement: block tier upgrades when PayPal sub is active ──────
-    // Tier upgrades increase revenue owed. If the admin bypassed PayPal to upgrade
-    // from Pro → Business, all team members get Business features at Pro price.
-    // Downgrades are allowed (reduces cost, admin's loss).
+    // ── Billing enforcement: block direct tier upgrades on active PayPal subs ───
+    // Tier upgrades must go through reviseSubscriptionTier (PayPal approval flow).
+    // This mutation is only used for admin-granted keys or downgrades.
+    // The billing page handles upgrades via the PayPal revision action instead.
     if (key.selfCreated) {
       const tierRank: Record<string, number> = { pro: 1, business: 2 };
       const currentRank = tierRank[key.tier] ?? 0;
@@ -533,10 +533,10 @@ export const changeTierForTeam = mutation({
           user.paypalSubscriptionStatus === "APPROVED";
         if (isPaypalActive) {
           throw new ConvexError({
-            code: "BAD_REQUEST",
+            code: "REQUIRES_PAYPAL_REVISION",
             message:
-              "Tier upgrades are not allowed on an active PayPal subscription. " +
-              "To upgrade, please cancel your current subscription and subscribe to the new plan.",
+              "Tier upgrades on an active PayPal subscription require PayPal approval. " +
+              "Use the tier revision flow instead.",
           });
         }
       }
@@ -696,6 +696,41 @@ export const _setPendingMaxMembers = internalMutation({
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
     await ctx.db.patch(args.keyId, { pendingMaxMembers: args.pendingMaxMembers });
+  },
+});
+
+// ── Internal: set/apply pending tier (used by PayPal tier revision flow) ──────
+
+export const _setPendingTier = internalMutation({
+  args: { keyId: v.id("licenseKeys"), pendingTier: v.union(v.literal("pro"), v.literal("business")) },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+    await ctx.db.patch(args.keyId, { pendingTier: args.pendingTier });
+  },
+});
+
+export const _applyPendingTier = internalMutation({
+  args: { keyId: v.id("licenseKeys"), tier: v.union(v.literal("pro"), v.literal("business")) },
+  handler: async (ctx, args) => {
+    const key = await ctx.db.get(args.keyId);
+    if (!key) return;
+
+    // Update the key tier and clear the pending marker
+    await ctx.db.patch(args.keyId, { tier: args.tier, pendingTier: undefined });
+
+    // Propagate tier to all current members
+    const memberships = await ctx.db
+      .query("keyMemberships")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .collect();
+
+    for (const m of memberships) {
+      const member = await ctx.db.get(m.userId);
+      if (member && member.appliedLicenseKeyId === args.keyId) {
+        await ctx.db.patch(m.userId, { subscriptionTier: args.tier });
+      }
+    }
   },
 });
 

@@ -123,6 +123,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
   const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
   const applyPendingSeatsFromRevisionAction = useAction(api.paypal.actions.applyPendingSeatsFromRevision);
+  const reviseSubscriptionTierAction = useAction(api.paypal.actions.reviseSubscriptionTier);
+  const applyPendingTierFromRevisionAction = useAction(api.paypal.actions.applyPendingTierFromRevision);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
   const backfillUserMetadataMutation = useMutation(api.users.backfillUserMetadata);
   const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
@@ -209,14 +211,46 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     // NOTE: gw_sub_seats removed — seat count is now stored server-side via storePendingTeamSeats
     const pendingKeyId = sessionStorage.getItem("gw_pending_key_id");
     // NOTE: gw_pending_seats removed — pending seat count is now in DB via reviseSubscriptionSeats
+    const pendingTierKeyId = sessionStorage.getItem("gw_pending_tier_key_id");
 
     sessionStorage.removeItem("paypal_pending_subscription_id");
     sessionStorage.removeItem("paypal_cancelled");
     sessionStorage.removeItem("gw_sub_team");
     sessionStorage.removeItem("gw_pending_key_id");
+    sessionStorage.removeItem("gw_pending_tier_key_id");
 
     if (paypalCancelled === "1") {
+      sessionStorage.removeItem("gw_pending_tier_key_id");
       toast.info("PayPal update not completed — no changes made.");
+      return;
+    }
+
+    // ── Tier revision return ──────────────────────────────────────────────────
+    // pendingTierKeyId is just the team key ID. The actual tier comes from the
+    // DB (key.pendingTier), NOT sessionStorage, so it cannot be manipulated.
+    if (pendingTierKeyId) {
+      setSyncPending(true);
+      (async () => {
+        try {
+          // Sync the subscription first if we have a subscriptionId
+          if (subscriptionId) {
+            await syncSubscriptionAction({ subscriptionId });
+          }
+          const { tier } = await applyPendingTierFromRevisionAction({
+            keyId: pendingTierKeyId as Parameters<typeof applyPendingTierFromRevisionAction>[0]["keyId"],
+          });
+          if (tier) {
+            const tierName = TIER_CONFIG[tier as SubscriptionTier]?.name ?? tier;
+            toast.success(`Team tier upgraded to ${tierName} for all members!`);
+          } else {
+            toast.success("Subscription synced. Tier unchanged.");
+          }
+        } catch (err) {
+          toast.error(extractErrorMessage(err));
+        } finally {
+          setSyncPending(false);
+        }
+      })();
       return;
     }
 
@@ -490,7 +524,33 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
       setChangeTeamTierOpen(false);
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      const msg = extractErrorMessage(err);
+      // If the backend says we need PayPal approval for an upgrade, use the revision flow
+      if (msg.includes("REQUIRES_PAYPAL_REVISION") || msg.includes("tier revision flow")) {
+        try {
+          sessionStorage.setItem("gw_pending_tier_key_id", myKeyInfo.keyId);
+          const { approvalUrl, applied } = await reviseSubscriptionTierAction({
+            keyId: myKeyInfo.keyId,
+            newTier,
+            returnUrl: `${window.location.origin}/paypal/return`,
+            cancelUrl: `${window.location.origin}/paypal/return?paypal_cancelled=1`,
+          });
+          if (applied) {
+            sessionStorage.removeItem("gw_pending_tier_key_id");
+            toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
+            setChangeTeamTierOpen(false);
+          } else if (approvalUrl) {
+            // Redirect to PayPal for approval
+            window.location.href = approvalUrl;
+            return; // Don't clear pending state — user is leaving the page
+          }
+        } catch (reviseErr) {
+          sessionStorage.removeItem("gw_pending_tier_key_id");
+          toast.error(extractErrorMessage(reviseErr));
+        }
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setChangeTeamTierPending(false);
     }

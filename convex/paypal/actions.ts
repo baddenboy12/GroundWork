@@ -598,6 +598,216 @@ export const applyPendingSeatsFromRevision = action({
   },
 });
 
+/**
+ * Revises an existing PayPal subscription to change the team tier (e.g. Pro → Business).
+ * Similar to reviseSubscriptionSeats but changes the tier instead of seat count.
+ * Price increases require PayPal approval; downgrades apply immediately.
+ */
+export const reviseSubscriptionTier = action({
+  args: {
+    keyId: v.id("licenseKeys"),
+    newTier: v.union(v.literal("pro"), v.literal("business")),
+    returnUrl: v.string(),
+    cancelUrl: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ approvalUrl: string | null; applied: boolean }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+
+    const user = await ctx.runQuery(internal.users._getByToken, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+    if (!user.paypalSubscriptionId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "No active PayPal subscription to revise.",
+      });
+    }
+
+    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
+      keyId: args.keyId,
+    });
+    if (!key) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+    }
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can revise billing" });
+    }
+
+    // Use current seat count to calculate new price at the new tier
+    const currentSeats = key.maxMembers ?? 1;
+    const newPrice = calcTotalPrice(args.newTier, currentSeats);
+    const tierLabel = args.newTier === "pro" ? "Pro" : "Business";
+    const seatLabel = `${currentSeats} seat${currentSeats !== 1 ? "s" : ""}`;
+
+    const token = await getToken();
+    const base = getBaseUrl();
+
+    // Get existing product ID
+    const existingPlans = await ctx.runQuery(internal.paypal.plans._getAllPlans);
+    const productId = existingPlans[0]?.productId;
+    if (!productId) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "PayPal plans not initialized. Please initialize PayPal first.",
+      });
+    }
+
+    // Create a new plan with the tier-adjusted price
+    const planRes = await fetch(`${base}/v1/billing/plans`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `gw-plan-${args.newTier}-${currentSeats}seats-tierrev-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        product_id: productId,
+        name: `GroundWork ${tierLabel} — ${seatLabel}`,
+        description: `GroundWork ${tierLabel} team subscription with ${seatLabel}`,
+        status: "ACTIVE",
+        billing_cycles: [
+          {
+            frequency: { interval_unit: "MONTH", interval_count: 1 },
+            tenure_type: "REGULAR",
+            sequence: 1,
+            total_cycles: 0,
+            pricing_scheme: {
+              fixed_price: { value: newPrice, currency_code: "USD" },
+            },
+          },
+        ],
+        payment_preferences: {
+          auto_bill_outstanding: true,
+          setup_fee_failure_action: "CONTINUE",
+          payment_failure_threshold: 3,
+        },
+      }),
+    });
+
+    if (!planRes.ok) {
+      const txt = await planRes.text();
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to create revised PayPal plan: ${txt}`,
+      });
+    }
+    const newPlan = (await planRes.json()) as { id: string };
+
+    // Submit subscription revision request
+    const reviseRes = await fetch(
+      `${base}/v1/billing/subscriptions/${user.paypalSubscriptionId}/revise`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plan_id: newPlan.id,
+          application_context: {
+            brand_name: "GroundWork",
+            locale: "en-US",
+            shipping_preference: "NO_SHIPPING",
+            user_action: "SUBSCRIBE_NOW",
+            return_url: args.returnUrl,
+            cancel_url: args.cancelUrl,
+          },
+        }),
+      }
+    );
+
+    if (!reviseRes.ok) {
+      const txt = await reviseRes.text();
+      throw new ConvexError({
+        code: "EXTERNAL_SERVICE_ERROR",
+        message: `Failed to revise subscription: ${txt}`,
+      });
+    }
+
+    const revision = (await reviseRes.json()) as {
+      plan_overridden?: boolean;
+      links?: Array<{ href: string; rel: string }>;
+    };
+
+    const approvalLink = revision.links?.find((l) => l.rel === "approve");
+
+    if (!approvalLink) {
+      // Applied immediately (e.g. downgrade) — update tier right away
+      await ctx.runMutation(internal.licenseKeys._applyPendingTier, {
+        keyId: args.keyId,
+        tier: args.newTier,
+      });
+      return { approvalUrl: null, applied: true };
+    }
+
+    // Subscriber needs to approve the price increase via PayPal.
+    // Store the pending tier in the DB (not sessionStorage) so the frontend
+    // cannot manipulate it to get a higher tier without paying.
+    await ctx.runMutation(internal.licenseKeys._setPendingTier, {
+      keyId: args.keyId,
+      pendingTier: args.newTier,
+    });
+
+    return { approvalUrl: approvalLink.href, applied: false };
+  },
+});
+
+/**
+ * Called after the subscriber approves a tier revision via PayPal.
+ * Reads the pending tier from the DB and applies it — immune to
+ * client-side manipulation.
+ */
+export const applyPendingTierFromRevision = action({
+  args: { keyId: v.id("licenseKeys") },
+  handler: async (ctx, args): Promise<{ tier: string | null }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+
+    const user = await ctx.runQuery(internal.users._getByToken, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+
+    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, { keyId: args.keyId });
+    if (!key) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+    }
+
+    const currentAdmin = key.adminUserId ?? key.createdBy;
+    if (currentAdmin !== user._id) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Only the team admin can apply billing revisions",
+      });
+    }
+
+    if (!key.pendingTier) {
+      return { tier: null };
+    }
+
+    await ctx.runMutation(internal.licenseKeys._applyPendingTier, {
+      keyId: args.keyId,
+      tier: key.pendingTier,
+    });
+
+    return { tier: key.pendingTier };
+  },
+});
+
 // ── Internal action — webhook processing ──────────────────────────────────────
 
 export const processWebhook = internalAction({

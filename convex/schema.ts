@@ -58,6 +58,8 @@ export default defineSchema({
     selfCreated: v.optional(v.boolean()),
     // Pending seat count stored server-side by reviseSubscriptionSeats before PayPal approval
     pendingMaxMembers: v.optional(v.number()),
+    // Pending tier stored server-side by reviseSubscriptionTier before PayPal approval
+    pendingTier: v.optional(v.union(v.literal("pro"), v.literal("business"))),
   })
     .index("by_code", ["code"])
     .index("by_creator", ["createdBy"]),
