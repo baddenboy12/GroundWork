@@ -203,12 +203,13 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
       freshlyUploadedKeys = [];
       toast.success("Log entry updated");
       onClose();
-    } catch {
+    } catch (err) {
       // Roll back freshly uploaded photos that couldn't be saved to the DB
       if (freshlyUploadedKeys.length > 0) {
         void deleteOrphanedPhotos({ keys: freshlyUploadedKeys }).catch(() => {});
       }
-      toast.error("Failed to update log entry");
+      const msg = err instanceof Error ? err.message : "Failed to update log entry";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
