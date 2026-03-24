@@ -7,6 +7,44 @@ import type { Id } from "./_generated/dataModel.d.ts";
 
 const http = httpRouter();
 
+// ── Rate-limit config ────────────────────────────────────────────────────────
+
+/** Requests per window per API key */
+const RATE_LIMIT_MAX = 100;
+/** Window size in milliseconds (1 minute) */
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+/** Check + record a rate-limit hit. Returns a 429 Response if exceeded. */
+async function enforceRateLimit(
+  ctx: GenericActionCtx<DataModel>,
+  key: string
+): Promise<Response | null> {
+  const result = await ctx.runQuery(internal.rateLimit.check, {
+    key,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    maxRequests: RATE_LIMIT_MAX,
+  });
+  if (!result.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Please retry later." }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": "60",
+          ...corsHeaders,
+        },
+      }
+    );
+  }
+  // Record the hit (non-blocking is fine, but we await to be safe)
+  await ctx.runMutation(internal.rateLimit.hit, {
+    key,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  });
+  return null;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const corsHeaders = {
@@ -69,6 +107,10 @@ async function verifyApiKey(
   if ((user.subscriptionTier ?? "free") !== "business") {
     return err("A Business plan is required to use the GroundWork REST API", 403);
   }
+
+  // Rate limit by API key hash
+  const rateLimited = await enforceRateLimit(ctx, `api:${keyHash}`);
+  if (rateLimited) return rateLimited;
 
   // Track last usage (non-blocking)
   await ctx.runMutation(internal.integrations.apiKeys._updateLastUsed, {
@@ -485,6 +527,10 @@ http.route({
   path: "/paypal-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    // Rate limit webhook endpoint (20 requests/min)
+    const rateLimited = await enforceRateLimit(ctx, "webhook:paypal");
+    if (rateLimited) return rateLimited;
+
     const body = await request.text();
 
     const h = request.headers;
@@ -502,6 +548,20 @@ http.route({
     });
 
     return new Response(null, { status: 200 });
+  }),
+});
+
+// ── Health check ─────────────────────────────────────────────────────────────
+
+http.route({
+  path: "/health",
+  method: "GET",
+  handler: httpAction(async () => {
+    return json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      service: "groundwork-api",
+    });
   }),
 });
 

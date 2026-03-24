@@ -53,7 +53,7 @@ const METALLIC_STYLE: React.CSSProperties = {
 };
 
 export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onBilling, onHome, onMenuClick }: Props) {
-  const { user, removeUser } = useAuth();
+  const { user, removeUser, signoutRedirect } = useAuth();
   const { tier, config } = useSubscription();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -256,8 +256,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
                     const k = localStorage.key(i);
                     if (k?.startsWith("gw_cache_")) localStorage.removeItem(k);
                   }
-                  await removeUser();
-                  navigate("/");
+                  await signoutRedirect();
                 }}
               >
                 <LogOut className="w-7 h-7" /> Sign out

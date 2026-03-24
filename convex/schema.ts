@@ -154,6 +154,12 @@ export default defineSchema({
     .index("by_site", ["siteId"])
     .index("by_team_key_and_status", ["teamKeyId", "status"]),
 
+  // Rate limiting buckets for API endpoints
+  rateLimits: defineTable({
+    key: v.string(),
+    timestamps: v.array(v.number()),
+  }).index("by_key", ["key"]),
+
   logs: defineTable({
     siteId: v.id("sites"),
     title: v.string(),

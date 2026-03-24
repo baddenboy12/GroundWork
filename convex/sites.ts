@@ -21,7 +21,7 @@ export const list = query({
       const teamSiteDocs = await ctx.db
         .query("sites")
         .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
-        .collect();
+        .take(2000);
 
       const enriched = await Promise.all(
         teamSiteDocs.map(async (s) => {
@@ -40,7 +40,7 @@ export const list = query({
         .query("sites")
         .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
         .order("asc")
-        .collect();
+        .take(2000);
 
       return ownSites
         .filter((s) => s.teamKeyId === undefined)

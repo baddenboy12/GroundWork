@@ -1095,18 +1095,21 @@ type XlsxEntry = {
 // ── Photo grid constants ──────────────────────────────────────────────────────
 const XLSX_PHOTOS_PER_ROW = 4;          // max photos side-by-side in Excel
 const XLSX_PHOTO_COL_UNITS = 42;        // Excel column width units per photo col (≈300px)
-const XLSX_PHOTO_MAX_H = 300;           // max photo height in pixels
-const XLSX_PHOTO_MAX_W = 285;           // max photo width in pixels (fits within column)
+const XLSX_PHOTO_UNIFORM_H = 300;       // uniform photo height in pixels (all photos same height)
+const XLSX_PHOTO_MAX_W = 300;           // max photo width in pixels (fits within column)
 const XLSX_TOTAL_COLS = 1 + XLSX_PHOTOS_PER_ROW; // cols A–E
 
-/** Scale a photo to fit within XLSX_PHOTO_MAX_W × XLSX_PHOTO_MAX_H */
+/** Scale a photo to uniform height, clamping width to column bounds */
 function calcXlsxPhotoDims(photo: PhotoData): { imgW: number; imgH: number } {
-  if (XLSX_PHOTO_MAX_H * photo.ar <= XLSX_PHOTO_MAX_W) {
-    // Height-constrained (portrait or moderate landscape)
-    return { imgH: XLSX_PHOTO_MAX_H, imgW: Math.round(XLSX_PHOTO_MAX_H * photo.ar) };
+  // Start with uniform height, scale width by aspect ratio
+  let imgH = XLSX_PHOTO_UNIFORM_H;
+  let imgW = Math.round(imgH * photo.ar);
+  // If too wide, clamp width and shrink height proportionally
+  if (imgW > XLSX_PHOTO_MAX_W) {
+    imgW = XLSX_PHOTO_MAX_W;
+    imgH = Math.round(imgW / photo.ar);
   }
-  // Width-constrained (wide landscape)
-  return { imgW: XLSX_PHOTO_MAX_W, imgH: Math.round(XLSX_PHOTO_MAX_W / photo.ar) };
+  return { imgW, imgH };
 }
 
 /** Build a single-sheet ExcelJS workbook with one section per entry */
@@ -1179,7 +1182,16 @@ async function buildEntryWorkbook(
       const row = ws.addRow([label, value, "", "", ""]);
       ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
       row.height = isNotes
-        ? Math.max(20, Math.min(120, Math.ceil(value.length / 70) * 15))
+        ? Math.max(20, (() => {
+            // Split on newlines, then count wrapped lines within each segment
+            // (~100 chars per visual line across merged B-E columns)
+            const segments = value.split("\n");
+            const totalLines = segments.reduce(
+              (sum, seg) => sum + Math.max(1, Math.ceil(seg.length / 100)),
+              0
+            );
+            return totalLines * 16;
+          })())
         : 18;
       row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
       row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
@@ -1210,8 +1222,9 @@ async function buildEntryWorkbook(
         const rowMaxH = Math.max(...photoDims.map((d) => d.imgH));
 
         const imgRow = ws.addRow(["", "", "", "", ""]);
-        // Row height in Excel points (1pt ≈ 1.333px)
-        imgRow.height = rowMaxH / 1.333;
+        // Use pixel value directly as points — gives generous padding so images
+        // never bleed into the next entry, even on high-DPI / scaled displays
+        imgRow.height = rowMaxH + 10;
         const rowIdx = imgRow.number - 1; // ExcelJS uses 0-indexed rows for addImage
 
         rowPhotos.forEach((photo, j) => {

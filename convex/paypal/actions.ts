@@ -1092,42 +1092,45 @@ export const processWebhook = internalAction({
     headers: v.record(v.string(), v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
-    // Optionally verify PayPal webhook signature
+    // Verify PayPal webhook signature (fail-closed: reject if PAYPAL_WEBHOOK_ID is not configured)
     const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-    if (webhookId) {
-      try {
-        const token = await getToken();
-        const base = getBaseUrl();
-        const verifyRes = await fetch(
-          `${base}/v1/notifications/verify-webhook-signature`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              auth_algo: args.headers["paypal-auth-algo"] ?? "",
-              cert_url: args.headers["paypal-cert-url"] ?? "",
-              transmission_id: args.headers["paypal-transmission-id"] ?? "",
-              transmission_sig: args.headers["paypal-transmission-sig"] ?? "",
-              transmission_time: args.headers["paypal-transmission-time"] ?? "",
-              webhook_id: webhookId,
-              webhook_event: JSON.parse(args.body),
-            }),
-          }
-        );
-        const verify = (await verifyRes.json()) as {
-          verification_status: string;
-        };
-        if (verify.verification_status !== "SUCCESS") {
-          console.error("PayPal webhook verification failed", verify);
-          return;
+    if (!webhookId) {
+      console.error("PAYPAL_WEBHOOK_ID is not configured — rejecting webhook for security");
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      const base = getBaseUrl();
+      const verifyRes = await fetch(
+        `${base}/v1/notifications/verify-webhook-signature`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            auth_algo: args.headers["paypal-auth-algo"] ?? "",
+            cert_url: args.headers["paypal-cert-url"] ?? "",
+            transmission_id: args.headers["paypal-transmission-id"] ?? "",
+            transmission_sig: args.headers["paypal-transmission-sig"] ?? "",
+            transmission_time: args.headers["paypal-transmission-time"] ?? "",
+            webhook_id: webhookId,
+            webhook_event: JSON.parse(args.body),
+          }),
         }
-      } catch (e) {
-        console.error("PayPal webhook signature check error", e);
+      );
+      const verify = (await verifyRes.json()) as {
+        verification_status: string;
+      };
+      if (verify.verification_status !== "SUCCESS") {
+        console.error("PayPal webhook verification failed", verify);
         return;
       }
+    } catch (e) {
+      console.error("PayPal webhook signature check error", e);
+      return;
     }
 
     type WebhookEvent = {

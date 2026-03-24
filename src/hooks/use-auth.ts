@@ -9,6 +9,10 @@ export function useAuth() {
     error: auth.error ?? null,
     signinRedirect: auth.signinRedirect,
     removeUser: auth.removeUser,
+    signoutRedirect: () =>
+      auth.signoutRedirect({
+        post_logout_redirect_uri: window.location.origin,
+      }),
     user: auth.user
       ? {
           profile: {

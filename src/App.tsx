@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { registerServiceWorker } from "@/lib/register-sw.ts";
 import AuthCallback from "./pages/auth/Callback.tsx";
 import Index from "./pages/Index.tsx";
@@ -113,8 +114,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <DefaultProviders>
-      <AppInner />
-    </DefaultProviders>
+    <ErrorBoundary>
+      <DefaultProviders>
+        <AppInner />
+      </DefaultProviders>
+    </ErrorBoundary>
   );
 }

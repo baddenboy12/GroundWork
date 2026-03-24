@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as emails_queries from "../emails/queries.js";
 import type * as emails_teamNotifications from "../emails/teamNotifications.js";
 import type * as http from "../http.js";
@@ -20,6 +21,7 @@ import type * as logs from "../logs.js";
 import type * as paypal_actions from "../paypal/actions.js";
 import type * as paypal_plans from "../paypal/plans.js";
 import type * as r2_storageActions from "../r2/storageActions.js";
+import type * as rateLimit from "../rateLimit.js";
 import type * as siteDeleteVotes from "../siteDeleteVotes.js";
 import type * as sites from "../sites.js";
 import type * as storage from "../storage.js";
@@ -32,6 +34,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   "emails/queries": typeof emails_queries;
   "emails/teamNotifications": typeof emails_teamNotifications;
   http: typeof http;
@@ -44,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   "paypal/actions": typeof paypal_actions;
   "paypal/plans": typeof paypal_plans;
   "r2/storageActions": typeof r2_storageActions;
+  rateLimit: typeof rateLimit;
   siteDeleteVotes: typeof siteDeleteVotes;
   sites: typeof sites;
   storage: typeof storage;
