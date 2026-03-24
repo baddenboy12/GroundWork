@@ -116,6 +116,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const isAdmin = useQuery(api.users.getIsAdmin, {});
   const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
   const allKeys = useQuery(api.licenseKeys.listAll, {});
+  const allUsers = useQuery(api.users.listAllUsers, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
   const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
@@ -139,6 +140,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
   const clearPendingTierMutation = useMutation(api.licenseKeys.clearPendingTier);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
+  const toggleSandboxModeMutation = useMutation(api.users.toggleSandboxMode);
   const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
   const completePaymentTransferMutation = useMutation(api.licenseKeys.completePaymentTransfer);
   const storePendingTeamSeatsMutation = useMutation(api.users.storePendingTeamSeats);
@@ -197,6 +199,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const [genNote, setGenNote] = useState("");
   const [genPending, setGenPending] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState<string | null>(null);
+  // Sandbox testers
+  const [sandboxFilter, setSandboxFilter] = useState("");
+  const [sandboxTogglePending, setSandboxTogglePending] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -1372,6 +1377,82 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </div>
         )}
 
+        {/* ── Admin: Sandbox Testers ───────────────────────────────── */}
+        {isAdmin && allUsers && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-bold text-foreground">Admin — Sandbox Testers</h2>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Enable sandbox mode to let a user switch between plans freely without PayPal.
+              </p>
+              <Input
+                placeholder="Filter by email…"
+                value={sandboxFilter}
+                onChange={(e) => setSandboxFilter(e.target.value)}
+                className="h-9 text-sm max-w-xs"
+              />
+              <div className="rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Name</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Email</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Tier</th>
+                      <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Sandbox</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers
+                      .filter((u) =>
+                        !sandboxFilter ||
+                        (u.email ?? "").toLowerCase().includes(sandboxFilter.toLowerCase()) ||
+                        (u.name ?? "").toLowerCase().includes(sandboxFilter.toLowerCase())
+                      )
+                      .slice(0, 50)
+                      .map((u, i) => (
+                        <tr key={u._id} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
+                          <td className="px-4 py-2.5 text-xs text-foreground">{u.name ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{u.email ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">{u.subscriptionTier}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <Button
+                              size="sm"
+                              variant={u.sandboxMode ? "default" : "secondary"}
+                              className="h-7 px-3 text-xs"
+                              disabled={sandboxTogglePending !== null}
+                              onClick={async () => {
+                                setSandboxTogglePending(u._id);
+                                try {
+                                  await toggleSandboxModeMutation({ userId: u._id as Id<"users"> });
+                                  toast.success(`Sandbox ${u.sandboxMode ? "disabled" : "enabled"} for ${u.email ?? u.name ?? "user"}`);
+                                } catch (err) {
+                                  toast.error(extractErrorMessage(err));
+                                } finally {
+                                  setSandboxTogglePending(null);
+                                }
+                              }}
+                            >
+                              {sandboxTogglePending === u._id ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : u.sandboxMode ? (
+                                "Enabled"
+                              ) : (
+                                "Disabled"
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Plans grid — hidden while user is on a team (non-super-admins must leave first) */}
         {myKeyInfo && !isAdmin ? (
           <div className="rounded-2xl border border-border bg-card p-6 flex items-center gap-4">
@@ -1496,8 +1577,8 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                     </li>
                   </ul>
 
-                  {/* Admin override: instant plan switch without PayPal */}
-                  {isAdmin ? (
+                  {/* Admin/sandbox override: instant plan switch without PayPal */}
+                  {(isAdmin || user?.sandboxMode) ? (
                     <Button
                       size="sm"
                       className="w-full"

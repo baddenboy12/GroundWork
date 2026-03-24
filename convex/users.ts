@@ -122,11 +122,9 @@ export const setSubscriptionTier = mutation({
     if (!identity) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "User not logged in" });
     }
-    // Only the admin may bypass PayPal
+    // Admin or sandbox users may bypass PayPal
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
-    }
+    const isAdmin = !!adminEmail && (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
     const user = await ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
@@ -135,6 +133,9 @@ export const setSubscriptionTier = mutation({
       .unique();
     if (!user) {
       throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+    if (!isAdmin && !user.sandboxMode) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin or sandbox access required" });
     }
     await ctx.db.patch(user._id, {
       subscriptionTier: args.tier,
@@ -246,6 +247,45 @@ export const backfillUserMetadata = mutation({
       }
     }
     return { updated };
+  },
+});
+
+/** Admin-only: toggle sandboxMode on a user so they can switch tiers freely. */
+export const toggleSandboxMode = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
+    }
+    const target = await ctx.db.get(args.userId);
+    if (!target) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    await ctx.db.patch(args.userId, { sandboxMode: !target.sandboxMode });
+    return { sandboxMode: !target.sandboxMode };
+  },
+});
+
+/** Admin-only: list all users for the sandbox testers admin panel. */
+export const listAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || (identity.email ?? "").toLowerCase() !== adminEmail.toLowerCase()) {
+      return null;
+    }
+    const users = await ctx.db.query("users").collect();
+    return users.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      subscriptionTier: u.subscriptionTier ?? "free",
+      sandboxMode: u.sandboxMode ?? false,
+      adminGrantedTier: u.adminGrantedTier ?? false,
+    }));
   },
 });
 
