@@ -47,6 +47,13 @@ async function enforceRateLimit(
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * CORS headers for API routes.
+ *
+ * These routes are all authenticated via API key (Bearer token), so wildcard
+ * origin is acceptable — the API key is the access control, not the origin.
+ * External API consumers (Postman, curl, third-party integrations) need this.
+ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
@@ -469,6 +476,21 @@ const PHOTO_PROXY_ALLOWED_HOSTS = [
   ".r2.cloudflarestorage.com",
 ];
 
+/** Origins allowed to use the photo proxy (no API key required) */
+const PHOTO_PROXY_ALLOWED_ORIGINS = [
+  "https://groundwork.teezfpo.com",
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "capacitor://localhost",
+  "http://localhost",
+];
+
+function getPhotoProxyCorsOrigin(request: Request): string {
+  const origin = request.headers.get("Origin");
+  if (origin && PHOTO_PROXY_ALLOWED_ORIGINS.includes(origin)) return origin;
+  return PHOTO_PROXY_ALLOWED_ORIGINS[0]; // default to production
+}
+
 http.route({
   path: "/photo-proxy",
   method: "GET",
@@ -506,8 +528,9 @@ http.route({
         status: 200,
         headers: {
           "Content-Type": upstream.headers.get("Content-Type") ?? "image/jpeg",
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": getPhotoProxyCorsOrigin(request),
           "Cache-Control": "public, max-age=3600",
+          Vary: "Origin",
         },
       });
     } catch {
@@ -519,7 +542,18 @@ http.route({
 http.route({
   path: "/photo-proxy",
   method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: corsHeaders })),
+  handler: httpAction(async (_ctx, request) => {
+    const origin = getPhotoProxyCorsOrigin(request);
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        Vary: "Origin",
+      },
+    });
+  }),
 });
 
 
