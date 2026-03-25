@@ -1007,18 +1007,33 @@ export const listAllForOfflineCache = query({
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-/** Returns every R2 photo key currently referenced by a log in the DB. */
+/**
+ * Returns every R2 photo key currently referenced by a log in the DB.
+ * Paginated internally (500 per page) to avoid loading the entire table at once.
+ */
 export const _getAllPhotoKeys = internalQuery({
   args: {},
   handler: async (ctx): Promise<string[]> => {
-    const logs = await ctx.db.query("logs").collect();
     const keys: string[] = [];
-    for (const log of logs) {
-      if (log.photos?.length) {
-        for (const photo of log.photos) {
-          if (photo.key) keys.push(photo.key);
+    let isDone = false;
+    let paginationOpts: { numItems: number; cursor: string | null } = {
+      numItems: 500,
+      cursor: null,
+    };
+
+    while (!isDone) {
+      const page = await ctx.db
+        .query("logs")
+        .paginate(paginationOpts);
+      for (const log of page.page) {
+        if (log.photos?.length) {
+          for (const photo of log.photos) {
+            if (photo.key) keys.push(photo.key);
+          }
         }
       }
+      isDone = page.isDone;
+      paginationOpts = { numItems: 500, cursor: page.continueCursor };
     }
     return keys;
   },
