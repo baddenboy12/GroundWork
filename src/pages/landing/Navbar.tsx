@@ -2,13 +2,12 @@ import { SignInButton } from "@/components/ui/signin.tsx";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
-import { isNative } from "@/lib/platform";
 
 export default function Navbar() {
   const navigate = useNavigate();
 
   return (
-    <nav className={`fixed left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border ${isNative ? "top-[80px]" : "top-0"}`}>
+    <nav className="fixed left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border top-0">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo — matches dashboard sizing */}
         <a href="/" className="flex items-center gap-3">
