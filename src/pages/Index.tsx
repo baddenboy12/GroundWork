@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
+import { isNative } from "@/lib/platform";
 import Navbar from "./landing/Navbar.tsx";
 import Hero from "./landing/Hero.tsx";
 
@@ -32,7 +33,36 @@ function LandingPage() {
   );
 }
 
+/**
+ * On native, the AuthDialogPlugin dispatches an `authDialogCancelled` event
+ * when the user dismisses the auth dialog without completing sign-in.
+ * Clean up orphaned OIDC state and reload to escape the stuck loading state.
+ */
+function useAuthDialogCancelGuard() {
+  useEffect(() => {
+    if (!isNative) return;
+
+    const handler = () => {
+      // Clean up orphaned OIDC state entries (oidc.{stateKey} from signinRedirect)
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("oidc.") && !key.startsWith("oidc.user:")) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      window.location.replace("/");
+    };
+
+    window.addEventListener("authDialogCancelled", handler);
+    return () => window.removeEventListener("authDialogCancelled", handler);
+  }, []);
+}
+
 export default function Index() {
+  useAuthDialogCancelGuard();
+
   if (hasStoredOidcSession()) {
     return <RedirectToDashboard />;
   }
