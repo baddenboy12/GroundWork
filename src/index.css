@@ -215,9 +215,9 @@ html, body {
   }
 }
 
-/* Native Android: push content below status bar */
+/* Native Android: status bar inset handled by Android layout (MainActivity.java) */
 html.native-android {
-  padding-top: 80px !important;
+  padding-top: 0 !important;
 }
 
 html.native-android body {

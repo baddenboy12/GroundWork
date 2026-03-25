@@ -71,7 +71,7 @@ async function processNativeCallback(): Promise<boolean> {
     scope: state.scope || "openid profile email offline_access",
     profile,
     expires_at: Math.floor(Date.now() / 1000) + (tokens.expires_in || 300),
-    session_state: params.get("session_state") || undefined,
+    session_state: session_state || undefined,
   };
 
   // Store under the key react-oidc-context expects
