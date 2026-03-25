@@ -77,6 +77,15 @@ async function registerPeriodicSync(registration: ServiceWorkerRegistration) {
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
+  // Skip service worker in Capacitor native — assets are served from the APK,
+  // and a stale SW from a PWA install on the same hostname can break the app.
+  if (navigator.userAgent.includes("GroundWorkNative")) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const r of regs) r.unregister();
+    });
+    return;
+  }
+
   // Skip registration on the Vite dev server to avoid caching stale chunks
   if (import.meta.env.DEV) {
     navigator.serviceWorker.getRegistrations().then((regs) => {
