@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { compressImage } from "../_lib/compress-image.ts";
 import { useDragReorder } from "../_lib/use-drag-reorder.ts";
+import { useNativeCamera } from "@/hooks/use-native-camera.ts";
 
 export type R2Photo = {
   url: string;       // R2 public URL — empty string while pending upload
@@ -26,6 +27,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const { takePhoto, isNative: isCapacitor } = useNativeCamera();
 
   /**
    * Stage files locally — no R2 upload yet.
@@ -109,7 +111,14 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
           {/* Take Photo button */}
           <motion.button
             type="button"
-            onClick={() => cameraRef.current?.click()}
+            onClick={async () => {
+              if (isCapacitor) {
+                const file = await takePhoto();
+                if (file) await stageFiles([file]);
+              } else {
+                cameraRef.current?.click();
+              }
+            }}
             whileTap={{ scale: 0.92 }}
             whileHover={{ scale: 1.03 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}

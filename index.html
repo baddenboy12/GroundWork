@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=768, viewport-fit=cover" />
 
+    <!-- CSP: mitigate XSS on web (prevents injected scripts from reading localStorage tokens) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.convex.cloud https://*.convex.site wss://*.convex.cloud https://nominatim.openstreetmap.org https://*.r2.cloudflarestorage.com https://*.r2.dev https://auth.teezfpo.com https://api-m.sandbox.paypal.com https://api-m.paypal.com; img-src 'self' blob: data: https://*.r2.dev https://unpkg.com https://tile.openstreetmap.org https://*.r2.cloudflarestorage.com; frame-src https://*.paypal.com https://auth.teezfpo.com;" />
+
     <title>GroundWork</title>
     <meta name="description" content="" />
     <link rel="icon" href="/icon/icon-192.png" />

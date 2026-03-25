@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { isNative } from "@/lib/platform";
 
 /**
  * How long to wait for the probe before deciding we're offline.
@@ -46,9 +47,9 @@ async function probeNetwork(): Promise<boolean> {
 /**
  * Returns true when the device has a working internet connection.
  *
- * Unlike a raw `navigator.onLine` check this hook performs an actual
- * network probe on mount, on browser online/offline events, and every
- * RECHECK_INTERVAL_MS while the app is open.  This reliably detects:
+ * On Capacitor native, uses the @capacitor/network plugin which gives
+ * authoritative network state from the OS. On web, performs actual
+ * network probes to reliably detect:
  *
  * - Devices with a 4G/WiFi radio on but no working data connection
  * - Captive portals that block all traffic
@@ -73,8 +74,26 @@ export function useOnlineStatus(): boolean {
   }, []);
 
   useEffect(() => {
-    // Probe immediately so we don't rely on navigator.onLine any longer than
-    // PROBE_TIMEOUT_MS.
+    // ── Native path: use Capacitor Network plugin ──────────────────────
+    if (isNative) {
+      let cleanup: (() => void) | undefined;
+
+      (async () => {
+        const { Network } = await import("@capacitor/network");
+        const status = await Network.getStatus();
+        setIsOnline(status.connected);
+
+        const listener = await Network.addListener(
+          "networkStatusChange",
+          (s) => setIsOnline(s.connected)
+        );
+        cleanup = () => listener.remove();
+      })();
+
+      return () => cleanup?.();
+    }
+
+    // ── Web path: HEAD probe approach ──────────────────────────────────
     void runProbe();
 
     const handleOnline = () => {

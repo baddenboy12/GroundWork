@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
 import { useBackgroundCacheSync } from "@/hooks/use-background-cache-sync.ts";
+import { usePushNotifications } from "@/hooks/use-push-notifications.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import { cn } from "@/lib/utils.ts";
@@ -91,6 +92,9 @@ function DashboardInner() {
   const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
   const isSearchMode = debouncedSearch.length > 0;
   const isFiltered = isSearchMode || filters.category !== "all" || !!filters.dateFrom || !!filters.dateTo;
+
+  // Push notifications — registers FCM token on native
+  usePushNotifications();
 
   // Offline sync — auto-syncs queue when coming back online
   const { isSyncing, syncQueue, isOnline } = useOfflineSync();

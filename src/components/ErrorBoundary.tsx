@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
+import { reportError } from "@/lib/error-reporter";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary] Uncaught error:", error, info.componentStack);
+    reportError(error, info.componentStack ?? undefined);
   }
 
   private handleReload = () => {

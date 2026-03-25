@@ -156,6 +156,28 @@ export default defineSchema({
     .index("by_site", ["siteId"])
     .index("by_team_key_and_status", ["teamKeyId", "status"]),
 
+  // Client-side error logs for production monitoring
+  clientErrors: defineTable({
+    userId: v.optional(v.id("users")),
+    message: v.string(),
+    stack: v.optional(v.string()),
+    componentStack: v.optional(v.string()),
+    url: v.string(),
+    userAgent: v.string(),
+    platform: v.string(),
+    timestamp: v.string(),
+  }).index("by_timestamp", ["timestamp"]),
+
+  // Push notification tokens (FCM)
+  pushTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    platform: v.union(v.literal("android"), v.literal("web")),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_token", ["token"]),
+
   // Rate limiting buckets for API endpoints
   rateLimits: defineTable({
     key: v.string(),

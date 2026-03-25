@@ -4,6 +4,7 @@ import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
+import { getCurrentPosition } from "@/hooks/use-native-geolocation.ts";
 
 // Fix Leaflet's default marker icons when bundled
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -136,36 +137,26 @@ export default function LocationPicker({
   const [showMap, setShowMap] = useState(showMapByDefault && !!initialCoords);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleGps = () => {
-    if (!("geolocation" in navigator)) {
-      setGps({ status: "error", message: "Geolocation is not supported by this browser." });
-      return;
-    }
+  const handleGps = async () => {
     setGps({ status: "loading" });
     setShowMap(false);
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy: acc } = pos.coords;
-        const address = await reverseGeocode(latitude, longitude);
-        const newCoords = { lat: latitude, lng: longitude, accuracy: Math.round(acc) };
-        setCoords(newCoords);
-        setAccuracy(Math.round(acc));
-        onChange(address);
-        onCoordsChange?.({ lat: latitude, lng: longitude });
-        setShowMap(true);
-        setGps({ status: "idle" });
-      },
-      (err) => {
-        const messages: Record<number, string> = {
-          1: "Permission denied. Allow location access in your browser settings.",
-          2: "Location unavailable. Please try again or enter manually.",
-          3: "Request timed out. Please try again.",
-        };
-        setGps({ status: "error", message: messages[err.code] ?? "Could not get location." });
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
-    );
+    try {
+      const { latitude, longitude, accuracy: acc } = await getCurrentPosition();
+      const address = await reverseGeocode(latitude, longitude);
+      const newCoords = { lat: latitude, lng: longitude, accuracy: Math.round(acc) };
+      setCoords(newCoords);
+      setAccuracy(Math.round(acc));
+      onChange(address);
+      onCoordsChange?.({ lat: latitude, lng: longitude });
+      setShowMap(true);
+      setGps({ status: "idle" });
+    } catch (err) {
+      setGps({
+        status: "error",
+        message: err instanceof Error ? err.message : "Could not get location.",
+      });
+    }
   };
 
   const handlePinMove = (newCoords: Coords, address: string) => {

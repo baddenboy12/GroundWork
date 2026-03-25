@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils.ts";
 import { compressImage } from "../_lib/compress-image.ts";
 import type { OfflinePhoto } from "@/hooks/use-offline-queue.ts";
 import { useDragReorder } from "../_lib/use-drag-reorder.ts";
+import { useNativeCamera } from "@/hooks/use-native-camera.ts";
 
 async function compressToDataUrl(file: File): Promise<OfflinePhoto> {
   const compressed = await compressImage(file);
@@ -31,6 +32,7 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const { takePhoto, isNative: isCapacitor } = useNativeCamera();
 
   const handleFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -84,7 +86,14 @@ export default function OfflinePhotoUploader({ photos, onChange, maxPhotos = 10 
             {/* Take Photo */}
             <motion.button
               type="button"
-              onClick={() => cameraRef.current?.click()}
+              onClick={async () => {
+                if (isCapacitor) {
+                  const file = await takePhoto();
+                  if (file) await handleFiles([file]);
+                } else {
+                  cameraRef.current?.click();
+                }
+              }}
               whileTap={{ scale: 0.92 }}
               whileHover={{ scale: 1.03 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}

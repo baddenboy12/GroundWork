@@ -47,6 +47,7 @@ import {
   UserMinus,
   AlertCircle,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -1381,7 +1382,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         {isAdmin && allUsers && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-muted-foreground" />
+              <FlaskConical className="w-5 h-5 text-muted-foreground" />
               <h2 className="text-lg font-bold text-foreground">Admin — Sandbox Testers</h2>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
@@ -1396,7 +1397,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               />
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10">
                     <tr className="border-b border-border bg-muted/30">
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Name</th>
                       <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Email</th>
@@ -1404,50 +1405,54 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Sandbox</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {allUsers
-                      .filter((u) =>
-                        !sandboxFilter ||
-                        (u.email ?? "").toLowerCase().includes(sandboxFilter.toLowerCase()) ||
-                        (u.name ?? "").toLowerCase().includes(sandboxFilter.toLowerCase())
-                      )
-                      .slice(0, 50)
-                      .map((u, i) => (
-                        <tr key={u._id} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
-                          <td className="px-4 py-2.5 text-xs text-foreground">{u.name ?? "—"}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{u.email ?? "—"}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">{u.subscriptionTier}</td>
-                          <td className="px-3 py-2.5 text-center">
-                            <Button
-                              size="sm"
-                              variant={u.sandboxMode ? "default" : "secondary"}
-                              className="h-7 px-3 text-xs"
-                              disabled={sandboxTogglePending !== null}
-                              onClick={async () => {
-                                setSandboxTogglePending(u._id);
-                                try {
-                                  await toggleSandboxModeMutation({ userId: u._id as Id<"users"> });
-                                  toast.success(`Sandbox ${u.sandboxMode ? "disabled" : "enabled"} for ${u.email ?? u.name ?? "user"}`);
-                                } catch (err) {
-                                  toast.error(extractErrorMessage(err));
-                                } finally {
-                                  setSandboxTogglePending(null);
-                                }
-                              }}
-                            >
-                              {sandboxTogglePending === u._id ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                              ) : u.sandboxMode ? (
-                                "Enabled"
-                              ) : (
-                                "Disabled"
-                              )}
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
                 </table>
+                <div className="max-h-[232px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {allUsers
+                        .filter((u) =>
+                          !sandboxFilter ||
+                          (u.email ?? "").toLowerCase().includes(sandboxFilter.toLowerCase()) ||
+                          (u.name ?? "").toLowerCase().includes(sandboxFilter.toLowerCase())
+                        )
+                        .slice(0, 50)
+                        .map((u, i) => (
+                          <tr key={u._id} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
+                            <td className="px-4 py-2.5 text-xs text-foreground">{u.name ?? "—"}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground">{u.email ?? "—"}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">{u.subscriptionTier}</td>
+                            <td className="px-3 py-2.5 text-center">
+                              <Button
+                                size="sm"
+                                variant={u.sandboxMode ? "default" : "secondary"}
+                                className="h-7 px-3 text-xs"
+                                disabled={sandboxTogglePending !== null}
+                                onClick={async () => {
+                                  setSandboxTogglePending(u._id);
+                                  try {
+                                    await toggleSandboxModeMutation({ userId: u._id as Id<"users"> });
+                                    toast.success(`Sandbox ${u.sandboxMode ? "disabled" : "enabled"} for ${u.email ?? u.name ?? "user"}`);
+                                  } catch (err) {
+                                    toast.error(extractErrorMessage(err));
+                                  } finally {
+                                    setSandboxTogglePending(null);
+                                  }
+                                }}
+                              >
+                                {sandboxTogglePending === u._id ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                ) : u.sandboxMode ? (
+                                  "Enabled"
+                                ) : (
+                                  "Disabled"
+                                )}
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
