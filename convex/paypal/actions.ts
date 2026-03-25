@@ -201,9 +201,21 @@ export const createSubscription = action({
     const base = getBaseUrl();
 
     // If the user has pending team seats > 1, create a custom plan with
-    // seat-adjusted pricing instead of using the stock plan
-    const pendingSeats = user.pendingTeamSeats ?? 0;
+    // seat-adjusted pricing instead of using the stock plan.
+    // Reject if the pending intent has expired (30 min TTL).
+    const PENDING_SEATS_TTL_MS = 30 * 60 * 1000;
+    const seatsExpired =
+      user.pendingTeamSeats !== undefined &&
+      (!user.pendingTeamSeatsAt ||
+        Date.now() - user.pendingTeamSeatsAt > PENDING_SEATS_TTL_MS);
+
+    const pendingSeats = seatsExpired ? 0 : (user.pendingTeamSeats ?? 0);
     let planIdToUse = plan.planId;
+
+    if (seatsExpired) {
+      // Clear stale pending seats
+      await ctx.runMutation(internal.users._clearStalePendingSeats);
+    }
 
     if (pendingSeats > 1) {
       const totalPrice = calcTotalPrice(args.tier, pendingSeats);

@@ -23,7 +23,10 @@ export const storePendingTeamSeats = mutation({
       .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .unique();
     if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-    await ctx.db.patch(user._id, { pendingTeamSeats: args.seats });
+    await ctx.db.patch(user._id, {
+      pendingTeamSeats: args.seats,
+      pendingTeamSeatsAt: Date.now(),
+    });
   },
 });
 
@@ -470,6 +473,42 @@ export const _processExpiredCancelPending = internalMutation({
 
     if (processed > 0) {
       console.log(`[cron] Processed ${processed} expired CANCEL_PENDING user(s)`);
+    }
+  },
+});
+
+// ── Pending team seats expiry ──────────────────────────────────────────────────
+
+/** 30-minute window for PayPal redirect flow to complete */
+const PENDING_SEATS_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Clears stale pendingTeamSeats on any user where the timestamp is older
+ * than 30 minutes. Safe to run from a cron job.
+ */
+export const _clearStalePendingSeats = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - PENDING_SEATS_TTL_MS;
+    const allUsers = await ctx.db.query("users").collect();
+    let cleared = 0;
+
+    for (const user of allUsers) {
+      if (
+        user.pendingTeamSeats !== undefined &&
+        // Clear if timestamp is missing (legacy) or older than TTL
+        (!user.pendingTeamSeatsAt || user.pendingTeamSeatsAt < cutoff)
+      ) {
+        await ctx.db.patch(user._id, {
+          pendingTeamSeats: undefined,
+          pendingTeamSeatsAt: undefined,
+        });
+        cleared++;
+      }
+    }
+
+    if (cleared > 0) {
+      console.log(`[cron] Cleared ${cleared} stale pendingTeamSeats`);
     }
   },
 });

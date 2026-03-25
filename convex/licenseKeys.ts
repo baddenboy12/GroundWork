@@ -463,17 +463,34 @@ export const createSelfKey = mutation({
         user.paypalSubscriptionStatus === "ACTIVE" ||
         user.paypalSubscriptionStatus === "APPROVED";
       if (isPaypalActive) {
-        if (!user.pendingTeamSeats || user.pendingTeamSeats !== requestedSeats) {
+        // Reject if pending seats are missing, mismatched, or expired (30 min TTL)
+        const PENDING_SEATS_TTL_MS = 30 * 60 * 1000;
+        const isExpired =
+          !user.pendingTeamSeatsAt ||
+          Date.now() - user.pendingTeamSeatsAt > PENDING_SEATS_TTL_MS;
+
+        if (!user.pendingTeamSeats || user.pendingTeamSeats !== requestedSeats || isExpired) {
+          // Clear stale values if expired
+          if (isExpired && user.pendingTeamSeats !== undefined) {
+            await ctx.db.patch(user._id, {
+              pendingTeamSeats: undefined,
+              pendingTeamSeatsAt: undefined,
+            });
+          }
           throw new ConvexError({
             code: "BAD_REQUEST",
-            message:
-              "Seat count mismatch. To create a team with multiple seats, the seat " +
-              "count must be committed to the server before PayPal payment. " +
-              "This prevents billing bypass via sessionStorage manipulation.",
+            message: isExpired
+              ? "Pending seat reservation expired. Please start the subscription flow again."
+              : "Seat count mismatch. To create a team with multiple seats, the seat " +
+                "count must be committed to the server before PayPal payment. " +
+                "This prevents billing bypass via sessionStorage manipulation.",
           });
         }
         // Clear the pending seat intent — it has now been consumed
-        await ctx.db.patch(user._id, { pendingTeamSeats: undefined });
+        await ctx.db.patch(user._id, {
+          pendingTeamSeats: undefined,
+          pendingTeamSeatsAt: undefined,
+        });
       }
     }
 
