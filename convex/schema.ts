@@ -32,6 +32,8 @@ export default defineSchema({
     appliedLicenseKeyId: v.optional(v.id("licenseKeys")),
     // Pending team seat count stored server-side before PayPal redirect (prevents sessionStorage tampering)
     pendingTeamSeats: v.optional(v.number()),
+    // Epoch ms when pendingTeamSeats was set — expires after 30 minutes
+    pendingTeamSeatsAt: v.optional(v.number()),
     // true when user can freely switch tiers without PayPal (for testing)
     sandboxMode: v.optional(v.boolean()),
   }).index("by_token", ["tokenIdentifier"]),

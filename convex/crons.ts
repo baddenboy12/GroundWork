@@ -13,4 +13,12 @@ crons.daily(
   internal.users._processExpiredCancelPending,
 );
 
+// Hourly: clear stale pendingTeamSeats where the PayPal redirect flow was
+// started but never completed (30-minute TTL).
+crons.interval(
+  "clear-stale-pending-seats",
+  { hours: 1 },
+  internal.users._clearStalePendingSeats,
+);
+
 export default crons;
