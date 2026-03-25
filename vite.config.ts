@@ -22,5 +22,18 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split large dependencies into separate cacheable chunks
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-convex": ["convex", "convex/react"],
+          "vendor-ui": ["motion/react", "sonner", "lucide-react"],
+          "vendor-maps": ["leaflet", "react-leaflet"],
+          "vendor-export": ["exceljs"],
+          "vendor-oidc": ["oidc-client-ts", "react-oidc-context"],
+        },
+      },
+    },
   },
 });

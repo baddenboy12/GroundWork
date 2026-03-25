@@ -48,12 +48,9 @@ public class MainActivity extends BridgeActivity {
     private void handleDeepLink(Intent intent) {
         if (intent == null || intent.getData() == null) return;
         Uri uri = intent.getData();
-        String scheme = uri.getScheme();
 
-        // Handle custom scheme: groundwork://auth/callback?code=...&state=...
-        if ("groundwork".equals(scheme)) {
+        if ("groundwork".equals(uri.getScheme())) {
             String query = uri.getQuery();
-            // Load the callback URL in the WebView using the app's hostname
             String localUrl = "https://groundwork.teezfpo.com/auth/callback";
             if (query != null) localUrl += "?" + query;
 

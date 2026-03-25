@@ -57,9 +57,12 @@ export default function AuthCallback() {
     return (
       <div className="flex flex-col items-center justify-center h-svh gap-6 px-4">
         <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-destructive font-medium">Something went wrong</p>
-          <p className="text-sm text-muted-foreground max-w-md">
+          <p className="text-destructive font-medium">Auth Error</p>
+          <p className="text-sm text-muted-foreground max-w-md break-all">
             {auth.error.message}
+          </p>
+          <p className="text-xs text-muted-foreground/50 max-w-md break-all mt-2">
+            URL: {window.location.href}
           </p>
         </div>
         <div className="flex gap-3">
