@@ -131,16 +131,16 @@ export default function AuthCallback() {
     }
   }, [navigate]);
 
-  // Web: process the OIDC callback redirect (runs once)
+  // Web: if we landed on /auth/callback with no code/error params, the user
+  // backed out of the Keycloak flow. Redirect home immediately instead of
+  // waiting for react-oidc-context (which may keep isLoading=true forever).
   useEffect(() => {
-    if (isNative) return; // native handles it above
-    if (auth.isLoading) return;
-
+    if (isNative) return;
     const params = new URLSearchParams(window.location.search);
     if (!params.has("code") && !params.has("error")) {
       navigateAfterAuth();
     }
-  }, [auth.isLoading, navigateAfterAuth]);
+  }, [isNative, navigateAfterAuth]);
 
   // Once Convex is authenticated, sync the user and navigate
   useEffect(() => {

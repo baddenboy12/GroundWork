@@ -83,8 +83,8 @@ function OidcErrorGuard() {
 
     window.addEventListener("unhandledrejection", rejectionHandler);
 
-    // Fallback: if the user is still on /auth/callback after 6 seconds
-    // (normal auth completes in ~1-2 s), the error UI must be showing.
+    // Fallback: if the user is still on /auth/callback after 3 seconds
+    // (normal auth completes in ~1-2 s), something went wrong.
     // Force a hard redirect to restart the app cleanly.
     let callbackTimer: ReturnType<typeof setTimeout> | null = null;
     if (window.location.pathname === "/auth/callback") {
@@ -92,7 +92,7 @@ function OidcErrorGuard() {
         if (window.location.pathname === "/auth/callback") {
           window.location.replace("/");
         }
-      }, 6000);
+      }, 3000);
     }
 
     return () => {
