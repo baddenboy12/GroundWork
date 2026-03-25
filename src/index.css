@@ -214,3 +214,13 @@ html, body {
     font-size: 16px !important;
   }
 }
+
+/* Native Android: push content below status bar */
+html.native-android {
+  padding-top: 80px !important;
+}
+
+html.native-android body {
+  min-height: 100vh;
+  background: var(--background);
+}

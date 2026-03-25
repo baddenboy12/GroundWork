@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=768, viewport-fit=cover" />
+    <meta id="viewport-meta" name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- CSP: mitigate XSS on web (prevents injected scripts from reading localStorage tokens) -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.convex.cloud https://*.convex.site wss://*.convex.cloud https://nominatim.openstreetmap.org https://*.r2.cloudflarestorage.com https://*.r2.dev https://auth.teezfpo.com https://api-m.sandbox.paypal.com https://api-m.paypal.com; img-src 'self' blob: data: https://*.r2.dev https://unpkg.com https://tile.openstreetmap.org https://*.r2.cloudflarestorage.com; frame-src https://*.paypal.com https://auth.teezfpo.com;" />
@@ -47,6 +47,13 @@
             theme = prefersDark ? "dark" : "light";
           }
           document.documentElement.classList.add(theme);
+
+          // For native Android: match the PWA viewport (768px)
+          if (navigator.userAgent.indexOf("GroundWorkNative") !== -1) {
+            document.documentElement.classList.add("native-android");
+            var vp = document.getElementById("viewport-meta");
+            if (vp) vp.setAttribute("content", "width=768, user-scalable=no, viewport-fit=cover");
+          }
         } catch (e) {}
       })();
     </script>
