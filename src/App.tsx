@@ -1,17 +1,30 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { registerServiceWorker } from "@/lib/register-sw.ts";
-import AuthCallback from "./pages/auth/Callback.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
+
+// Eagerly load the landing page (first thing users see)
 import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import DashboardPage from "./pages/dashboard/page.tsx";
-import BillingPage from "./pages/billing/page.tsx";
-import IntegrationsPage from "./pages/integrations/page.tsx";
-import PayPalReturn from "./pages/paypal/return.tsx";
-import FeaturesPage from "./pages/landing/FeaturesPage.tsx";
+import AuthCallback from "./pages/auth/Callback.tsx";
+
+// Lazy-load heavy routes — only fetched when navigated to
+const DashboardPage = lazy(() => import("./pages/dashboard/page.tsx"));
+const BillingPage = lazy(() => import("./pages/billing/page.tsx"));
+const IntegrationsPage = lazy(() => import("./pages/integrations/page.tsx"));
+const PayPalReturn = lazy(() => import("./pages/paypal/return.tsx"));
+const FeaturesPage = lazy(() => import("./pages/landing/FeaturesPage.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-svh">
+      <Spinner className="size-8" />
+    </div>
+  );
+}
 
 // Register service worker at module level — outside the React tree.
 registerServiceWorker();
@@ -96,17 +109,19 @@ function AppInner() {
       <PwaBackGuard />
       <OidcErrorGuard />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/billing" element={<BillingPage />} />
-          <Route path="/integrations" element={<IntegrationsPage />} />
-          <Route path="/paypal/return" element={<PayPalReturn />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/paypal/return" element={<PayPalReturn />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </>
   );
