@@ -22,12 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep link: route groundwork.teezfpo.com URLs back to the app -->
-            <intent-filter android:autoVerify="true">
+            <!-- Custom scheme deep link for auth callback -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="groundwork.teezfpo.com" />
+                <data android:scheme="groundwork" android:host="auth" />
             </intent-filter>
 
         </activity>

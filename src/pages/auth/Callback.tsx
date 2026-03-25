@@ -5,8 +5,17 @@ import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { isNative } from "@/lib/platform";
 
 export default function AuthCallback() {
+  // Close the Chrome Custom Tab if we're on native
+  useEffect(() => {
+    if (isNative) {
+      import("@capacitor/browser").then(({ Browser }) => {
+        Browser.close().catch(() => {});
+      });
+    }
+  }, []);
   const navigate = useNavigate();
   const auth = useAuth();
   const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
