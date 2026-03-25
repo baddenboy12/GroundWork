@@ -13,5 +13,14 @@ const oidcConfig = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  return <OidcAuthProvider {...oidcConfig}>{children}</OidcAuthProvider>;
+  return (
+    <OidcAuthProvider
+      {...oidcConfig}
+      onSigninCallback={() => {
+        window.history.replaceState({}, document.title, "/dashboard");
+      }}
+    >
+      {children}
+    </OidcAuthProvider>
+  );
 }

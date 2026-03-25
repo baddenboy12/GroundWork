@@ -4,8 +4,7 @@
     <meta charset="UTF-8" />
     <meta id="viewport-meta" name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- CSP: mitigate XSS on web (prevents injected scripts from reading localStorage tokens) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.convex.cloud https://*.convex.site wss://*.convex.cloud https://nominatim.openstreetmap.org https://*.r2.cloudflarestorage.com https://*.r2.dev https://auth.teezfpo.com https://api-m.sandbox.paypal.com https://api-m.paypal.com; img-src 'self' blob: data: https://*.r2.dev https://unpkg.com https://tile.openstreetmap.org https://*.r2.cloudflarestorage.com; frame-src https://*.paypal.com https://auth.teezfpo.com;" />
+    <!-- CSP is applied server-side via headers for web; omitted here for Capacitor native compatibility -->
 
     <title>GroundWork</title>
     <meta name="description" content="" />
@@ -60,7 +59,11 @@
 
     <link href="/src/index.css" rel="stylesheet" />
   </head>
-  <body>
+  <body style="margin:0;background:#0f1117;">
+    <div id="splash-loader" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0f1117;">
+      <img src="/icon/icon-192.png" alt="" style="width:80px;height:80px;border-radius:16px;animation:pulse 1.5s ease-in-out infinite;" />
+      <style>@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.95)}}</style>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

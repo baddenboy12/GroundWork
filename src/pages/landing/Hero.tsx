@@ -6,6 +6,7 @@ import { Authenticated, Unauthenticated } from "convex/react";
 import { ArrowRight, CheckCircle, Check, X, LogIn } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { isNative } from "@/lib/platform";
 import PlanCarousel from "@/pages/billing/_components/PlanCarousel.tsx";
 import {
   TIER_CONFIG,
@@ -119,7 +120,7 @@ export default function Hero() {
   });
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-20 pb-4">
+    <section className={`relative min-h-screen flex flex-col justify-center overflow-hidden pb-4 ${isNative ? "pt-40" : "pt-20"}`}>
       {/* Background image with overlay */}
       <div className="absolute inset-0 z-0">
         <img

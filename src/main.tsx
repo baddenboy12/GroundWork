@@ -8,3 +8,11 @@ import App from "./App.tsx";
 installGlobalErrorHandlers();
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Hide the HTML splash loader once React has mounted
+const splash = document.getElementById("splash-loader");
+if (splash) {
+  splash.style.transition = "opacity 0.3s ease";
+  splash.style.opacity = "0";
+  setTimeout(() => splash.remove(), 300);
+}

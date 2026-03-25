@@ -1,60 +1,66 @@
 package com.teezfpo.groundwork;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
 import android.view.Window;
-import android.webkit.WebView;
 import android.webkit.WebSettings;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Bridge;
 
 public class MainActivity extends BridgeActivity {
 
     @Override
-    public void onResume() {
-        super.onResume();
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
         Window window = getWindow();
-
-        // Force content below the status bar (override Capacitor's edge-to-edge)
-        WindowCompat.setDecorFitsSystemWindows(window, true);
-
-        // Dark status bar with light icons
         window.setStatusBarColor(android.graphics.Color.parseColor("#0f1117"));
+        window.setNavigationBarColor(android.graphics.Color.parseColor("#0f1117"));
+
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.setAppearanceLightStatusBars(false);
 
-        // Match navigation bar
-        window.setNavigationBarColor(android.graphics.Color.parseColor("#0f1117"));
+        handleDeepLink(getIntent());
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleDeepLink(intent);
+    }
 
-        WebView webView = getBridge().getWebView();
-        WebSettings settings = webView.getSettings();
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus) return;
 
-        // Enable wide viewport so the WebView fits the 768px layout to screen
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
+        Bridge bridge = getBridge();
+        if (bridge != null && bridge.getWebView() != null) {
+            WebSettings settings = bridge.getWebView().getSettings();
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+        }
+    }
 
-        // Allow the WebView to navigate to Keycloak and PayPal within the app
-        webView.setWebViewClient(new android.webkit.WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-                String host = request.getUrl().getHost();
-                if (host == null) return false;
+    private void handleDeepLink(Intent intent) {
+        if (intent == null || intent.getData() == null) return;
+        Uri uri = intent.getData();
+        String host = uri.getHost();
 
-                if (host.equals("auth.teezfpo.com") ||
-                    host.equals("groundwork.teezfpo.com") ||
-                    host.endsWith(".paypal.com")) {
-                    return false;
-                }
+        if ("groundwork.teezfpo.com".equals(host)) {
+            String path = uri.getPath();
+            String query = uri.getQuery();
+            String localUrl = "https://groundwork.teezfpo.com" + (path != null ? path : "/");
+            if (query != null) localUrl += "?" + query;
 
-                return super.shouldOverrideUrlLoading(view, request);
+            Bridge bridge = getBridge();
+            if (bridge != null && bridge.getWebView() != null) {
+                final String url = localUrl;
+                bridge.getWebView().post(() -> bridge.getWebView().loadUrl(url));
             }
-        });
+        }
     }
 }

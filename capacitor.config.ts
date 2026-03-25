@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     // Match the TWA hostname to preserve existing OIDC tokens in localStorage
     hostname: "groundwork.teezfpo.com",
+    allowNavigation: ["auth.teezfpo.com"],
   },
   // Append marker to user agent so index.html can detect native WebView
   appendUserAgent: "GroundWorkNative",
