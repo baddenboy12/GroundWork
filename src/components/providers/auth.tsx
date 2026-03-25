@@ -20,9 +20,7 @@ const oidcConfig = {
   prompt: "select_account",
   response_type: "code",
   scope: "openid profile email offline_access",
-  redirect_uri: isNative
-    ? "groundwork://auth/callback"
-    : `${window.location.origin}/auth/callback`,
+  redirect_uri: `${window.location.origin}/auth/callback`,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
   stateStore: new WebStorageStateStore({ store: window.localStorage }),
   ...(isNative ? { metadata: nativeMetadata } : {}),

@@ -16,6 +16,7 @@ const BillingPage = lazy(() => import("./pages/billing/page.tsx"));
 const IntegrationsPage = lazy(() => import("./pages/integrations/page.tsx"));
 const PayPalReturn = lazy(() => import("./pages/paypal/return.tsx"));
 const FeaturesPage = lazy(() => import("./pages/landing/FeaturesPage.tsx"));
+const NativeCallback = lazy(() => import("./pages/auth/NativeCallback.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function PageLoader() {
@@ -118,6 +119,7 @@ function AppInner() {
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/paypal/return" element={<PayPalReturn />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/auth/native-callback" element={<NativeCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
