@@ -2,6 +2,34 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { CATEGORY_LABELS, type LogCategory } from "./constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import { isNative } from "@/lib/platform";
+
+// ─── Native file save (Capacitor) ───────────────────────────────────────────
+
+async function nativeSaveFile(blob: Blob, filename: string): Promise<void> {
+  const { Filesystem, Directory } = await import("@capacitor/filesystem");
+  const { Share } = await import("@capacitor/share");
+
+  // Convert blob to base64
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+
+  // Write to cache directory (always writable)
+  const result = await Filesystem.writeFile({
+    path: filename,
+    data: base64,
+    directory: Directory.Cache,
+  });
+
+  // Open the native share sheet so user can save / open the file
+  await Share.share({
+    title: filename,
+    url: result.uri,
+  });
+}
 
 // ─── Core types ───────────────────────────────────────────────────────────────
 
@@ -718,6 +746,35 @@ function drawStatsBox(
 
 const LINE_H = 4.5;
 const TITLE_H = 5.5;
+const TWO_COL_THRESHOLD = 15; // lines before switching to two-column notes
+const COL_GAP = 6;            // mm gap between columns
+
+function measureBodyLines(
+  doc: jsPDF, content: string, areaW: number
+): { lines: string[]; twoCol: boolean; colLines: [string[], string[]]; colW: number } {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const bodyTxt = content.trim() || "(no notes)";
+  const lines = doc.splitTextToSize(bodyTxt, areaW);
+  if (lines.length < TWO_COL_THRESHOLD) {
+    return { lines, twoCol: false, colLines: [lines, []], colW: areaW };
+  }
+  // Re-split for narrower column width
+  const colW = (areaW - COL_GAP) / 2;
+  const colLines = doc.splitTextToSize(bodyTxt, colW) as string[];
+  const mid = Math.ceil(colLines.length / 2);
+  return {
+    lines: colLines,
+    twoCol: true,
+    colLines: [colLines.slice(0, mid), colLines.slice(mid)],
+    colW,
+  };
+}
+
+function bodyLinesHeight(body: ReturnType<typeof measureBodyLines>): number {
+  if (!body.twoCol) return body.lines.length * LINE_H;
+  return Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H;
+}
 
 function measureEntry(
   doc: jsPDF,
@@ -729,10 +786,10 @@ function measureEntry(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   const titleLines = doc.splitTextToSize(entry.title, contentW - 54);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  const bodyTxt = entry.content.trim() || "(no notes)";
-  const bodyLines = doc.splitTextToSize(bodyTxt, contentW - 16);
+
+  const bodyAreaW = theme.entry === "plain" ? contentW : contentW - 16;
+  const body = measureBodyLines(doc, entry.content, bodyAreaW);
+  const bodyH = bodyLinesHeight(body);
 
   const photoH = totalPhotoRowsHeight(photoRows);
   const locationH = entry.location ? 5 : 0;
@@ -743,7 +800,7 @@ function measureEntry(
       6 +                              // meta row
       3 +                              // rule
       4 +                              // gap before content
-      bodyLines.length * LINE_H +
+      bodyH +
       locationH +
       photoH +
       8                                // bottom gap
@@ -756,7 +813,7 @@ function measureEntry(
     8 +              // badge row
     0.5 +            // separator
     4 +
-    bodyLines.length * LINE_H +
+    bodyH +
     locationH +
     photoH +
     6
@@ -779,10 +836,8 @@ function drawEntry(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   const titleLines = doc.splitTextToSize(entry.title, contentW - 54);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  const bodyTxt = entry.content.trim() || "(no notes)";
-  const bodyLines = doc.splitTextToSize(bodyTxt, contentW - 16);
+  const bodyAreaW = theme.entry === "plain" ? contentW : contentW - 16;
+  const body = measureBodyLines(doc, entry.content, bodyAreaW);
   const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
 
   if (theme.entry === "card" || theme.entry === "dark") {
@@ -845,8 +900,14 @@ function drawEntry(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...theme.entryBody);
-    doc.text(bodyLines, margin + 8, ey);
-    ey += bodyLines.length * LINE_H + 3;
+    if (body.twoCol) {
+      doc.text(body.colLines[0], margin + 8, ey);
+      doc.text(body.colLines[1], margin + 8 + body.colW + COL_GAP, ey);
+      ey += Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
+    } else {
+      doc.text(body.lines, margin + 8, ey);
+      ey += body.lines.length * LINE_H + 3;
+    }
 
     // Location
     if (entry.location) {
@@ -908,8 +969,14 @@ function drawEntry(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...theme.entryBody);
-    doc.text(bodyLines, margin, ey);
-    ey += bodyLines.length * LINE_H + 3;
+    if (body.twoCol) {
+      doc.text(body.colLines[0], margin, ey);
+      doc.text(body.colLines[1], margin + body.colW + COL_GAP, ey);
+      ey += Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
+    } else {
+      doc.text(body.lines, margin, ey);
+      ey += body.lines.length * LINE_H + 3;
+    }
 
     // Location
     if (entry.location) {
@@ -978,13 +1045,20 @@ async function renderReport(opts: RenderOpts): Promise<void> {
     const photoRows = calcPhotoRows(photos, photoAreaW);
     const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
 
-    if (y + blockH > pageH - 14) {
+    // Only page-break if not already at top of page
+    if (y + blockH > pageH - 14 && y > CONTENT_Y + 1) {
       doc.addPage();
       y = CONTENT_Y;
     }
 
     drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW });
     y += blockH + (theme.entry === "plain" ? 6 : 4);
+
+    // If entry overflowed past the page, add pages to cover the overflow
+    while (y > pageH - 14) {
+      doc.addPage();
+      y = y - (pageH - 14) + CONTENT_Y;
+    }
 
     // For plain style: draw a light bottom rule between entries
     if (theme.entry === "plain") {
@@ -1004,7 +1078,151 @@ async function renderReport(opts: RenderOpts): Promise<void> {
     drawFooter(doc, pageW, pageH, i - 1, total - 1, theme, margin);
   }
 
-  doc.save(filename);
+  if (isNative) {
+    const pdfBlob = doc.output("blob");
+    await nativeSaveFile(pdfBlob, filename);
+  } else {
+    doc.save(filename);
+  }
+}
+
+// ─── Multi-site PDF render engine ────────────────────────────────────────────
+
+type MultiSiteRenderOpts = {
+  siteGroups: Map<string, EntryData[]>;
+  allEntries: EntryData[];
+  reportLabel: string;
+  dateFrom?: string;
+  dateTo?: string;
+  category?: string;
+  theme: Theme;
+  filename: string;
+};
+
+function drawSiteDivider(
+  doc: jsPDF, siteName: string, entryCount: number,
+  y: number, theme: Theme, margin: number, pageW: number, contentW: number
+): number {
+  // Accent bar
+  doc.setFillColor(...theme.hdrAccent);
+  doc.rect(margin, y, contentW, 1.5, "F");
+  y += 5;
+
+  // Site name
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(...theme.entryTitle);
+  const nameLines = doc.splitTextToSize(siteName, contentW - 40);
+  doc.text(nameLines, margin, y + 5);
+
+  // Entry count right-aligned
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...theme.entryMuted);
+  doc.text(`${entryCount} ${entryCount === 1 ? "entry" : "entries"}`, pageW - margin, y + 5, { align: "right" });
+
+  y += nameLines.length * 6 + 8;
+
+  // Bottom rule
+  doc.setDrawColor(...theme.entryBorder);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageW - margin, y);
+  doc.setLineWidth(0.2);
+  y += 6;
+
+  return y;
+}
+
+const SITE_DIVIDER_H = 22; // approximate height of site divider
+
+async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
+  const { siteGroups, allEntries, reportLabel, dateFrom, dateTo, category, theme, filename } = opts;
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentW = pageW - margin * 2;
+
+  // Pre-fetch all photos in parallel
+  const allUrls = Array.from(new Set(allEntries.flatMap((e) => e.photoUrls ?? [])));
+  const photoMap = new Map<string, PhotoInfo | null>();
+  await Promise.all(allUrls.map(async (url) => {
+    photoMap.set(url, await fetchPhotoInfo(url));
+  }));
+
+  // ── Cover page ─────────────────────────────────────────────────────────────
+  const coverOpts: CoverOpts = {
+    reportLabel,
+    siteTitle: reportLabel,
+    dateFrom, dateTo, category, logs: allEntries,
+    theme, pageW, pageH, margin, contentW,
+  };
+  if (theme.cover === "band") drawCoverBand(doc, coverOpts);
+  else if (theme.cover === "sidebar") drawCoverSidebar(doc, coverOpts);
+  else drawCoverDark(doc, coverOpts);
+
+  // ── Entry pages grouped by site ───────────────────────────────────────────
+  for (const [siteName, entries] of siteGroups) {
+    if (entries.length === 0) continue;
+
+    // Start each site on a new page with divider
+    doc.addPage();
+    let y = CONTENT_Y;
+    y = drawSiteDivider(doc, siteName, entries.length, y, theme, margin, pageW, contentW);
+
+    for (let ei = 0; ei < entries.length; ei++) {
+      const entry = entries[ei];
+      const photos = (entry.photoUrls ?? [])
+        .map((u) => photoMap.get(u) ?? null)
+        .filter((p): p is PhotoInfo => p !== null);
+
+      const photoAreaW = theme.entry === "plain" ? contentW : contentW - 16;
+      const photoRows = calcPhotoRows(photos, photoAreaW);
+      const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
+
+      // Page-break if entry won't fit, but never for the first entry in a site
+      // section (it must stay with its divider header)
+      if (ei > 0 && y + blockH > pageH - 14 && y > CONTENT_Y + 1) {
+        doc.addPage();
+        y = CONTENT_Y;
+      }
+
+      drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW });
+      y += blockH + (theme.entry === "plain" ? 6 : 4);
+
+      // If entry overflowed past the page, add pages to cover the overflow
+      // so that subsequent entries and headers land correctly
+      while (y > pageH - 14) {
+        doc.addPage();
+        y = y - (pageH - 14) + CONTENT_Y;
+      }
+
+      if (theme.entry === "plain") {
+        doc.setDrawColor(...theme.entryBorder);
+        doc.setLineWidth(0.25);
+        doc.line(margin, y - 4, pageW - margin, y - 4);
+        doc.setLineWidth(0.2);
+      }
+    }
+  }
+
+  // ── Running headers + footers on content pages ────────────────────────────
+  const total = totalPageCount(doc);
+  const now = new Date();
+
+  for (let i = 2; i <= total; i++) {
+    doc.setPage(i);
+    drawRunningHeader(doc, pageW, theme, reportLabel, "", `Generated: ${format(now, "MMM d, yyyy")}`, margin);
+    drawFooter(doc, pageW, pageH, i - 1, total - 1, theme, margin);
+  }
+
+  if (isNative) {
+    const pdfBlob = doc.output("blob");
+    await nativeSaveFile(pdfBlob, filename);
+  } else {
+    doc.save(filename);
+  }
 }
 
 // ─── Public export functions ──────────────────────────────────────────────────
@@ -1035,27 +1253,32 @@ export async function exportFullReportPDF({
 export async function exportGlobalFullReportPDF({
   logs, siteNames, dateFrom, dateTo, category, theme, reportTitle,
 }: GlobalExportOptions): Promise<void> {
-  const entries: EntryData[] = logs.map((l) => ({
-    title: l.title,
-    content: l.content,
-    category: l.category,
-    authorName: l.authorName,
-    loggedAt: l.loggedAt,
-    location: l.location,
-    siteName: l.siteName,
-    photoUrls: l.photoUrls,
+  // Group entries by site, preserving site order from siteNames
+  const bySite = new Map<string, EntryData[]>();
+  for (const name of siteNames) bySite.set(name, []);
+  for (const l of logs) {
+    const bucket = bySite.get(l.siteName);
+    const entry: EntryData = {
+      title: l.title, content: l.content, category: l.category,
+      authorName: l.authorName, loggedAt: l.loggedAt, location: l.location,
+      photoUrls: l.photoUrls,
+    };
+    if (bucket) bucket.push(entry);
+    else bySite.set(l.siteName, [entry]);
+  }
+
+  const allEntries: EntryData[] = logs.map((l) => ({
+    title: l.title, content: l.content, category: l.category,
+    authorName: l.authorName, loggedAt: l.loggedAt, location: l.location,
+    siteName: l.siteName, photoUrls: l.photoUrls,
   }));
 
-  const siteTitle = siteNames.length === 1 ? siteNames[0] : `${siteNames.length} Sites`;
-  const siteSubtitle = siteNames.length > 1
-    ? siteNames.slice(0, 6).join(", ") + (siteNames.length > 6 ? ` +${siteNames.length - 6} more` : "")
-    : undefined;
+  const label = reportTitle?.trim() || "Multi-Site Field Log Report";
 
-  await renderReport({
-    entries,
-    reportLabel: reportTitle?.trim() || "Multi-Site Field Log Report",
-    siteTitle,
-    siteSubtitle,
+  await renderMultiSiteReport({
+    siteGroups: bySite,
+    allEntries,
+    reportLabel: label,
     dateFrom, dateTo, category, theme,
     filename: `multi-site-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
   });
@@ -1134,15 +1357,23 @@ async function buildEntryWorkbook(
   const titleMetaRowNum = ws.rowCount + 1;
   const titleMetaRow = ws.addRow([titleLabel, "", "", "", ""]);
   ws.mergeCells(titleMetaRowNum, 1, titleMetaRowNum, XLSX_TOTAL_COLS);
-  titleMetaRow.getCell(1).font = { bold: true, size: 11 };
+  titleMetaRow.height = 32;
+  titleMetaRow.getCell(1).font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+  titleMetaRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+  titleMetaRow.getCell(1).alignment = { vertical: "middle" };
+  // Fill all merged cells so background spans full width
+  for (let c = 2; c <= XLSX_TOTAL_COLS; c++) {
+    titleMetaRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+  }
 
   ws.addRow([]);
   for (const [label, value] of metaRows.slice(1)) {
     const rowNum = ws.rowCount + 1;
     const r = ws.addRow([label, value, "", "", ""]);
     ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
-    r.getCell(1).font = { bold: true, size: 9, color: { argb: "FF9CA3AF" } };
-    r.getCell(2).font = { size: 9 };
+    r.getCell(1).font = { bold: true, size: 9, color: { argb: "FF64748B" } };
+    r.getCell(1).alignment = { vertical: "middle" };
+    r.getCell(2).font = { size: 9, color: { argb: "FF334155" } };
   }
   ws.addRow([]);
   ws.addRow([]);
@@ -1153,38 +1384,48 @@ async function buildEntryWorkbook(
 
   // ── Entry sections ────────────────────────────────────────────────────────
   for (const entry of entries) {
-    // Title row — merged across all columns
+    // Category accent color for entry title bar
+    const catKey = entry.category as LogCategory;
+    const catRgb = CAT_COLORS[catKey] ?? [100, 116, 139];
+    const catArgb = "FF" + catRgb.map((c) => c.toString(16).padStart(2, "0")).join("");
+
+    // Title row — merged across all columns with category accent
     const titleRowNum = ws.rowCount + 1;
     const titleRow = ws.addRow([entry.title, "", "", "", ""]);
     ws.mergeCells(titleRowNum, 1, titleRowNum, XLSX_TOTAL_COLS);
-    titleRow.height = 24;
-    titleRow.getCell(1).font = { bold: true, size: 12, color: { argb: "FF111827" } };
-    titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+    titleRow.height = 28;
+    titleRow.getCell(1).font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
+    titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: catArgb } };
     titleRow.getCell(1).alignment = { vertical: "middle" };
     titleRow.getCell(1).border = {
-      top: { style: "medium", color: { argb: "FFE2E8F0" } },
       bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
     };
+    for (let c = 2; c <= XLSX_TOTAL_COLS; c++) {
+      titleRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: catArgb } };
+      titleRow.getCell(c).border = { bottom: { style: "thin", color: { argb: "FFE2E8F0" } } };
+    }
 
-    // Data field rows — value merged across B–E
+    // Data field rows — value merged across B–E with alternating shading
     const fields: [string, string][] = [
       ["Date & Time", format(new Date(entry.loggedAt), "EEEE, MMMM d yyyy  h:mm a")],
-      ["Category", CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category],
+      ["Category", CATEGORY_LABELS[catKey] ?? entry.category],
       ["Author", entry.authorName],
       ...(entry.siteName ? [["Site", entry.siteName] as [string, string]] : []),
       ...(entry.location ? [["Location", entry.location] as [string, string]] : []),
       ["Notes", entry.content || "(no notes)"],
     ];
 
-    for (const [label, value] of fields) {
+    const evenBg = "FFF8FAFC";  // very light slate
+    const oddBg = "FFFFFFFF";   // white
+
+    for (let fi = 0; fi < fields.length; fi++) {
+      const [label, value] = fields[fi];
       const isNotes = label === "Notes";
       const rowNum = ws.rowCount + 1;
       const row = ws.addRow([label, value, "", "", ""]);
       ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
       row.height = isNotes
         ? Math.max(20, (() => {
-            // Split on newlines, then count wrapped lines within each segment
-            // (~100 chars per visual line across merged B-E columns)
             const segments = value.split("\n");
             const totalLines = segments.reduce(
               (sum, seg) => sum + Math.max(1, Math.ceil(seg.length / 100)),
@@ -1192,13 +1433,22 @@ async function buildEntryWorkbook(
             );
             return totalLines * 16;
           })())
-        : 18;
-      row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
-      row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
-      row.getCell(2).font = { size: 10 };
+        : 20;
+      const rowBg = fi % 2 === 0 ? evenBg : oddBg;
+      row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF475569" } };
+      row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      row.getCell(1).alignment = { vertical: "top" };
+      row.getCell(2).font = { size: 10, color: { argb: "FF1E293B" } };
+      row.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
       row.getCell(2).alignment = { wrapText: true, vertical: "top" };
-      row.getCell(1).border = { bottom: { style: "hair", color: { argb: "FFF0F0F0" } } };
-      row.getCell(2).border = { bottom: { style: "hair", color: { argb: "FFF0F0F0" } } };
+      const borderStyle = { style: "hair" as const, color: { argb: "FFE2E8F0" } };
+      row.getCell(1).border = { bottom: borderStyle };
+      row.getCell(2).border = { bottom: borderStyle };
+      // Fill merged range cells for consistent background
+      for (let c = 3; c <= XLSX_TOTAL_COLS; c++) {
+        row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+        row.getCell(c).border = { bottom: borderStyle };
+      }
     }
 
     // Photos — grid layout: up to XLSX_PHOTOS_PER_ROW side-by-side per row
@@ -1210,10 +1460,15 @@ async function buildEntryWorkbook(
       const photoLabelRowNum = ws.rowCount + 1;
       const photoLabelRow = ws.addRow(["Photos", `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`, "", "", ""]);
       ws.mergeCells(photoLabelRowNum, 2, photoLabelRowNum, XLSX_TOTAL_COLS);
-      photoLabelRow.height = 18;
-      photoLabelRow.getCell(1).font = { bold: true, size: 9, color: { argb: "FF6B7280" } };
-      photoLabelRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
-      photoLabelRow.getCell(2).font = { size: 9, color: { argb: "FF6B7280" } };
+      photoLabelRow.height = 20;
+      photoLabelRow.getCell(1).font = { bold: true, size: 9, color: { argb: "FF475569" } };
+      photoLabelRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      photoLabelRow.getCell(1).alignment = { vertical: "middle" };
+      photoLabelRow.getCell(2).font = { size: 9, italic: true, color: { argb: "FF64748B" } };
+      photoLabelRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      for (let c = 3; c <= XLSX_TOTAL_COLS; c++) {
+        photoLabelRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      }
 
       // Group into rows of XLSX_PHOTOS_PER_ROW, each photo in its own column (B–E)
       for (let i = 0; i < photos.length; i += XLSX_PHOTOS_PER_ROW) {
@@ -1253,12 +1508,16 @@ async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): P
   const blob = new Blob([buffer as ArrayBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  if (isNative) {
+    await nativeSaveFile(blob, filename);
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 function escCsv(v: string): string {
@@ -1267,12 +1526,17 @@ function escCsv(v: string): string {
     : v;
 }
 
-function downloadCsv(rows: string[][], filename: string): void {
+async function downloadCsv(rows: string[][], filename: string): Promise<void> {
   const csv = rows.map((r) => r.map(escCsv).join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = filename;
-  a.click();
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  if (isNative) {
+    await nativeSaveFile(blob, filename);
+  } else {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
 }
 
 export async function exportXLSX({ siteName, siteLocation, logs, dateFrom, dateTo, category }: ExportOptions): Promise<void> {
@@ -1303,7 +1567,7 @@ export async function exportXLSX({ siteName, siteLocation, logs, dateFrom, dateT
   );
 }
 
-export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): void {
+export async function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): Promise<void> {
   const headers = ["Date & Time", "Title", "Category", "Author", "Notes", "Location", "Photos"];
   const rows = logs.map((l) => [
     format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
@@ -1323,7 +1587,7 @@ export function exportCSV({ siteName, logs, dateFrom, dateTo, category }: Export
     [`Total entries: ${logs.length}`],
     [],
   ];
-  downloadCsv([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  await downloadCsv([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
 }
 
 export async function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): Promise<void> {
@@ -1351,7 +1615,7 @@ export async function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, cate
   await downloadWorkbook(workbook, `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
 }
 
-export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): void {
+export async function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): Promise<void> {
   const headers = ["Date & Time", "Site", "Title", "Category", "Author", "Notes", "Location", "Photos"];
   const rows = logs.map((l) => [
     format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
@@ -1372,5 +1636,5 @@ export function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }:
     [`Total entries: ${logs.length}`],
     [],
   ];
-  downloadCsv([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  await downloadCsv([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`);
 }
