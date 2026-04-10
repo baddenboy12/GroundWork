@@ -13,7 +13,6 @@ function useAuthFromOidc() {
   const authRef = useRef(auth);
   authRef.current = auth;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchAccessToken = useCallback(
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
       const current = authRef.current;

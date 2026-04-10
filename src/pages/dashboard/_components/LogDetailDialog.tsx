@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
@@ -79,7 +79,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   }, [open, visible]);
 
   // Intercept close: animate out first, then notify parent
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (closing) return;
     setClosing(true);
     setTimeout(() => {
@@ -87,7 +87,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
       setClosing(false);
       onClose();
     }, 250);
-  };
+  }, [closing, onClose]);
 
   // Close on Escape (only when lightbox is not open)
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [visible, lightboxIndex, closing]);
+  }, [visible, lightboxIndex, handleClose]);
 
   // Lock body scroll while visible
   useEffect(() => {

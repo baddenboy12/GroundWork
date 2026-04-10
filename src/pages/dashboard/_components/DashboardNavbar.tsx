@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -61,6 +61,21 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
   // DB user for display name (more up-to-date than OIDC token)
   const dbUser = useQuery(api.users.getCurrentUser, {});
   const updateNameMutation = useMutation(api.users.updateName);
+  const updateCurrentUser = useMutation(api.users.updateCurrentUser);
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+
+  // Safety net: if OIDC-authenticated but no DB user, retry creating the record
+  const userSyncRetried = useRef(false);
+  useEffect(() => {
+    if (dbUser !== null || !isConvexAuthenticated || userSyncRetried.current) return;
+    // dbUser is undefined while loading, null means query resolved but no record
+    if (dbUser === undefined) return;
+    userSyncRetried.current = true;
+    console.warn("[dashboard] User record missing — retrying updateCurrentUser");
+    updateCurrentUser().catch((err) => {
+      console.error("[dashboard] Safety-net user sync failed:", err);
+    });
+  }, [dbUser, isConvexAuthenticated, updateCurrentUser]);
 
   // Display name: prefer DB name, fall back to OIDC profile name
   const dbName = dbUser?.name?.trim();
@@ -130,7 +145,13 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
         {/* Right controls — absolutely positioned so sizing doesn't affect left side */}
         <div className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
           {/* User menu with integrated tier ribbon */}
-          <DropdownMenu onOpenChange={(open) => { if (!open) document.activeElement instanceof HTMLElement && document.activeElement.blur(); }}>
+          <DropdownMenu
+            onOpenChange={(open) => {
+              if (!open && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 className="relative flex items-center gap-3 h-[4.5rem] pl-5 pr-12 rounded-full active:scale-95 transition-transform focus:outline-none"

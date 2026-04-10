@@ -122,6 +122,9 @@ export default function AuthCallback() {
   }, []);
 
   const synced = useRef(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
   const navigateAfterAuth = useCallback(() => {
     const signupTier = sessionStorage.getItem("gw_signup_tier");
     if (signupTier) {
@@ -140,14 +143,54 @@ export default function AuthCallback() {
     if (!params.has("code") && !params.has("error")) {
       navigateAfterAuth();
     }
-  }, [isNative, navigateAfterAuth]);
+  }, [navigateAfterAuth]);
 
-  // Once Convex is authenticated, sync the user and navigate
+  // Once Convex is authenticated, sync the user and navigate.
+  // If user creation fails, block here with a retry screen — do NOT let them
+  // through to the dashboard without a DB record.
   useEffect(() => {
     if (!isConvexAuthenticated || synced.current) return;
     synced.current = true;
-    updateCurrentUser().then(navigateAfterAuth).catch(navigateAfterAuth);
+    updateCurrentUser()
+      .then(navigateAfterAuth)
+      .catch((err) => {
+        console.error("[auth] Failed to create/sync user record:", err);
+        setSyncError(err instanceof Error ? err.message : String(err));
+      });
   }, [isConvexAuthenticated, updateCurrentUser, navigateAfterAuth]);
+
+  const handleRetrySync = async () => {
+    setRetrying(true);
+    setSyncError(null);
+    try {
+      await updateCurrentUser();
+      navigateAfterAuth();
+    } catch (err) {
+      console.error("[auth] Retry failed:", err);
+      setSyncError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  if (syncError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-svh gap-6 px-4">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-destructive font-medium">Account Setup Failed</p>
+          <p className="text-sm text-muted-foreground max-w-md">
+            We couldn't finish setting up your account. Please try again.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate("/", { replace: true })}>Return home</Button>
+          <Button onClick={handleRetrySync} disabled={retrying}>
+            {retrying ? "Retrying..." : "Try again"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (nativeError) {
     return (
