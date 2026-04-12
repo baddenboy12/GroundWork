@@ -70,7 +70,31 @@ export const updateCurrentUser = mutation({
       return user._id;
     }
 
-    // New user – create with free tier, createdAt timestamp, and role
+    // No user found by tokenIdentifier. Before creating a new record, check
+    // if a user with the same email already exists — this happens when a
+    // Keycloak account is deleted and re-created (e.g. during email
+    // verification retries). The new Keycloak account has a different token
+    // identifier, but the email is the same. Adopt the existing record
+    // instead of creating a duplicate.
+    if (identity.email) {
+      const allUsers = await ctx.db.query("users").collect();
+      const existingByEmail = allUsers.find(
+        (u) => u.email?.toLowerCase() === identity.email!.toLowerCase()
+      );
+      if (existingByEmail) {
+        const freshName = identity.name?.trim() || undefined;
+        const updates: Record<string, string | undefined> = {
+          tokenIdentifier: identity.tokenIdentifier,
+        };
+        if (freshName && freshName !== existingByEmail.name) updates.name = freshName;
+        const expectedRole = isSuperAdmin ? "super_admin" : "user";
+        if (existingByEmail.role !== expectedRole) updates.role = expectedRole;
+        await ctx.db.patch(existingByEmail._id, updates);
+        return existingByEmail._id;
+      }
+    }
+
+    // Truly new user – create with free tier, createdAt timestamp, and role
     const insertName = identity.name?.trim() || undefined;
     const newUserId = await ctx.db.insert("users", {
       name: insertName,
