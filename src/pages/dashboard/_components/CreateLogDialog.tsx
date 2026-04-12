@@ -65,7 +65,7 @@ export default function CreateLogDialog({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<LogCategory>("general");
-  const [loggedAt, setLoggedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  // loggedAt is auto-stamped at submission time — no user input needed
   const [location, setLocation] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationFromSite, setLocationFromSite] = useState(false);
@@ -124,7 +124,6 @@ export default function CreateLogDialog({
     setTitle("");
     setContent("");
     setCategory("general");
-    setLoggedAt(new Date().toISOString().slice(0, 16));
     setPhotos([]);
     setOfflinePhotos([]);
     setSiteName(initialSiteName ?? "");
@@ -150,7 +149,7 @@ export default function CreateLogDialog({
         title: title.trim(),
         content: content.trim(),
         category,
-        loggedAt: new Date(loggedAt).toISOString(),
+        loggedAt: new Date().toISOString(),
         location: location.trim() || undefined,
         latitude: coords?.lat,
         longitude: coords?.lng,
@@ -197,7 +196,7 @@ export default function CreateLogDialog({
         title: title.trim(),
         content: content.trim(),
         category,
-        loggedAt: new Date(loggedAt).toISOString(),
+        loggedAt: new Date().toISOString(),
         photos: resolvedPhotos.length > 0
           ? resolvedPhotos.map((p) => ({ url: p.url, key: p.key, bytes: p.bytes }))
           : undefined,
@@ -450,17 +449,7 @@ export default function CreateLogDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="log-date" className="text-xl font-semibold">Date & Time *</Label>
-                <Input
-                  id="log-date"
-                  type="datetime-local"
-                  value={loggedAt}
-                  onChange={(e) => setLoggedAt(e.target.value)}
-                  className="h-16 !text-[20px]"
-                  required
-                />
-              </div>
+              {/* Date & time auto-stamped at creation — no picker needed */}
             </motion.div>
             <motion.div className="space-y-2" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
               <Label className="text-xl font-semibold flex items-center gap-2">

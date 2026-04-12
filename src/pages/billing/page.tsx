@@ -286,6 +286,21 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Native checkout dialog cancel handler ─────────────────────────────────
+  // On Android, Stripe Checkout opens in an in-app dialog. If the user presses
+  // the back button (dismissing the dialog without completing), the native plugin
+  // dispatches a 'checkoutDialogCancelled' event so we can reset pending state.
+  useEffect(() => {
+    const handler = () => {
+      setStripePending(null);
+      setSwitchPending(false);
+      setSwitchTarget(null);
+      toast.info("Checkout cancelled — no changes made.");
+    };
+    window.addEventListener("checkoutDialogCancelled", handler);
+    return () => window.removeEventListener("checkoutDialogCancelled", handler);
+  }, []);
+
   // ── Landing page sign-up with tier intent ─────────────────────────────────
   // Runs once tier is loaded so we can skip the dialog if user already has the plan.
   const signupTierHandled = useRef(false);
