@@ -583,3 +583,147 @@ export const _deleteUser = internalMutation({
     return { deleted: true, email: user.email };
   },
 });
+
+/**
+ * Self-service account deletion. Deletes the calling user's:
+ * - All log entries and schedules R2 photo cleanup
+ * - All personal sites (non-team)
+ * - Team membership (leaves team, dissolves if last member)
+ * - API keys and webhooks
+ * - The user record itself
+ */
+export const deleteMyAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    }
+
+    const userId = user._id;
+
+    // 1. Delete all logs by this user + schedule R2 photo cleanup
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", userId))
+      .collect();
+    const allR2Keys: string[] = [];
+    for (const log of logs) {
+      if (log.photos?.length) {
+        for (const photo of log.photos) {
+          allR2Keys.push(photo.key);
+        }
+      }
+      if (log.photoStorageIds?.length) {
+        for (const storageId of log.photoStorageIds) {
+          await ctx.storage.delete(storageId);
+        }
+      }
+      await ctx.db.delete(log._id);
+    }
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: allR2Keys });
+    }
+
+    // 2. Delete all personal sites (non-team)
+    const personalSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+    for (const site of personalSites) {
+      if (!site.teamKeyId) {
+        await ctx.db.delete(site._id);
+      }
+    }
+
+    // 3. Leave team if member (reuses removeKey logic)
+    if (user.appliedLicenseKeyId) {
+      const keyId = user.appliedLicenseKeyId;
+      const key = await ctx.db.get(keyId);
+      const membership = await ctx.db
+        .query("keyMemberships")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      if (membership) {
+        await ctx.db.delete(membership._id);
+      }
+
+      // Check if last member — dissolve team
+      if (key) {
+        const remaining = await ctx.db
+          .query("keyMemberships")
+          .withIndex("by_key", (q) => q.eq("keyId", keyId))
+          .collect();
+        if (remaining.length === 0) {
+          // Delete all team sites and their logs
+          const teamSites = await ctx.db
+            .query("sites")
+            .withIndex("by_team_key", (q) => q.eq("teamKeyId", keyId))
+            .collect();
+          for (const site of teamSites) {
+            const siteLogs = await ctx.db
+              .query("logs")
+              .withIndex("by_site", (q) => q.eq("siteId", site._id))
+              .collect();
+            for (const log of siteLogs) {
+              if (log.photos?.length) {
+                for (const photo of log.photos) allR2Keys.push(photo.key);
+              }
+              await ctx.db.delete(log._id);
+            }
+            await ctx.db.delete(site._id);
+          }
+          await ctx.db.delete(keyId);
+        } else {
+          // Transfer admin to another member if this user was admin
+          const currentAdmin = key.adminUserId ?? key.createdBy;
+          if (currentAdmin === userId && remaining.length > 0) {
+            await ctx.db.patch(keyId, { adminUserId: remaining[0].userId });
+          }
+        }
+      }
+    }
+
+    // 4. Delete API keys
+    const apiKeys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const key of apiKeys) {
+      await ctx.db.delete(key._id);
+    }
+
+    // 5. Delete webhooks
+    const webhooks = await ctx.db
+      .query("webhooks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const wh of webhooks) {
+      await ctx.db.delete(wh._id);
+    }
+
+    // 6. Delete push tokens
+    const pushTokens = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const pt of pushTokens) {
+      await ctx.db.delete(pt._id);
+    }
+
+    // 7. Delete the user record
+    await ctx.db.delete(userId);
+
+    // Schedule R2 cleanup for team photos if any were collected
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: allR2Keys });
+    }
+  },
+});

@@ -1686,12 +1686,17 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </div>
         </div>
 
-        <p className="text-center text-base text-muted-foreground pb-8">
+        <p className="text-center text-base text-muted-foreground pb-4">
           Payments are processed securely via Stripe.
           <br />
           Questions? Contact us at{" "}
           <a href="mailto:groundwork@teezfpo.com" className="text-primary hover:underline">
             groundwork@teezfpo.com
+          </a>
+        </p>
+        <p className="text-center text-sm text-muted-foreground/60 pb-8">
+          <a href="/account-deletion" className="hover:text-destructive transition-colors">
+            Close account
           </a>
         </p>
       </motion.div>
