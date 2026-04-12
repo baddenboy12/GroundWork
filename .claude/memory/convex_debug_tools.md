@@ -65,4 +65,4 @@ npx convex deploy --cmd 'npm run build'
 ## Version Tracking
 - App version is in `src/lib/version.ts` → `APP_VERSION` constant
 - Displayed in user menu dropdown as `v{APP_VERSION}` (green mono text)
-- Currently: v241
+- Currently: v242

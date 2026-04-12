@@ -58,6 +58,7 @@
     "recharts": "2.15.4",
     "resend": "^4.1.2",
     "sonner": "^2.0.7",
+    "stripe": "^22.0.1",
     "tailwind-merge": "^3.5.0",
     "use-debounce": "^10.1.0"
   },

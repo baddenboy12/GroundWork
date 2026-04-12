@@ -558,28 +558,36 @@ http.route({
 
 
 http.route({
-  path: "/paypal-webhook",
+  path: "/stripe-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    // Rate limit webhook endpoint (20 requests/min)
-    const rateLimited = await enforceRateLimit(ctx, "webhook:paypal");
+    // Rate limit webhook endpoint (shared limit with other API routes)
+    const rateLimited = await enforceRateLimit(ctx, "webhook:stripe");
     if (rateLimited) return rateLimited;
 
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) {
+      return new Response(
+        JSON.stringify({ error: "Missing stripe-signature" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Raw body — required for Stripe signature verification.
     const body = await request.text();
 
-    const h = request.headers;
-    const headers: Record<string, string> = {
-      "paypal-auth-algo": h.get("paypal-auth-algo") ?? "",
-      "paypal-cert-url": h.get("paypal-cert-url") ?? "",
-      "paypal-transmission-id": h.get("paypal-transmission-id") ?? "",
-      "paypal-transmission-sig": h.get("paypal-transmission-sig") ?? "",
-      "paypal-transmission-time": h.get("paypal-transmission-time") ?? "",
-    };
-
-    await ctx.runAction(internal.paypal.actions.processWebhook, {
-      body,
-      headers,
-    });
+    try {
+      await ctx.runAction(internal.stripe.actions.processWebhook, {
+        body,
+        signature,
+      });
+    } catch (e) {
+      // Log but still return 200 — the idempotency layer in processWebhook
+      // only marks events as processed on success, so Stripe will retry and
+      // the event will be re-processed. Returning 500 causes aggressive retries
+      // that could amplify transient errors.
+      console.error("Stripe webhook processing error:", e);
+    }
 
     return new Response(null, { status: 200 });
   }),

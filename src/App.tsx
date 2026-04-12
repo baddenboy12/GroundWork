@@ -5,6 +5,7 @@ import { DefaultProviders } from "./components/providers/default.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { registerServiceWorker } from "@/lib/register-sw.ts";
 import { Spinner } from "@/components/ui/spinner.tsx";
+import { CONFIG } from "@/lib/config.ts";
 
 // Eagerly load the landing page (first thing users see)
 import Index from "./pages/Index.tsx";
@@ -14,9 +15,12 @@ import AuthCallback from "./pages/auth/Callback.tsx";
 const DashboardPage = lazy(() => import("./pages/dashboard/page.tsx"));
 const BillingPage = lazy(() => import("./pages/billing/page.tsx"));
 const IntegrationsPage = lazy(() => import("./pages/integrations/page.tsx"));
-const PayPalReturn = lazy(() => import("./pages/paypal/return.tsx"));
+const StripeReturn = lazy(() => import("./pages/stripe/return.tsx"));
 const FeaturesPage = lazy(() => import("./pages/landing/FeaturesPage.tsx"));
 const NativeCallback = lazy(() => import("./pages/auth/NativeCallback.tsx"));
+const PrivacyPage = lazy(() => import("./pages/landing/PrivacyPage.tsx"));
+const TermsPage = lazy(() => import("./pages/landing/TermsPage.tsx"));
+const RefundPolicyPage = lazy(() => import("./pages/landing/RefundPolicyPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function PageLoader() {
@@ -45,7 +49,7 @@ function PwaBackGuard() {
     // the external auth page. Called once on mount and after every back press.
     const fillBuffer = () => {
       window.history.replaceState(null, "", window.location.href);
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < CONFIG.PWA_HISTORY_BUFFER_SIZE; i++) {
         window.history.pushState(null, "", window.location.href);
       }
     };
@@ -92,7 +96,7 @@ function OidcErrorGuard() {
         if (window.location.pathname === "/auth/callback") {
           window.location.replace("/");
         }
-      }, 3000);
+      }, CONFIG.AUTH_CALLBACK_TIMEOUT_MS);
     }
 
     return () => {
@@ -114,10 +118,13 @@ function AppInner() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
-            <Route path="/paypal/return" element={<PayPalReturn />} />
+            <Route path="/stripe/return" element={<StripeReturn />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/native-callback" element={<NativeCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

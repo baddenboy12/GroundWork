@@ -25,7 +25,7 @@ type: project
 - `emails/` — queries.ts, teamNotifications.ts
 - `storage.ts` — legacy file storage helpers
 
-**Android (twa/)**: Trusted Web Activity wrapper with Gradle build, signed APK.
+**Android (android/)**: Capacitor-based native app with custom WebView auth dialog, native filesystem/share for exports. Built with `npx cap sync android && gradlew assembleDebug`. APK output: `android/app/build/outputs/apk/debug/app-debug.apk`. Legacy TWA wrapper still in `twa/` but superseded by Capacitor.
 
 **Why:** Knowing the layout speeds up navigation and prevents creating files in wrong locations.
 

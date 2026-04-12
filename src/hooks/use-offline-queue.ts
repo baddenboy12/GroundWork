@@ -4,9 +4,10 @@ import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { useOnlineStatus } from "./use-online-status.ts";
+import { CONFIG } from "@/lib/config.ts";
 
-const QUEUE_KEY = "groundwork_offline_queue_v1";
-const QUEUE_CHANGED = "groundwork_queue_changed";
+const QUEUE_KEY = CONFIG.OFFLINE_QUEUE_KEY;
+const QUEUE_CHANGED = CONFIG.OFFLINE_QUEUE_EVENT;
 
 /** A photo stored locally as a compressed base64 JPEG, waiting to be uploaded */
 export type OfflinePhoto = {

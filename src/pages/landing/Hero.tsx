@@ -143,7 +143,7 @@ export default function Hero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
         {/* Hero text — compact */}
-        <div className="text-center max-w-3xl mx-auto mb-20">
+        <div className="text-center max-w-3xl mx-auto mb-20 mt-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -220,6 +220,19 @@ export default function Hero() {
             onFrontIndexChange={setCarouselIndex}
           />
         </motion.div>
+      </div>
+
+      {/* Inline footer links */}
+      <div className="relative z-10 mt-auto pt-6 pb-4 px-6">
+        <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground/60">
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</Link>
+            <Link to="/refund-policy" className="hover:text-muted-foreground transition-colors">Refund Policy</Link>
+            <a href="mailto:groundwork@teezfpo.com" className="hover:text-muted-foreground transition-colors">groundwork@teezfpo.com</a>
+          </nav>
+          <p>&copy; {new Date().getFullYear()} GroundWork. All rights reserved.</p>
+        </div>
       </div>
     </section>
   );
