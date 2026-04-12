@@ -12,7 +12,7 @@ function getResend() {
 }
 
 // Sender address — must be verified in Resend dashboard
-const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "noreply@groundwork.teezfpo.com";
+const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "verify@noreply.teezfpo.com";
 
 // ── Shared HTML template helpers ──────────────────────────────────────────────
 
@@ -47,7 +47,7 @@ function baseTemplate(title: string, body: string): string {
           <tr>
             <td style="padding-top:24px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#555;">
-                You're receiving this because you're a member of a GroundWork team.
+                You're receiving this because you have successfully registered a GroundWork account.
               </p>
             </td>
           </tr>
@@ -235,8 +235,8 @@ export const sendWelcome = internalAction({
         Welcome to GroundWork
       </h1>
       <p style="margin:0 0 20px;font-size:14px;color:#888;line-height:1.6;">
-        Hey <strong style="color:#f4f0e8;">${greeting}</strong>, your account is all set up.
-        You're on the <strong style="color:#f4f0e8;">Free</strong> plan to start.
+        Hey <strong style="color:#f4f0e8;">${greeting}</strong>, your account is all set up
+        and ready to go.
       </p>
       <p style="margin:0 0 4px;font-size:13px;color:#888;line-height:1.6;">
         Here's what you can do next:

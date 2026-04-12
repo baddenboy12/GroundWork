@@ -9,6 +9,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.CookieManager;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import com.getcapacitor.Plugin;
@@ -55,6 +56,7 @@ public class AuthDialogPlugin extends Plugin {
         WebSettings settings = dialogWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
         dialogWebView.setBackgroundColor(Color.parseColor("#0f1117"));
 
