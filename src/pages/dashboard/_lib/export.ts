@@ -10,12 +10,17 @@ async function nativeSaveFile(blob: Blob, filename: string): Promise<void> {
   const { Filesystem, Directory } = await import("@capacitor/filesystem");
   const { Share } = await import("@capacitor/share");
 
-  // Convert blob to base64
-  const buffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  const base64 = btoa(binary);
+  // Convert blob to base64 using FileReader (fast, no O(n²) string concat)
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // result is "data:<mime>;base64,<data>" — strip the prefix
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.split(",")[1]);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 
   // Write to cache directory (always writable)
   const result = await Filesystem.writeFile({
@@ -445,6 +450,35 @@ function renderPhotoRows(doc: jsPDF, rows: PhotoStrip[], startX: number, y: numb
   }
 }
 
+/** Page-aware photo rendering: adds pages when a photo row would overflow.
+ *  Returns the final y position (on the final page). */
+function renderPhotoRowsPaged(
+  doc: jsPDF, rows: PhotoStrip[], startX: number, y: number,
+  pageH: number, margin: number, contentW: number,
+  theme: Theme, isCard: boolean, catColor: RGB,
+): number {
+  const pageBottom = pageH - 14;
+  let py = y;
+  for (const row of rows) {
+    // If this photo row won't fit, start a new page
+    if (py + row.stripH > pageBottom) {
+      doc.addPage();
+      py = CONTENT_Y;
+      // For card themes, draw a continuation background on the new page
+      if (isCard) {
+        const remainH = pageBottom - py;
+        doc.setFillColor(...theme.entryBg);
+        doc.roundedRect(margin, py, contentW, remainH, 2, 2, "F");
+        doc.setFillColor(...catColor);
+        doc.roundedRect(margin, py, 3.5, remainH, 1.5, 1.5, "F");
+      }
+    }
+    renderStrip(doc, row, startX, py);
+    py += row.stripH + PHOTO_ROW_GAP;
+  }
+  return py;
+}
+
 // ─── Shared PDF helpers ───────────────────────────────────────────────────────
 
 function periodLabel(from?: string, to?: string): string {
@@ -524,56 +558,69 @@ function drawCoverDark(doc: jsPDF, o: CoverOpts): void {
 
   doc.setFillColor(...theme.coverBg);
   doc.rect(0, 0, pageW, pageH, "F");
-  // Thin top accent bar
+
+  // ── Left accent strip ──────────────────────────────────────────────────────
   doc.setFillColor(...theme.coverAccent);
-  doc.rect(0, 0, pageW, 3, "F");
+  doc.rect(0, 0, 4, pageH, "F");
 
-  let y = 42;
-  // Report label
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(...theme.coverAccent);
-  doc.text(o.reportLabel.toUpperCase(), margin, y);
-  y += 13;
+  const lm = margin + 4;
 
-  // Site title
+  // ── Date — top right, understated ──────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...theme.coverSub);
+  doc.text(format(new Date(), "MMMM d, yyyy"), pageW - margin, 20, { align: "right" });
+
+  // ── Title block — vertically centered in upper half ────────────────────────
+  let y = 80;
+
+  // Main title (single instance, large)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(32);
   doc.setTextColor(...theme.coverTitle);
-  const titleLines = doc.splitTextToSize(o.siteTitle, contentW);
-  doc.text(titleLines, margin, y);
-  y += titleLines.length * 10 + 2;
+  const titleLines = doc.splitTextToSize(o.siteTitle, contentW - 4);
+  doc.text(titleLines, lm, y);
+  y += titleLines.length * 13;
 
-  // Subtitle / site list
+  // Accent bar beneath title
+  doc.setFillColor(...theme.coverAccent);
+  doc.rect(lm, y + 2, 44, 1.5, "F");
+  y += 14;
+
+  // Subtitle / site list (if present)
   if (o.siteSubtitle) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...theme.coverSub);
-    const subLines = doc.splitTextToSize(o.siteSubtitle, contentW);
-    doc.text(subLines, margin, y);
-    y += subLines.length * 5 + 4;
+    const subLines = doc.splitTextToSize(o.siteSubtitle, contentW - 4);
+    doc.text(subLines, lm, y);
+    y += subLines.length * 5 + 6;
   }
 
-  // Period + generated
+  // ── Period + category (inline, compact) ────────────────────────────────────
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...theme.coverSub);
-  doc.text(`Period: ${periodLabel(o.dateFrom, o.dateTo)}`, margin, y);
-  y += 6;
+  const metaParts: string[] = [periodLabel(o.dateFrom, o.dateTo)];
   if (o.category && o.category !== "all") {
-    doc.text(`Category: ${CATEGORY_LABELS[o.category as LogCategory] ?? o.category}`, margin, y);
-    y += 6;
+    metaParts.push(CATEGORY_LABELS[o.category as LogCategory] ?? o.category);
   }
-  doc.text(`Generated: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`, margin, y);
+  doc.text(metaParts.join("  ·  "), lm, y);
+  y += 16;
 
-  // Stats box
-  drawStatsBox(doc, o.logs, 148, theme, margin, contentW);
+  // ── Stats box ──────────────────────────────────────────────────────────────
+  drawStatsBox(doc, o.logs, y, theme, lm, contentW - 4);
 
-  // Cover footer
+  // ── Footer ─────────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...theme.coverSub);
-  doc.text("Confidential field report", margin, pageH - 12);
+  doc.text("Confidential field report", lm, pageH - 12);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...theme.coverAccent);
+  doc.text("GroundWork", pageW - margin, pageH - 12, { align: "right" });
 }
 
 function drawCoverBand(doc: jsPDF, o: CoverOpts): void {
@@ -826,8 +873,8 @@ function drawEntry(
   y: number,
   photoRows: PhotoStrip[],
   theme: Theme,
-  config: { margin: number; pageW: number; contentW: number }
-): void {
+  config: { margin: number; pageW: number; contentW: number; pageH: number }
+): number {
   const { margin, pageW, contentW } = config;
   const catColor: RGB = CAT_COLORS[entry.category as LogCategory] ?? ([100, 116, 139] satisfies RGB);
   const catLabel = CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category;
@@ -840,14 +887,23 @@ function drawEntry(
   const body = measureBodyLines(doc, entry.content, bodyAreaW);
   const blockH = measureEntry(doc, entry, photoRows, theme, contentW);
 
-  if (theme.entry === "card" || theme.entry === "dark") {
-    // ── Card / dark card ──────────────────────────────────────────────────────
-    doc.setFillColor(...theme.entryBg);
-    doc.roundedRect(margin, y, contentW, blockH, 2, 2, "F");
+  const { pageH } = config;
+  const pageBottom = pageH - 14;
+  const isCard = theme.entry === "card" || theme.entry === "dark";
 
-    // Left accent bar (category color)
+  if (isCard) {
+    // ── Card / dark card ──────────────────────────────────────────────────────
+    // Calculate height of text-only portion (everything before photos)
+    const photoH = totalPhotoRowsHeight(photoRows);
+    const textBlockH = blockH - photoH;
+
+    // Draw card background for text portion only (photos may span pages)
+    doc.setFillColor(...theme.entryBg);
+    doc.roundedRect(margin, y, contentW, textBlockH, 2, 2, "F");
+
+    // Left accent bar (category color) — text portion
     doc.setFillColor(...catColor);
-    doc.roundedRect(margin, y, 3.5, blockH, 1.5, 1.5, "F");
+    doc.roundedRect(margin, y, 3.5, textBlockH, 1.5, 1.5, "F");
 
     // Date top-right
     doc.setFont("helvetica", "normal");
@@ -918,8 +974,20 @@ function drawEntry(
       ey += 5;
     }
 
-    // Photos (multi-row)
-    if (photoRows.length) renderPhotoRows(doc, photoRows, margin + 8, ey);
+    // Photos (page-aware: will add pages if needed)
+    if (photoRows.length) {
+      // Draw photo area background on current page
+      const photoStartH = Math.min(photoH, pageBottom - ey);
+      if (photoStartH > 0) {
+        doc.setFillColor(...theme.entryBg);
+        doc.rect(margin, ey, contentW, photoStartH, "F");
+        doc.setFillColor(...catColor);
+        doc.rect(margin, ey, 3.5, photoStartH, "F");
+      }
+      ey = renderPhotoRowsPaged(doc, photoRows, margin + 8, ey, pageH, margin, contentW, theme, true, catColor);
+    }
+    ey += 6; // bottom gap
+    return ey;
 
   } else {
     // ── Plain / editorial ─────────────────────────────────────────────────────
@@ -987,8 +1055,12 @@ function drawEntry(
       ey += 5;
     }
 
-    // Photos (multi-row)
-    if (photoRows.length) renderPhotoRows(doc, photoRows, margin, ey);
+    // Photos (page-aware)
+    if (photoRows.length) {
+      ey = renderPhotoRowsPaged(doc, photoRows, margin, ey, pageH, margin, contentW, theme, false, catColor);
+    }
+    ey += 8; // bottom gap
+    return ey;
   }
 }
 
@@ -1051,14 +1123,7 @@ async function renderReport(opts: RenderOpts): Promise<void> {
       y = CONTENT_Y;
     }
 
-    drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW });
-    y += blockH + (theme.entry === "plain" ? 6 : 4);
-
-    // If entry overflowed past the page, add pages to cover the overflow
-    while (y > pageH - 14) {
-      doc.addPage();
-      y = y - (pageH - 14) + CONTENT_Y;
-    }
+    y = drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW, pageH });
 
     // For plain style: draw a light bottom rule between entries
     if (theme.entry === "plain") {
@@ -1188,15 +1253,7 @@ async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
         y = CONTENT_Y;
       }
 
-      drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW });
-      y += blockH + (theme.entry === "plain" ? 6 : 4);
-
-      // If entry overflowed past the page, add pages to cover the overflow
-      // so that subsequent entries and headers land correctly
-      while (y > pageH - 14) {
-        doc.addPage();
-        y = y - (pageH - 14) + CONTENT_Y;
-      }
+      y = drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW, pageH });
 
       if (theme.entry === "plain") {
         doc.setDrawColor(...theme.entryBorder);

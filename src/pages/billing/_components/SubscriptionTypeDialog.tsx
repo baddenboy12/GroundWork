@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils.ts";
 import { TIER_CONFIG, type SubscriptionTier } from "../../dashboard/_lib/subscription.ts";
 
 /** Price per extra member seat above the first (in dollars) */
-const EXTRA_SEAT_PRICE = 1.99;
+export const EXTRA_SEAT_PRICE = 1.99;
+
+/** Maximum number of seats allowed per team */
+export const MAX_TEAM_SEATS = 50;
 
 function calcTeamPrice(basePriceStr: string, seats: number): string {
   const base = parseFloat(basePriceStr.replace("$", ""));
@@ -115,7 +118,7 @@ export default function SubscriptionTypeDialog({
               {mode !== "team" && (
                 <p className="text-sm font-bold text-foreground mt-2">
                   {cfg.price}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">+ $1.99/extra seat /mo</span>
+                  <span className="text-xs font-normal text-muted-foreground ml-1">+ ${EXTRA_SEAT_PRICE}/extra seat /mo</span>
                 </p>
               )}
             </div>
@@ -147,9 +150,9 @@ export default function SubscriptionTypeDialog({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSeats(Math.min(50, seats + 1))}
+                    onClick={() => setSeats(Math.min(MAX_TEAM_SEATS, seats + 1))}
                     className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                    disabled={seats >= 50}
+                    disabled={seats >= MAX_TEAM_SEATS}
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -191,7 +194,7 @@ export default function SubscriptionTypeDialog({
           <Button onClick={handleConfirm} disabled={isPending}>
             {isPending
               ? "Redirecting…"
-              : `Continue to PayPal — ${
+              : `Continue to Stripe — ${
                   mode === "team"
                     ? `${calcTeamPrice(cfg.price, seats)}/mo`
                     : `${cfg.price}/mo`

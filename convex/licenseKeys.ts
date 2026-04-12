@@ -117,11 +117,12 @@ export const updateStatus = mutation({
     }
 
     // Reject manual reactivation when suspended for payment failure —
-    // only PayPal reactivation (RE_ACTIVATED webhook) should clear that state
+    // only Stripe's invoice.payment_succeeded webhook (or reactivateSubscription)
+    // should clear that state.
     if (key.suspendedReason === "payment_failed" && args.status === "active" && !isSuperAdmin) {
       throw new ConvexError({
         code: "BAD_REQUEST",
-        message: "This key is suspended due to a failed payment. Resolve your PayPal subscription to reactivate it.",
+        message: "This key is suspended due to a failed payment. Resolve your subscription to reactivate it.",
       });
     }
 
@@ -241,13 +242,14 @@ export const removeKey = mutation({
       .unique();
     if (membership) await ctx.db.delete(membership._id);
 
-    // Revert tier — keep PayPal tier if still active
-    const hasPayPal =
-      user.paypalSubscriptionStatus === "ACTIVE" ||
-      user.paypalSubscriptionStatus === "APPROVED";
+    // Revert tier — keep Stripe tier if still active
+    const hasStripe =
+      user.stripeSubscriptionStatus === "active" ||
+      user.stripeSubscriptionStatus === "trialing" ||
+      user.stripeSubscriptionStatus === "cancel_pending";
     await ctx.db.patch(user._id, {
       appliedLicenseKeyId: undefined,
-      subscriptionTier: hasPayPal ? user.subscriptionTier : "free",
+      subscriptionTier: hasStripe ? user.subscriptionTier : "free",
     });
 
     // ── Last member leaving: dissolve the team ────────────────────────
@@ -353,7 +355,7 @@ export const getMyKeyInfo = query({
       isAdmin: (key.adminUserId ?? key.createdBy) === user._id,
       selfCreated: key.selfCreated ?? false,
       pendingPaymentTransfer: key.pendingPaymentTransfer ?? false,
-      paypalSubscriberId: key.paypalSubscriberId ?? key.createdBy,
+      stripeSubscriberId: key.stripeSubscriberId ?? key.createdBy,
       suspendedAt: key.suspendedAt ?? null,
       suspendedReason: key.suspendedReason ?? null,
       graceDeadline,
@@ -390,32 +392,11 @@ export const updateMaxMembers = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can update seat count" });
     }
 
-    // ── Billing enforcement for self-created (subscriber-owned) keys ──────────
-    // If the admin has an active PayPal subscription and is trying to INCREASE
-    // the seat count, we must ensure a PayPal billing revision was completed first.
-    // reviseSubscriptionSeats stores the approved count in key.pendingMaxMembers;
-    // direct increases without that approval are blocked to prevent billing bypass.
-    if (key.selfCreated) {
-      const currentMax = key.maxMembers ?? 1;
-      const isIncreasing = args.maxMembers > currentMax;
-      if (isIncreasing) {
-        const isPaypalActive =
-          user.paypalSubscriptionStatus === "ACTIVE" ||
-          user.paypalSubscriptionStatus === "APPROVED";
-        if (isPaypalActive) {
-          if (key.pendingMaxMembers !== args.maxMembers) {
-            throw new ConvexError({
-              code: "BAD_REQUEST",
-              message:
-                "Seat increases on an active PayPal subscription require billing approval. " +
-                "Use the 'Edit seats' button to go through the PayPal revision flow.",
-            });
-          }
-          // Pending revision matches — allow it and clear the pending marker
-          await ctx.db.patch(args.keyId, { pendingMaxMembers: undefined });
-        }
-      }
-    }
+    // NOTE: For self-created keys with active Stripe subscriptions, the billing
+    // page routes seat changes through stripe.reviseSubscriptionSeats (which
+    // updates the Stripe subscription directly and then calls _setKeyMaxMembers).
+    // This mutation is still called for admin-granted keys and for downgrades,
+    // where no Stripe update is needed.
 
     // Cannot reduce below current member count
     const memberships = await ctx.db
@@ -453,16 +434,18 @@ export const createSelfKey = mutation({
     }
 
     // ── Billing enforcement for multi-seat team creation ──────────────────────
-    // If the user has an active PayPal subscription and wants > 1 seat, the seat
+    // If the user has an active Stripe subscription and wants > 1 seat, the seat
     // count MUST have been pre-committed via storePendingTeamSeats before the
-    // PayPal payment. This prevents sessionStorage manipulation where a user could
-    // pay for 2 seats but inject maxMembers=50 into the frontend after approval.
+    // Stripe Checkout Session. This prevents sessionStorage manipulation where
+    // a user could pay for 2 seats but inject maxMembers=50 into the frontend
+    // after checkout.
     const requestedSeats = args.maxMembers ?? 1;
     if (requestedSeats > 1) {
-      const isPaypalActive =
-        user.paypalSubscriptionStatus === "ACTIVE" ||
-        user.paypalSubscriptionStatus === "APPROVED";
-      if (isPaypalActive) {
+      const isStripeActive =
+        user.stripeSubscriptionStatus === "active" ||
+        user.stripeSubscriptionStatus === "trialing" ||
+        user.stripeSubscriptionStatus === "cancel_pending";
+      if (isStripeActive) {
         // Reject if pending seats are missing, mismatched, or expired (30 min TTL)
         const PENDING_SEATS_TTL_MS = 30 * 60 * 1000;
         const isExpired =
@@ -482,7 +465,7 @@ export const createSelfKey = mutation({
             message: isExpired
               ? "Pending seat reservation expired. Please start the subscription flow again."
               : "Seat count mismatch. To create a team with multiple seats, the seat " +
-                "count must be committed to the server before PayPal payment. " +
+                "count must be committed to the server before Stripe Checkout. " +
                 "This prevents billing bypass via sessionStorage manipulation.",
           });
         }
@@ -515,7 +498,7 @@ export const createSelfKey = mutation({
       note: `Team — ${user.name ?? user.email ?? "subscriber"}`,
       selfCreated: true,
       maxMembers: args.maxMembers,
-      paypalSubscriberId: user._id,
+      stripeSubscriberId: user._id,
     });
 
     // Creator joins their own key automatically
@@ -557,28 +540,11 @@ export const changeTierForTeam = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only the team admin can change the team tier" });
     }
 
-    // ── Billing enforcement: block direct tier upgrades on active PayPal subs ───
-    // Tier upgrades must go through reviseSubscriptionTier (PayPal approval flow).
-    // This mutation is only used for admin-granted keys or downgrades.
-    // The billing page handles upgrades via the PayPal revision action instead.
-    if (key.selfCreated) {
-      const tierRank: Record<string, number> = { pro: 1, business: 2 };
-      const currentRank = tierRank[key.tier] ?? 0;
-      const newRank = tierRank[args.tier] ?? 0;
-      if (newRank > currentRank) {
-        const isPaypalActive =
-          user.paypalSubscriptionStatus === "ACTIVE" ||
-          user.paypalSubscriptionStatus === "APPROVED";
-        if (isPaypalActive) {
-          throw new ConvexError({
-            code: "REQUIRES_PAYPAL_REVISION",
-            message:
-              "Tier upgrades on an active PayPal subscription require PayPal approval. " +
-              "Use the tier revision flow instead.",
-          });
-        }
-      }
-    }
+    // NOTE: For self-created keys with an active Stripe subscription, the
+    // billing page routes tier changes through stripe.reviseSubscriptionTier
+    // (which swaps the Stripe price IDs and then calls _setTierForTeam).
+    // This mutation is still used for admin-granted keys and for scenarios
+    // where the billing provider doesn't need to be touched.
 
     // Update the key tier
     await ctx.db.patch(args.keyId, { tier: args.tier });
@@ -639,9 +605,9 @@ export const transferAdmin = mutation({
       pendingPaymentTransfer: key.selfCreated ? true : undefined,
     });
 
-    // Schedule the old admin's PayPal subscription cancellation (handled by
+    // Schedule the old admin's Stripe subscription cancellation (handled by
     // the action layer since mutations can't call external APIs).
-    // The action will cancel at end of billing cycle (CANCEL_PENDING).
+    // The action will cancel at end of billing cycle (cancel_pending).
   },
 });
 
@@ -723,7 +689,7 @@ export const deleteKey = mutation({
   },
 });
 
-// ── Internal: get a key by ID (used by PayPal actions) ───────────────────────
+// ── Internal: get a key by ID (used by Stripe actions) ──────────────────────
 
 // Note: This is a read-only query exposed as internalQuery so Actions can use ctx.runQuery
 export const _getKeyById = internalQuery({
@@ -755,7 +721,7 @@ export const _debugListAllKeys = internalQuery({
         memberCount: memberships.length,
         adminUserId: k.adminUserId,
         createdBy: k.createdBy,
-        paypalSubscriberId: k.paypalSubscriberId,
+        stripeSubscriberId: k.stripeSubscriberId,
         pendingPaymentTransfer: k.pendingPaymentTransfer,
         suspendedAt: k.suspendedAt,
       };
@@ -773,9 +739,9 @@ export const _debugListUsers = internalQuery({
       name: u.name,
       email: u.email,
       tier: u.subscriptionTier,
-      paypalStatus: u.paypalSubscriptionStatus,
-      paypalSubId: u.paypalSubscriptionId,
-      cancelDate: u.paypalCancelEffectiveDate,
+      stripeStatus: u.stripeSubscriptionStatus,
+      stripeSubId: u.stripeSubscriptionId,
+      cancelDate: u.stripeCancelEffectiveDate,
       appliedKeyId: u.appliedLicenseKeyId,
     }));
   },
@@ -789,10 +755,11 @@ export const _getSelfCreatedKeyByAdmin = internalQuery({
       .query("licenseKeys")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    // Also check keys where adminUserId was transferred or user is paypalSubscriber
+    // Also check keys where adminUserId was transferred or user is the
+    // current Stripe subscriber
     const allKeys = await ctx.db.query("licenseKeys").collect();
     const transferred = allKeys.filter(
-      (k) => (k.adminUserId === args.userId || k.paypalSubscriberId === args.userId)
+      (k) => (k.adminUserId === args.userId || k.stripeSubscriberId === args.userId)
         && k.createdBy !== args.userId
     );
     const candidates = [...keys, ...transferred];
@@ -800,59 +767,29 @@ export const _getSelfCreatedKeyByAdmin = internalQuery({
   },
 });
 
-// ── Internal: store a pending seat count before PayPal approval redirect ──────
-// reviseSubscriptionSeats writes here so the seat count lives in the DB,
-// not in client-controlled sessionStorage.
-export const _setPendingMaxMembers = internalMutation({
-  args: { keyId: v.id("licenseKeys"), pendingMaxMembers: v.number() },
+// ── Internal: write maxMembers on a license key ──────────────────────────────
+// Called by stripe.reviseSubscriptionSeats after Stripe applies the new seat
+// quantity to the subscription. No pending state — Stripe applies immediately.
+export const _setKeyMaxMembers = internalMutation({
+  args: { keyId: v.id("licenseKeys"), maxMembers: v.number() },
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
-    await ctx.db.patch(args.keyId, { pendingMaxMembers: args.pendingMaxMembers });
+    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers });
   },
 });
 
-// ── Internal: set/apply pending tier (used by PayPal tier revision flow) ──────
-
-export const clearPendingTier = mutation({
-  args: { keyId: v.id("licenseKeys") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!user) return;
-    const key = await ctx.db.get(args.keyId);
-    if (!key) return;
-    const currentAdmin = key.adminUserId ?? key.createdBy;
-    if (currentAdmin !== user._id) return;
-    if (key.pendingTier) {
-      await ctx.db.patch(args.keyId, { pendingTier: undefined });
-    }
-  },
-});
-
-export const _setPendingTier = internalMutation({
-  args: { keyId: v.id("licenseKeys"), pendingTier: v.union(v.literal("pro"), v.literal("business")) },
-  handler: async (ctx, args) => {
-    const key = await ctx.db.get(args.keyId);
-    if (!key) return;
-    await ctx.db.patch(args.keyId, { pendingTier: args.pendingTier });
-  },
-});
-
-export const _applyPendingTier = internalMutation({
+// ── Internal: write tier on a team key and propagate to all members ──────────
+// Called by stripe.reviseSubscriptionTier after Stripe swaps the price IDs on
+// the subscription.
+export const _setTierForTeam = internalMutation({
   args: { keyId: v.id("licenseKeys"), tier: v.union(v.literal("pro"), v.literal("business")) },
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
 
-    // Update the key tier and clear the pending marker
-    await ctx.db.patch(args.keyId, { tier: args.tier, pendingTier: undefined });
+    await ctx.db.patch(args.keyId, { tier: args.tier });
 
-    // Propagate tier to all current members
     const memberships = await ctx.db
       .query("keyMemberships")
       .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
@@ -864,18 +801,6 @@ export const _applyPendingTier = internalMutation({
         await ctx.db.patch(m.userId, { subscriptionTier: args.tier });
       }
     }
-  },
-});
-
-// ── Internal: update maxMembers directly (used by PayPal revise flow) ─────────
-
-export const _applyPendingSeats = internalMutation({
-  args: { keyId: v.id("licenseKeys"), maxMembers: v.number() },
-  handler: async (ctx, args) => {
-    const key = await ctx.db.get(args.keyId);
-    if (!key) return;
-    // Apply seat count and clear the pending marker in one atomic write
-    await ctx.db.patch(args.keyId, { maxMembers: args.maxMembers, pendingMaxMembers: undefined });
   },
 });
 
@@ -910,20 +835,20 @@ export const _suspendKeyForPaymentFailure = internalMutation({
 // ── Internal: reactivate a suspended key (payment resolved) ───────────────────
 // Clears suspension state and cancels the scheduled auto-expiry.
 
-// Called after a transferred admin successfully sets up their PayPal subscription
+// Called after a transferred admin successfully sets up their Stripe subscription
 export const _completePaymentTransfer = internalMutation({
   args: { keyId: v.id("licenseKeys"), newSubscriberId: v.id("users") },
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
     await ctx.db.patch(args.keyId, {
-      paypalSubscriberId: args.newSubscriberId,
+      stripeSubscriberId: args.newSubscriberId,
       pendingPaymentTransfer: undefined,
     });
   },
 });
 
-// Public mutation for the new admin to complete payment transfer after PayPal approval
+// Public mutation for the new admin to complete payment transfer after Stripe Checkout
 export const completePaymentTransfer = mutation({
   args: { keyId: v.id("licenseKeys") },
   handler: async (ctx, args) => {
@@ -945,7 +870,7 @@ export const completePaymentTransfer = mutation({
     }
 
     await ctx.db.patch(args.keyId, {
-      paypalSubscriberId: user._id,
+      stripeSubscriberId: user._id,
       pendingPaymentTransfer: undefined,
     });
   },
@@ -994,9 +919,9 @@ export const _expireKey = internalMutation({
       .collect();
 
     for (const m of memberships) {
-      const member = await ctx.db.get(m.userId as Id<"users">);
+      const member = await ctx.db.get(m.userId);
       if (member && member.appliedLicenseKeyId === args.keyId) {
-        await ctx.db.patch(m.userId as Id<"users">, {
+        await ctx.db.patch(m.userId, {
           subscriptionTier: "free",
           appliedLicenseKeyId: undefined,
         });

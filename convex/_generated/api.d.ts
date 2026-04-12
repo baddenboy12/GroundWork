@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as _lib_tiers from "../_lib/tiers.js";
+import type * as _lib_validators from "../_lib/validators.js";
 import type * as clientErrors from "../clientErrors.js";
 import type * as crons from "../crons.js";
 import type * as emails_queries from "../emails/queries.js";
@@ -19,14 +21,15 @@ import type * as integrations_webhookActions from "../integrations/webhookAction
 import type * as integrations_webhooks from "../integrations/webhooks.js";
 import type * as licenseKeys from "../licenseKeys.js";
 import type * as logs from "../logs.js";
-import type * as paypal_actions from "../paypal/actions.js";
-import type * as paypal_plans from "../paypal/plans.js";
 import type * as pushTokens from "../pushTokens.js";
 import type * as r2_storageActions from "../r2/storageActions.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as siteDeleteVotes from "../siteDeleteVotes.js";
 import type * as sites from "../sites.js";
 import type * as storage from "../storage.js";
+import type * as stripe_actions from "../stripe/actions.js";
+import type * as stripe_events from "../stripe/events.js";
+import type * as stripe_prices from "../stripe/prices.js";
 import type * as users from "../users.js";
 
 import type {
@@ -36,6 +39,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_lib/tiers": typeof _lib_tiers;
+  "_lib/validators": typeof _lib_validators;
   clientErrors: typeof clientErrors;
   crons: typeof crons;
   "emails/queries": typeof emails_queries;
@@ -47,14 +52,15 @@ declare const fullApi: ApiFromModules<{
   "integrations/webhooks": typeof integrations_webhooks;
   licenseKeys: typeof licenseKeys;
   logs: typeof logs;
-  "paypal/actions": typeof paypal_actions;
-  "paypal/plans": typeof paypal_plans;
   pushTokens: typeof pushTokens;
   "r2/storageActions": typeof r2_storageActions;
   rateLimit: typeof rateLimit;
   siteDeleteVotes: typeof siteDeleteVotes;
   sites: typeof sites;
   storage: typeof storage;
+  "stripe/actions": typeof stripe_actions;
+  "stripe/events": typeof stripe_events;
+  "stripe/prices": typeof stripe_prices;
   users: typeof users;
 }>;
 

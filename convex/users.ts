@@ -3,12 +3,13 @@ import { mutation, query, internalQuery, internalMutation } from "./_generated/s
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel.d.ts";
 
-// ── Pending team seat store (called BEFORE PayPal redirect to prevent tampering) ─
+// ── Pending team seat store (called BEFORE Stripe Checkout redirect to prevent tampering) ─
 
 /**
  * Stores the intended team seat count in the DB before the user is redirected
- * to PayPal. On return, createSelfKey reads this value from the DB instead of
- * from sessionStorage (which is client-controlled and can be manipulated).
+ * to Stripe Checkout. On return, createSelfKey reads this value from the DB
+ * instead of from sessionStorage (which is client-controlled and can be
+ * manipulated).
  */
 export const storePendingTeamSeats = mutation({
   args: { seats: v.number() },
@@ -110,7 +111,7 @@ export const getCurrentUser = query({
   },
 });
 
-// Admin-only: directly set the subscription tier without going through PayPal.
+// Admin-only: directly set the subscription tier without going through Stripe.
 export const setSubscriptionTier = mutation({
   args: {
     tier: v.union(
@@ -125,7 +126,7 @@ export const setSubscriptionTier = mutation({
     if (!identity) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "User not logged in" });
     }
-    // Admin or sandbox users may bypass PayPal
+    // Admin or sandbox users may bypass Stripe
     const adminEmail = process.env.ADMIN_EMAIL;
     const isAdmin = !!adminEmail && (identity.email ?? "").toLowerCase() === adminEmail.toLowerCase();
     const user = await ctx.db
@@ -143,8 +144,8 @@ export const setSubscriptionTier = mutation({
     await ctx.db.patch(user._id, {
       subscriptionTier: args.tier,
       adminGrantedTier: true,
-      paypalSubscriptionId: undefined,
-      paypalSubscriptionStatus: undefined,
+      stripeSubscriptionId: undefined,
+      stripeSubscriptionStatus: undefined,
     });
   },
 });
@@ -307,8 +308,8 @@ export const _setAdminGrantedTier = internalMutation({
     await ctx.db.patch(args.userId, {
       subscriptionTier: args.tier,
       adminGrantedTier: true,
-      paypalSubscriptionId: undefined,
-      paypalSubscriptionStatus: undefined,
+      stripeSubscriptionId: undefined,
+      stripeSubscriptionStatus: undefined,
     });
   },
 });
@@ -371,15 +372,20 @@ export const _getStatsForApi = internalQuery({
   },
 });
 
+// ── Stripe subscription internal mutations ──────────────────────────────────
+
+import { STRIPE_SUBSCRIPTION_STATUS } from "./_lib/validators";
+
 /**
- * Updates PayPal subscription data on a user.
- * Pass subscriptionTier=null to leave the tier unchanged (e.g. when recording a pending approval).
+ * Updates Stripe subscription data on a user.
+ * Pass subscriptionTier=null to leave the tier unchanged (e.g. when writing
+ * only a status transition).
  */
-export const _setPaypalSubscription = internalMutation({
+export const _setStripeSubscription = internalMutation({
   args: {
     userId: v.id("users"),
-    paypalSubscriptionId: v.string(),
-    paypalSubscriptionStatus: v.string(),
+    stripeSubscriptionId: v.string(),
+    stripeSubscriptionStatus: STRIPE_SUBSCRIPTION_STATUS,
     subscriptionTier: v.union(
       v.null(),
       v.literal("free"),
@@ -389,36 +395,66 @@ export const _setPaypalSubscription = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = args.userId as Id<"users">;
     if (args.subscriptionTier !== null) {
-      await ctx.db.patch(userId, {
-        paypalSubscriptionId: args.paypalSubscriptionId,
-        paypalSubscriptionStatus: args.paypalSubscriptionStatus,
+      await ctx.db.patch(args.userId, {
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        stripeSubscriptionStatus: args.stripeSubscriptionStatus,
         subscriptionTier: args.subscriptionTier,
         adminGrantedTier: undefined,
       });
     } else {
-      await ctx.db.patch(userId, {
-        paypalSubscriptionId: args.paypalSubscriptionId,
-        paypalSubscriptionStatus: args.paypalSubscriptionStatus,
+      await ctx.db.patch(args.userId, {
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        stripeSubscriptionStatus: args.stripeSubscriptionStatus,
         adminGrantedTier: undefined,
       });
     }
   },
 });
 
-export const _setCancelEffectiveDate = internalMutation({
+export const _setStripeCancelEffectiveDate = internalMutation({
   args: { userId: v.id("users"), date: v.string() },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
-      paypalCancelEffectiveDate: args.date || undefined,
+      stripeCancelEffectiveDate: args.date || undefined,
     });
   },
 });
 
+export const _setStripeCustomerId = internalMutation({
+  args: { userId: v.id("users"), stripeCustomerId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      stripeCustomerId: args.stripeCustomerId,
+    });
+  },
+});
+
+export const _setStripeCheckoutSession = internalMutation({
+  args: { userId: v.id("users"), sessionId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      stripeCheckoutSessionId: args.sessionId,
+    });
+  },
+});
+
+export const _getByStripeCustomerId = internalQuery({
+  args: { stripeCustomerId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_stripe_customer", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId)
+      )
+      .unique();
+  },
+});
+
 /**
- * Safety-net: downgrades any CANCEL_PENDING users whose billing cycle has
- * ended (paypalCancelEffectiveDate is in the past). Called by a daily cron.
+ * Safety-net: downgrades any cancel_pending users whose billing cycle has
+ * ended (stripeCancelEffectiveDate is in the past). Called by a daily cron.
+ * This is a fallback for a missed customer.subscription.deleted webhook.
  */
 export const _processExpiredCancelPending = internalMutation({
   args: {},
@@ -429,15 +465,15 @@ export const _processExpiredCancelPending = internalMutation({
 
     for (const user of allUsers) {
       if (
-        user.paypalSubscriptionStatus === "CANCEL_PENDING" &&
-        user.paypalCancelEffectiveDate &&
-        user.paypalCancelEffectiveDate <= now
+        user.stripeSubscriptionStatus === "cancel_pending" &&
+        user.stripeCancelEffectiveDate &&
+        user.stripeCancelEffectiveDate <= now
       ) {
         // Downgrade to free and clear cancel state
         await ctx.db.patch(user._id, {
           subscriptionTier: "free",
-          paypalSubscriptionStatus: "CANCELLED",
-          paypalCancelEffectiveDate: undefined,
+          stripeSubscriptionStatus: "canceled",
+          stripeCancelEffectiveDate: undefined,
         });
 
         // Expire any self-created team key
@@ -472,14 +508,14 @@ export const _processExpiredCancelPending = internalMutation({
     }
 
     if (processed > 0) {
-      console.log(`[cron] Processed ${processed} expired CANCEL_PENDING user(s)`);
+      console.log(`[cron] Processed ${processed} expired cancel_pending user(s)`);
     }
   },
 });
 
 // ── Pending team seats expiry ──────────────────────────────────────────────────
 
-/** 30-minute window for PayPal redirect flow to complete */
+/** 30-minute window for the Stripe Checkout redirect flow to complete */
 const PENDING_SEATS_TTL_MS = 30 * 60 * 1000;
 
 /**

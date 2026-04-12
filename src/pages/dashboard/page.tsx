@@ -147,7 +147,7 @@ function DashboardInner() {
           <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
           <p className="text-sm text-red-200">
             <span className="font-semibold">Payment failed</span> — your team is in read-only mode.
-            Update your payment method in PayPal to restore full access.
+            Contact support or re-subscribe to restore full access.
             {graceDaysLeft !== null && (
               <span className="font-semibold"> {graceDaysLeft} day{graceDaysLeft !== 1 ? "s" : ""} remaining.</span>
             )}

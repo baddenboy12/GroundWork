@@ -14,7 +14,9 @@ type: project
 
 **Billing**: PayPal subscriptions with webhook processing. Tiers: free, starter, pro, business. License keys for team management.
 
-**Package manager**: pnpm (pnpm-workspace.yaml present).
+**Mobile**: Capacitor 7 with @capacitor/filesystem, @capacitor/share, @capacitor/browser plugins. Native auth uses a custom WebView dialog (not Chrome Custom Tabs). Exports use Filesystem.writeFile to cache + Share.share to open system share sheet.
+
+**Package manager**: pnpm (pnpm-workspace.yaml present). Note: some scripts use `npm run` — both work.
 
 **Path aliases**: `@/` → `./src/`, `@/convex/` → `./convex/`
 

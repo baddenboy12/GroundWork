@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { format } from "date-fns";
 import { motion } from "motion/react";
 import { Clock, User, ImageIcon, MapPin } from "lucide-react";
@@ -15,7 +15,7 @@ type Props = {
   siteName?: string;
 };
 
-export default function LogCard({ log, siteName }: Props) {
+const LogCard = memo(function LogCard({ log, siteName }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const photos = log.photoUrls ?? [];
   const coverPhoto = photos[0];
@@ -105,4 +105,6 @@ export default function LogCard({ log, siteName }: Props) {
       />
     </>
   );
-}
+});
+
+export default LogCard;

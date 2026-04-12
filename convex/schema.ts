@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { STRIPE_SUBSCRIPTION_STATUS } from "./_lib/validators";
 
 export default defineSchema({
   users: defineTable({
@@ -19,24 +20,33 @@ export default defineSchema({
         v.literal("business")
       )
     ),
-    // true when tier was set directly by super_admin (no PayPal subscription)
+    // true when tier was set directly by super_admin (no paid subscription)
     adminGrantedTier: v.optional(v.boolean()),
-    // PayPal subscription tracking
-    paypalSubscriptionId: v.optional(v.string()),
-    paypalSubscriptionStatus: v.optional(v.string()),
-    // ISO date when a cancelled subscription's current billing cycle ends
-    paypalCancelEffectiveDate: v.optional(v.string()),
+    // Stripe subscription tracking
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    // Canonical Stripe subscription statuses, plus our synthetic "cancel_pending"
+    // (set locally when the user clicks cancel — Stripe itself reports "active"
+    // with cancel_at_period_end=true until the period ends).
+    stripeSubscriptionStatus: v.optional(STRIPE_SUBSCRIPTION_STATUS),
+    // ISO date when a cancel_pending subscription's current billing cycle ends
+    stripeCancelEffectiveDate: v.optional(v.string()),
+    // Short-lived marker stored before Stripe Checkout redirect so the return
+    // handler can sync even if the webhook lags.
+    stripeCheckoutSessionId: v.optional(v.string()),
     // R2 photo storage usage tracking (bytes)
     storageUsedBytes: v.optional(v.number()),
     // Applied license key (if the user joined a team via a key)
     appliedLicenseKeyId: v.optional(v.id("licenseKeys")),
-    // Pending team seat count stored server-side before PayPal redirect (prevents sessionStorage tampering)
+    // Pending team seat count stored server-side before Stripe Checkout redirect (prevents sessionStorage tampering)
     pendingTeamSeats: v.optional(v.number()),
     // Epoch ms when pendingTeamSeats was set — expires after 30 minutes
     pendingTeamSeatsAt: v.optional(v.number()),
-    // true when user can freely switch tiers without PayPal (for testing)
+    // true when user can freely switch tiers without a real subscription (for testing)
     sandboxMode: v.optional(v.boolean()),
-  }).index("by_token", ["tokenIdentifier"]),
+  })
+    .index("by_token", ["tokenIdentifier"])
+    .index("by_stripe_customer", ["stripeCustomerId"]),
 
   // License keys — represent a team workspace group
   licenseKeys: defineTable({
@@ -62,16 +72,12 @@ export default defineSchema({
     note: v.optional(v.string()),
     // true when created via self-service by a subscriber (not super-admin)
     selfCreated: v.optional(v.boolean()),
-    // Pending seat count stored server-side by reviseSubscriptionSeats before PayPal approval
-    pendingMaxMembers: v.optional(v.number()),
-    // Pending tier stored server-side by reviseSubscriptionTier before PayPal approval
-    pendingTier: v.optional(v.union(v.literal("pro"), v.literal("business"))),
     // ISO timestamp when key was suspended due to payment failure
     suspendedAt: v.optional(v.string()),
     // Why the key was suspended: payment_failed (grace period) vs admin (manual)
     suspendedReason: v.optional(v.union(v.literal("payment_failed"), v.literal("admin"))),
-    // The user who owns the PayPal subscription backing this key
-    paypalSubscriberId: v.optional(v.id("users")),
+    // The user who owns the Stripe subscription backing this key
+    stripeSubscriberId: v.optional(v.id("users")),
     // true when admin was transferred and the new admin hasn't set up payment yet
     pendingPaymentTransfer: v.optional(v.boolean()),
     // Scheduled function ID for auto-expiry after grace period (cancellable on reactivation)
@@ -89,17 +95,24 @@ export default defineSchema({
     .index("by_key", ["keyId"])
     .index("by_user", ["userId"]),
 
-  // Stores PayPal product + plan IDs created via initializePayPalPlans
-  paypalPlans: defineTable({
-    tier: v.union(
-      v.literal("pro"),
-      v.literal("business")
-    ),
-    planId: v.string(),
+  // Stores Stripe product + price IDs created via initializeStripePrices
+  // Four rows after init: (pro, base), (pro, seat), (business, base), (business, seat)
+  stripePrices: defineTable({
+    tier: v.union(v.literal("pro"), v.literal("business")),
+    kind: v.union(v.literal("base"), v.literal("seat")),
+    priceId: v.string(),
     productId: v.string(),
   })
-    .index("by_tier", ["tier"])
-    .index("by_plan_id", ["planId"]),
+    .index("by_tier_and_kind", ["tier", "kind"])
+    .index("by_price_id", ["priceId"]),
+
+  // Idempotency table for Stripe webhook events.
+  // Fast path: try-insert on event.id; duplicates are no-ops.
+  // A daily cron clears rows older than 7 days.
+  processedStripeEvents: defineTable({
+    eventId: v.string(),
+    processedAt: v.number(),
+  }).index("by_event_id", ["eventId"]),
 
   sites: defineTable({
     name: v.string(),

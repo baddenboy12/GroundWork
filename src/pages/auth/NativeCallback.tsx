@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { useAuth } from "react-oidc-context";
 
 /**
  * Native-only auth callback page.
@@ -75,38 +76,38 @@ async function exchangeCodeForTokens(): Promise<void> {
 export default function NativeCallback() {
   const [error, setError] = useState<string | null>(null);
   const processed = useRef(false);
+  const auth = useAuth();
 
   useEffect(() => {
     if (processed.current) return;
     processed.current = true;
 
-    // Check if user tokens are already stored (from a successful exchange)
     const authority = import.meta.env.VITE_KEYCLOAK_OIDC_AUTHORITY!;
     const clientId = import.meta.env.VITE_KEYCLOAK_OIDC_CLIENT_ID!;
     const userKey = `oidc.user:${authority}:${clientId}`;
 
-    if (localStorage.getItem(userKey)) {
-      // Already signed in — just go to dashboard
-      window.location.replace("/dashboard");
-      return;
-    }
-
     // Exchange code for tokens
     const params = new URLSearchParams(window.location.search);
     if (!params.has("code")) {
-      // No code in URL — nothing to process, go home
-      window.location.replace("/");
+      // No code in URL — if already signed in go to dashboard, otherwise go home
+      if (localStorage.getItem(userKey)) {
+        window.location.replace("/dashboard");
+      } else {
+        window.location.replace("/");
+      }
       return;
     }
 
     exchangeCodeForTokens()
       .then(() => {
-        window.location.replace("/dashboard");
+        // Navigate to /auth/callback so it picks up the stored tokens,
+        // authenticates with Convex, and calls updateCurrentUser
+        window.location.replace("/auth/callback");
       })
       .catch((err) => {
-        // If tokens got stored despite the error, just go to dashboard
+        // If tokens got stored despite the error, still go through callback
         if (localStorage.getItem(userKey)) {
-          window.location.replace("/dashboard");
+          window.location.replace("/auth/callback");
           return;
         }
         setError(err instanceof Error ? err.message : String(err));
@@ -118,11 +119,16 @@ export default function NativeCallback() {
       <div className="flex flex-col items-center justify-center h-svh gap-6 px-4 bg-background text-foreground">
         <div className="flex flex-col items-center gap-2 text-center">
           <p className="text-destructive font-medium text-lg">Sign-in Error</p>
-          <p className="text-sm text-muted-foreground max-w-md break-all">{error}</p>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Something went wrong during sign-in. Please try again.
+          </p>
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={() => window.location.replace("/")}>
             Return home
+          </Button>
+          <Button onClick={() => auth.signinRedirect()}>
+            Try again
           </Button>
         </div>
       </div>

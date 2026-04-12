@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
 import { useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import { CONFIG } from "@/lib/config.ts";
+import { useCachePhotos } from "@/hooks/use-cache-photos.ts";
 import { type FilterState } from "./FilterBar.tsx";
 import LogCard from "./LogCard.tsx";
 import OfflinePendingCard from "./OfflinePendingCard.tsx";
@@ -26,7 +28,7 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
   // Offline queue — show pending entries even when offline
   const offlineQueue = useOfflineQueueState();
 
-  const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
+  const [debouncedSearch] = useDebounce(filters.search.trim(), CONFIG.SEARCH_DEBOUNCE_MS);
 
   const isFiltered =
     debouncedSearch.length > 0 ||
@@ -42,7 +44,7 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
   // Default recent logs (no filters)
   const recentRaw = useQuery(
     api.logs.listRecent,
-    !isFiltered ? { limit: 24 } : "skip"
+    !isFiltered ? { limit: CONFIG.LOG_LIMIT_DEFAULT } : "skip"
   );
   const recent = useCachedQuery("gw_cache_recent_logs", recentRaw);
 
@@ -54,7 +56,7 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
           category: categoryArg,
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined,
-          limit: 50,
+          limit: CONFIG.LOG_LIMIT_SEARCH,
         }
       : "skip"
   );
@@ -81,27 +83,11 @@ export default function DashboardHome({ filters, onSelectSite }: Props) {
   const isLoading = logs === undefined;
 
   // Eagerly pre-cache all visible photo URLs into the SW cache
-  useEffect(() => {
-    if (!logs || !("caches" in window)) return;
-    const urls: string[] = [];
-    for (const log of logs) {
-      if (log.photoUrls) {
-        for (const url of log.photoUrls) {
-          if (url) urls.push(url);
-        }
-      }
-    }
-    if (urls.length === 0) return;
-    // Fire-and-forget: fetch each URL so the SW caches it
-    void (async () => {
-      for (const url of urls) {
-        try {
-          const hit = await caches.match(url);
-          if (!hit) await fetch(url);
-        } catch { /* best-effort */ }
-      }
-    })();
-  }, [logs]);
+  const photoUrls = useMemo(
+    () => (logs ?? []).flatMap((log) => log.photoUrls ?? []).filter(Boolean),
+    [logs]
+  );
+  useCachePhotos(photoUrls);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8">

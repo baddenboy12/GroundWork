@@ -1,3 +1,6 @@
+import { normalizeString } from "@/lib/string-utils.ts";
+import { CONFIG } from "@/lib/config.ts";
+
 /**
  * Levenshtein distance between two strings.
  */
@@ -34,8 +37,8 @@ function levenshtein(a: string, b: string): number {
  * 1 = identical, 0 = completely different.
  */
 export function stringSimilarity(a: string, b: string): number {
-  const na = a.toLowerCase().trim().replace(/\s+/g, " ");
-  const nb = b.toLowerCase().trim().replace(/\s+/g, " ");
+  const na = normalizeString(a);
+  const nb = normalizeString(b);
   if (na === nb) return 1;
   const maxLen = Math.max(na.length, nb.length);
   if (maxLen === 0) return 1;
@@ -55,13 +58,13 @@ export function findFuzzyMatches<T>(
   input: string,
   items: T[],
   getLabel: (item: T) => string,
-  threshold = 0.62
+  threshold = CONFIG.FUZZY_MATCH_THRESHOLD
 ): T[] {
-  const normalized = input.toLowerCase().trim().replace(/\s+/g, " ");
+  const normalized = normalizeString(input);
   if (normalized.length < 2) return [];
 
   return items.filter((item) => {
-    const label = getLabel(item).toLowerCase().trim().replace(/\s+/g, " ");
+    const label = normalizeString(getLabel(item));
     // Exclude already-caught substring matches
     const isSubstring =
       label.includes(normalized) || normalized.includes(label);

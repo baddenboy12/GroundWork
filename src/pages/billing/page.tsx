@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import SubscriptionTypeDialog from "./_components/SubscriptionTypeDialog.tsx";
+import SubscriptionTypeDialog, { EXTRA_SEAT_PRICE, MAX_TEAM_SEATS } from "./_components/SubscriptionTypeDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 
 // Feature rows shown in the comparison table
@@ -84,19 +84,28 @@ function extractErrorMessage(err: unknown): string {
   return "An unexpected error occurred.";
 }
 
-function PayPalBadge({ status }: { status: string }) {
-  const isActive = status === "ACTIVE" || status === "APPROVED";
+function StripeBadge({ status }: { status: string }) {
+  const isActive = status === "active" || status === "trialing";
+  const label = isActive
+    ? "Active"
+    : status === "cancel_pending"
+      ? "Cancelling"
+      : status === "past_due"
+        ? "Past due"
+        : status === "unpaid"
+          ? "Unpaid"
+          : status;
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full",
         isActive
-          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+          ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400"
           : "bg-muted text-muted-foreground"
       )}
     >
       <CreditCard className="w-2.5 h-2.5" />
-      PayPal {isActive ? "Active" : status}
+      Stripe {label}
     </span>
   );
 }
@@ -113,22 +122,21 @@ function AdminGrantedBadge() {
 export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const { tier, isLoading } = useSubscription();
   const user = useQuery(api.users.getCurrentUser, {});
-  const paypalStatus = useQuery(api.paypal.plans.getPayPalStatus, {});
+  const stripePricesStatus = useQuery(api.stripe.prices.getStripeStatus, {});
   const isAdmin = useQuery(api.users.getIsAdmin, {});
   const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
   const allKeys = useQuery(api.licenseKeys.listAll, {});
   const allUsers = useQuery(api.users.listAllUsers, {});
 
   const setTierManual = useMutation(api.users.setSubscriptionTier);
-  const createSubscriptionAction = useAction(api.paypal.actions.createSubscription);
-  const syncSubscriptionAction = useAction(api.paypal.actions.syncSubscription);
-  const cancelSubscriptionAction = useAction(api.paypal.actions.cancelSubscription);
-  const initializePlansAction = useAction(api.paypal.actions.initializePayPalPlans);
-  const reviseSubscriptionSeatsAction = useAction(api.paypal.actions.reviseSubscriptionSeats);
-  const applyPendingSeatsFromRevisionAction = useAction(api.paypal.actions.applyPendingSeatsFromRevision);
-  const reviseSubscriptionTierAction = useAction(api.paypal.actions.reviseSubscriptionTier);
-  const takeOverSubscriptionAction = useAction(api.paypal.actions.takeOverSubscription);
-  const applyPendingTierFromRevisionAction = useAction(api.paypal.actions.applyPendingTierFromRevision);
+  const createCheckoutSessionAction = useAction(api.stripe.actions.createCheckoutSession);
+  const syncSubscriptionAction = useAction(api.stripe.actions.syncSubscription);
+  const cancelSubscriptionAction = useAction(api.stripe.actions.cancelSubscription);
+  const reactivateSubscriptionAction = useAction(api.stripe.actions.reactivateSubscription);
+  const initializePlansAction = useAction(api.stripe.actions.initializeStripePrices);
+  const reviseSubscriptionSeatsAction = useAction(api.stripe.actions.reviseSubscriptionSeats);
+  const reviseSubscriptionTierAction = useAction(api.stripe.actions.reviseSubscriptionTier);
+  const takeOverSubscriptionAction = useAction(api.stripe.actions.takeOverSubscription);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
   const backfillUserMetadataMutation = useMutation(api.users.backfillUserMetadata);
   const applyKeyMutation = useMutation(api.licenseKeys.applyKey);
@@ -139,7 +147,6 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const transferAdminMutation = useMutation(api.licenseKeys.transferAdmin);
   const kickMemberMutation = useMutation(api.licenseKeys.kickMember);
   const changeTierForTeamMutation = useMutation(api.licenseKeys.changeTierForTeam);
-  const clearPendingTierMutation = useMutation(api.licenseKeys.clearPendingTier);
   const deleteKeyMutation = useMutation(api.licenseKeys.deleteKey);
   const toggleSandboxModeMutation = useMutation(api.users.toggleSandboxMode);
   const updateMaxMembersMutation = useMutation(api.licenseKeys.updateMaxMembers);
@@ -148,11 +155,12 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
   const convex = useConvex();
 
-  const [paypalPending, setPaypalPending] = useState<SubscriptionTier | null>(null);
+  const [stripePending, setStripePending] = useState<SubscriptionTier | null>(null);
   const [syncPending, setSyncPending] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(1); // Pro starts front
   const [cancelPending, setCancelPending] = useState(false);
+  const [reactivatePending, setReactivatePending] = useState(false);
   const [initPending, setInitPending] = useState(false);
   const [cleanupPending, setCleanupPending] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<{ deleted: number; checked: number } | null>(null);
@@ -206,155 +214,75 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
   const navigate = useNavigate();
 
-  const isPayPalConfigured = paypalStatus?.isInitialized ?? false;
-  const hasActivePayPalSub =
-    user?.paypalSubscriptionStatus === "ACTIVE" ||
-    user?.paypalSubscriptionStatus === "APPROVED" ||
-    user?.paypalSubscriptionStatus === "CANCEL_PENDING";
+  const isStripeConfigured = stripePricesStatus?.isInitialized ?? false;
+  const hasActiveStripeSub =
+    user?.stripeSubscriptionStatus === "active" ||
+    user?.stripeSubscriptionStatus === "trialing" ||
+    user?.stripeSubscriptionStatus === "cancel_pending";
 
   // Is the current user the last member of their team?
   const isLastTeamMember = myKeyInfo?.memberCount === 1;
 
-  // Handle return from PayPal approval or cancellation (via /paypal/return)
+  // Handle return from Stripe Checkout (via /stripe/return)
   useEffect(() => {
-    const subscriptionId = sessionStorage.getItem("paypal_pending_subscription_id");
-    const paypalCancelled = sessionStorage.getItem("paypal_cancelled");
+    const sessionId = sessionStorage.getItem("stripe_pending_session_id");
+    const stripeCancelled = sessionStorage.getItem("stripe_cancelled");
     const wantsTeam = sessionStorage.getItem("gw_sub_team");
-    // NOTE: gw_sub_seats removed — seat count is now stored server-side via storePendingTeamSeats
-    const pendingKeyId = sessionStorage.getItem("gw_pending_key_id");
-    // NOTE: gw_pending_seats removed — pending seat count is now in DB via reviseSubscriptionSeats
-    const pendingTierKeyId = sessionStorage.getItem("gw_pending_tier_key_id");
     const pendingTakeoverKeyId = sessionStorage.getItem("gw_pending_takeover_key_id");
 
-    sessionStorage.removeItem("paypal_pending_subscription_id");
-    sessionStorage.removeItem("paypal_cancelled");
+    sessionStorage.removeItem("stripe_pending_session_id");
+    sessionStorage.removeItem("stripe_cancelled");
     sessionStorage.removeItem("gw_sub_team");
-    sessionStorage.removeItem("gw_pending_key_id");
-    sessionStorage.removeItem("gw_pending_tier_key_id");
     sessionStorage.removeItem("gw_pending_takeover_key_id");
 
-    if (paypalCancelled === "1") {
-      toast.info("PayPal update not completed — no changes made.");
+    if (stripeCancelled === "1") {
+      toast.info("Checkout cancelled — no changes made.");
       return;
     }
+    if (!sessionId) return;
 
-    // ── Payment takeover return ───────────────────────────────────────────────
-    if (pendingTakeoverKeyId && subscriptionId) {
-      setSyncPending(true);
-      (async () => {
-        try {
-          await syncSubscriptionAction({ subscriptionId });
-          // Complete the payment transfer on the key
+    setSyncPending(true);
+    (async () => {
+      try {
+        // Payment takeover path (new admin paid after admin transfer)
+        if (pendingTakeoverKeyId) {
+          await syncSubscriptionAction({ sessionId });
           await completePaymentTransferMutation({
             keyId: pendingTakeoverKeyId as Parameters<typeof completePaymentTransferMutation>[0]["keyId"],
           });
           toast.success("Payment setup complete! You are now the billing owner.");
-        } catch (err) {
-          toast.error(extractErrorMessage(err));
-        } finally {
-          setSyncPending(false);
+          return;
         }
-      })();
-      return;
-    }
 
-    // If user navigated back without approving (no subscriptionId), clear pending tier
-    if (pendingTierKeyId && !subscriptionId) {
-      // User backed out — clear the pending tier from the DB
-      clearPendingTierMutation({
-        keyId: pendingTierKeyId as Parameters<typeof clearPendingTierMutation>[0]["keyId"],
-      }).catch(() => {});
-      return;
-    }
+        // New subscription path
+        const { tier: newTier } = await syncSubscriptionAction({ sessionId });
+        const tierName =
+          TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier;
+        toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
 
-    // ── Tier revision return ──────────────────────────────────────────────────
-    // Only apply when BOTH pendingTierKeyId AND subscriptionId are present,
-    // meaning PayPal redirected back after approval (not browser back button).
-    if (pendingTierKeyId && subscriptionId) {
-      setSyncPending(true);
-      (async () => {
-        try {
-          // Sync the subscription first if we have a subscriptionId
-          if (subscriptionId) {
-            await syncSubscriptionAction({ subscriptionId });
+        // If the user chose team subscription, auto-create their team key.
+        // Seat count is read from the DB (user.pendingTeamSeats stored before
+        // Stripe Checkout redirect) instead of sessionStorage to prevent tampering.
+        if (wantsTeam === "1") {
+          try {
+            const latestUser = await convex.query(api.users.getCurrentUser, {});
+            const maxMembers = latestUser?.pendingTeamSeats ?? undefined;
+            const { code } = await createSelfKeyMutation({
+              tier: newTier as "pro" | "business",
+              maxMembers: maxMembers && maxMembers > 0 ? maxMembers : undefined,
+            });
+            const seatsLabel = maxMembers && maxMembers > 1 ? ` (${maxMembers} seats)` : "";
+            toast.success(`Team workspace created${seatsLabel}! Share key ${code} with your team members.`);
+          } catch {
+            toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
           }
-          const { tier } = await applyPendingTierFromRevisionAction({
-            keyId: pendingTierKeyId as Parameters<typeof applyPendingTierFromRevisionAction>[0]["keyId"],
-          });
-          if (tier) {
-            const tierName = TIER_CONFIG[tier as SubscriptionTier]?.name ?? tier;
-            toast.success(`Team tier upgraded to ${tierName} for all members!`);
-          } else {
-            toast.success("Subscription synced. Tier unchanged.");
-          }
-        } catch (err) {
-          toast.error(extractErrorMessage(err));
-        } finally {
-          setSyncPending(false);
         }
-      })();
-      return;
-    }
-
-    // ── Seat revision return ──────────────────────────────────────────────────
-    // pendingKeyId is just the team key ID (not sensitive — backend verifies admin role).
-    // The actual seat count comes from the DB (key.pendingMaxMembers), NOT sessionStorage,
-    // so it cannot be manipulated by the user to gain more seats than they paid for.
-    if (subscriptionId && pendingKeyId) {
-      setSyncPending(true);
-      syncSubscriptionAction({ subscriptionId })
-        .then(async () => {
-          const { maxMembers } = await applyPendingSeatsFromRevisionAction({
-            keyId: pendingKeyId as Parameters<typeof applyPendingSeatsFromRevisionAction>[0]["keyId"],
-          });
-          if (maxMembers !== null) {
-            toast.success(`Billing updated — seat limit set to ${maxMembers}.`);
-          } else {
-            toast.success("Subscription synced. Seat limit unchanged.");
-          }
-        })
-        .catch((err: unknown) => {
-          toast.error(extractErrorMessage(err));
-        })
-        .finally(() => setSyncPending(false));
-      return;
-    }
-
-    // ── New subscription return ───────────────────────────────────────────────
-    if (subscriptionId) {
-      setSyncPending(true);
-      syncSubscriptionAction({ subscriptionId })
-        .then(async ({ tier: newTier }) => {
-          const tierName =
-            TIER_CONFIG[newTier as SubscriptionTier]?.name ?? newTier;
-          toast.success(`Subscribed to ${tierName}! Your plan is now active.`);
-
-          // If the user chose team subscription, auto-create their team key.
-          // Seat count is read from the DB (user.pendingTeamSeats stored before
-          // PayPal redirect) instead of sessionStorage to prevent tampering.
-          if (wantsTeam === "1") {
-            try {
-              const latestUser = await convex.query(api.users.getCurrentUser, {});
-              // Use DB-stored pending seat count — NOT sessionStorage
-              const maxMembers = latestUser?.pendingTeamSeats ?? undefined;
-              const { code } = await createSelfKeyMutation({
-                tier: newTier as "pro" | "business",
-                maxMembers: maxMembers && maxMembers > 0 ? maxMembers : undefined,
-              });
-              const seatsLabel = maxMembers && maxMembers > 1 ? ` (${maxMembers} seats)` : "";
-              toast.success(`Team workspace created${seatsLabel}! Share key ${code} with your team members.`);
-            } catch {
-              toast.error("Subscription activated but team key creation failed. You can set up your team from the billing page.");
-            }
-          }
-        })
-        .catch((err: unknown) => {
-          toast.error(extractErrorMessage(err));
-        })
-        .finally(() => setSyncPending(false));
-      return;
-    }
-
+      } catch (err) {
+        toast.error(extractErrorMessage(err));
+      } finally {
+        setSyncPending(false);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -373,35 +301,35 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     setSubTypeDialogTier(signupTier as SubscriptionTier);
   }, [isLoading, tier]);
 
-  const handlePayPalSubscribe = async (newTier: SubscriptionTier, isTeam: boolean, maxMembers: number) => {
+  const handleStripeSubscribe = async (newTier: SubscriptionTier, isTeam: boolean, maxMembers: number) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
-    setPaypalPending(newTier);
+    setStripePending(newTier);
     try {
       if (isTeam) {
         // Store team flag in sessionStorage (boolean, not sensitive)
         sessionStorage.setItem("gw_sub_team", "1");
         // Store seat count SERVER-SIDE to prevent client tampering.
-        // Previously stored in sessionStorage (gw_sub_seats) which could be manipulated
-        // to get more seats than the user paid for after PayPal approval.
         if (maxMembers > 1) {
           await storePendingTeamSeatsMutation({ seats: maxMembers });
         }
       }
       const origin = window.location.origin;
-      const { approvalUrl } = await createSubscriptionAction({
+      const { checkoutUrl } = await createCheckoutSessionAction({
         tier: newTier as "pro" | "business",
-        returnUrl: `${origin}/paypal/return`,
-        cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+        isTeam,
+        maxMembers,
+        returnUrl: `${origin}/stripe/return`,
+        cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
       });
-      window.location.href = approvalUrl;
+      window.location.href = checkoutUrl;
     } catch (err) {
       toast.error(extractErrorMessage(err));
       sessionStorage.removeItem("gw_sub_team");
-      setPaypalPending(null);
+      setStripePending(null);
     }
   };
 
-  // Opens the individual vs team dialog before going to PayPal
+  // Opens the individual vs team dialog before going to Stripe Checkout
   const handleSubscribeClick = (newTier: SubscriptionTier) => {
     if (newTier === "free" || newTier === "starter" || newTier === tier) return;
     setSubTypeDialogTier(newTier);
@@ -411,7 +339,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     if (!subTypeDialogTier) return;
     const t = subTypeDialogTier;
     setSubTypeDialogTier(null);
-    void handlePayPalSubscribe(t, isTeam, maxMembers);
+    void handleStripeSubscribe(t, isTeam, maxMembers);
   };
 
   const handleTransferAdmin = async () => {
@@ -420,12 +348,12 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     try {
       await transferAdminMutation({ keyId: myKeyInfo.keyId, newAdminUserId: transferAdminTarget });
 
-      // If this is a PayPal-backed team, cancel the old admin's subscription
+      // If this is a Stripe-backed team, cancel the old admin's subscription
       // at end of billing cycle so the new admin can set up their own payment.
-      const hasPayPalSub =
-        user?.paypalSubscriptionStatus === "ACTIVE" ||
-        user?.paypalSubscriptionStatus === "APPROVED";
-      if (hasPayPalSub && myKeyInfo.selfCreated) {
+      const hasStripeSub =
+        user?.stripeSubscriptionStatus === "active" ||
+        user?.stripeSubscriptionStatus === "trialing";
+      if (hasStripeSub && myKeyInfo.selfCreated) {
         try {
           await cancelSubscriptionAction();
         } catch {
@@ -475,41 +403,33 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         return;
       }
 
-      const hasPayPalSub =
-        user.paypalSubscriptionStatus === "ACTIVE" ||
-        user.paypalSubscriptionStatus === "APPROVED";
+      const hasStripeSub =
+        user.stripeSubscriptionStatus === "active" ||
+        user.stripeSubscriptionStatus === "trialing" ||
+        user.stripeSubscriptionStatus === "cancel_pending";
 
-      if (createTeamSeats > 1 && hasPayPalSub) {
-        // Multi-seat team with active PayPal: create team with 1 seat first,
-        // then revise the subscription to charge for extra seats via PayPal.
+      if (createTeamSeats > 1 && hasStripeSub) {
+        // Multi-seat team with active Stripe sub: create team with 1 seat,
+        // then update the Stripe subscription to charge for extra seats.
+        // Stripe applies immediately with automatic proration — no redirect.
         const { keyId, code } = await createSelfKeyMutation({
           tier: activeTier,
           maxMembers: 1,
         });
-        toast.info(`Team created (key: ${code}). Redirecting to PayPal to add ${createTeamSeats - 1} extra seat(s)…`);
+        toast.info(`Team created (key: ${code}). Adding ${createTeamSeats - 1} extra seat(s)…`);
 
-        // Use the existing seat revision flow to charge for extra seats
-        sessionStorage.setItem("gw_pending_key_id", keyId);
-        const origin = window.location.origin;
-        const { approvalUrl, applied } = await reviseSubscriptionSeatsAction({
+        await reviseSubscriptionSeatsAction({
           keyId: keyId as Parameters<typeof reviseSubscriptionSeatsAction>[0]["keyId"],
           maxMembers: createTeamSeats,
-          returnUrl: `${origin}/paypal/return`,
-          cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
         });
 
-        if (applied) {
-          // Price decrease or no change — applied immediately
-          sessionStorage.removeItem("gw_pending_key_id");
-          toast.success(`Team workspace created with ${createTeamSeats} seats!`);
-          setCreateTeamOpen(false);
-          setCreateTeamSeats(1);
-        } else if (approvalUrl) {
-          // Redirect to PayPal for approval of the seat charge increase
-          window.location.href = approvalUrl;
-        }
+        toast.success(
+          `Team workspace created with ${createTeamSeats} seats! You'll be charged the prorated seat cost at next billing.`
+        );
+        setCreateTeamOpen(false);
+        setCreateTeamSeats(1);
       } else {
-        // Single seat team or no PayPal sub — create directly
+        // Single seat team or no active Stripe sub — create directly
         if (createTeamSeats > 1) {
           await storePendingTeamSeatsMutation({ seats: createTeamSeats });
         }
@@ -533,41 +453,24 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     if (!myKeyInfo) return;
     setEditSeatsPending(true);
     try {
-      // If the key was created via PayPal (selfCreated), seat changes must
-      // always go through PayPal — even if the current admin isn't the
-      // original subscriber (e.g. after an admin transfer).
-      const isPayPalBackedTeam = myKeyInfo.selfCreated;
-
-      if (isPayPalBackedTeam) {
-        // Store only the keyId in sessionStorage (not the seat count — that is stored
-        // server-side by reviseSubscriptionSeats to prevent sessionStorage tampering)
-        sessionStorage.setItem("gw_pending_key_id", myKeyInfo.keyId);
-        const origin = window.location.origin;
-        const { approvalUrl, applied } = await reviseSubscriptionSeatsAction({
+      // For self-created (Stripe-backed) keys, update via Stripe — applied
+      // immediately with automatic proration. For admin-granted keys, write
+      // the seat count directly.
+      if (myKeyInfo.selfCreated) {
+        const { maxMembers } = await reviseSubscriptionSeatsAction({
           keyId: myKeyInfo.keyId,
           maxMembers: editSeatsValue,
-          returnUrl: `${origin}/paypal/return`,
-          cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
         });
-
-        if (applied) {
-          // No approval needed — revision applied immediately (price decrease)
-          sessionStorage.removeItem("gw_pending_key_id");
-          toast.success(`Seat limit updated to ${editSeatsValue}.`);
-          setEditSeatsOpen(false);
-        } else if (approvalUrl) {
-          // Redirect to PayPal for subscriber approval (price increase).
-          // Seat count is stored in DB (key.pendingMaxMembers) by reviseSubscriptionSeats.
-          window.location.href = approvalUrl;
-        }
+        toast.success(
+          `Seat limit updated to ${maxMembers}. You'll be charged the prorated amount at next billing.`
+        );
+        setEditSeatsOpen(false);
       } else {
-        // No PayPal subscription — update seat count directly
         await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: editSeatsValue });
         toast.success(`Seat limit updated to ${editSeatsValue}.`);
         setEditSeatsOpen(false);
       }
     } catch (err) {
-      sessionStorage.removeItem("gw_pending_key_id");
       toast.error(extractErrorMessage(err));
     } finally {
       setEditSeatsPending(false);
@@ -579,39 +482,23 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     setChangeTeamTierPending(true);
     setChangeTeamTierTarget(newTier);
 
-    // Determine if this is an upgrade on an active PayPal subscription
-    const tierRank: Record<string, number> = { free: 0, starter: 0, pro: 1, business: 2 };
-    const isUpgrade = (tierRank[newTier] ?? 0) > (tierRank[myKeyInfo.tier] ?? 0);
-    // If the key was created via PayPal (selfCreated), tier changes must
-    // always go through PayPal — even after admin transfer.
-    const needsPayPalRevision = isUpgrade && myKeyInfo.selfCreated;
-
     try {
-      if (needsPayPalRevision) {
-        // Go directly to PayPal revision — don't call the mutation first
-        sessionStorage.setItem("gw_pending_tier_key_id", myKeyInfo.keyId);
-        const { approvalUrl, applied } = await reviseSubscriptionTierAction({
+      // For self-created (Stripe-backed) keys, swap Stripe price IDs directly.
+      // Stripe applies immediately with automatic proration — no redirect.
+      // For admin-granted keys, write the tier directly via the mutation.
+      if (myKeyInfo.selfCreated) {
+        await reviseSubscriptionTierAction({
           keyId: myKeyInfo.keyId,
           newTier,
-          returnUrl: `${window.location.origin}/paypal/return`,
-          cancelUrl: `${window.location.origin}/paypal/return?paypal_cancelled=1`,
         });
-        if (applied) {
-          sessionStorage.removeItem("gw_pending_tier_key_id");
-          toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
-          setChangeTeamTierOpen(false);
-        } else if (approvalUrl) {
-          window.location.href = approvalUrl;
-          return; // Don't clear pending state — user is leaving the page
-        }
+        toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
+        setChangeTeamTierOpen(false);
       } else {
-        // Downgrade or no PayPal sub — apply directly
         await changeTierForTeamMutation({ keyId: myKeyInfo.keyId, tier: newTier });
         toast.success(`Team tier changed to ${TIER_CONFIG[newTier].name} for all members.`);
         setChangeTeamTierOpen(false);
       }
     } catch (err) {
-      sessionStorage.removeItem("gw_pending_tier_key_id");
       toast.error(extractErrorMessage(err));
     } finally {
       setChangeTeamTierPending(false);
@@ -665,18 +552,41 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     if (!switchTarget) return;
     setSwitchPending(true);
     try {
+      // Preserve team context when switching plans: if user is a team admin
+      // with an active team, pass isTeam and maxMembers so the new checkout
+      // creates a subscription that matches their team structure.
+      const isTeamAdmin = myKeyInfo?.isAdmin && myKeyInfo?.selfCreated;
+      const teamSeats = isTeamAdmin ? (myKeyInfo?.maxMembers ?? 1) : 1;
+
+      // Cancel the old subscription first (cancel at period end), then redirect.
+      // If the user abandons checkout, they can click "Resume subscription" on
+      // the cancel-pending banner to undo the cancel.
       await cancelSubscriptionAction();
       const origin = window.location.origin;
-      const { approvalUrl } = await createSubscriptionAction({
+      const { checkoutUrl } = await createCheckoutSessionAction({
         tier: switchTarget as "pro" | "business",
-        returnUrl: `${origin}/paypal/return`,
-        cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+        isTeam: !!isTeamAdmin,
+        maxMembers: teamSeats,
+        returnUrl: `${origin}/stripe/return`,
+        cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
       });
-      window.location.href = approvalUrl;
+      window.location.href = checkoutUrl;
     } catch (err) {
       toast.error(extractErrorMessage(err));
       setSwitchPending(false);
       setSwitchTarget(null);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    setReactivatePending(true);
+    try {
+      await reactivateSubscriptionAction();
+      toast.success("Subscription resumed — your plan will continue at the next billing cycle.");
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setReactivatePending(false);
     }
   };
 
@@ -685,7 +595,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     try {
       const result = await initializePlansAction();
       toast.success(
-        `PayPal plans ready! Pro: ${result.planIds.pro ?? "–"}`
+        `Stripe prices ready! Pro base: ${result.priceIds.pro.base ?? "–"}`
       );
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -825,7 +735,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
               <p className="text-sm text-red-200">
                 <span className="font-semibold">Payment failed</span> — your team is in read-only mode.
-                Update your payment method in PayPal to restore full access.
+                Contact support or re-subscribe to restore full access.
                 {daysLeft !== null && (
                   <span className="font-semibold"> {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining before your team is removed.</span>
                 )}
@@ -861,10 +771,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   </p>
                   {user?.adminGrantedTier ? (
                     <AdminGrantedBadge />
-                  ) : (user?.paypalSubscriptionStatus === "ACTIVE" ||
-                    user?.paypalSubscriptionStatus === "APPROVED") ? (
-                    <PayPalBadge status={user.paypalSubscriptionStatus} />
-                  ) : user?.paypalSubscriptionStatus === "CANCEL_PENDING" ? (
+                  ) : (user?.stripeSubscriptionStatus === "active" ||
+                    user?.stripeSubscriptionStatus === "trialing") ? (
+                    <StripeBadge status={user.stripeSubscriptionStatus} />
+                  ) : user?.stripeSubscriptionStatus === "cancel_pending" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-xs font-semibold border border-amber-500/30">
                       Cancelling
                     </span>
@@ -872,7 +782,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 </div>
               </div>
             </div>
-            {hasActivePayPalSub && user?.paypalSubscriptionStatus !== "CANCEL_PENDING" && (
+            {hasActiveStripeSub && user?.stripeSubscriptionStatus !== "cancel_pending" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -887,16 +797,34 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         })()}
 
         {/* Cancel-pending banner */}
-        {user?.paypalSubscriptionStatus === "CANCEL_PENDING" && (
+        {user?.stripeSubscriptionStatus === "cancel_pending" && (
           <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-base text-amber-200">
-              Your subscription has been cancelled. Your current plan remains active until{" "}
-              {user.paypalCancelEffectiveDate
-                ? <strong>{new Date(user.paypalCancelEffectiveDate).toLocaleDateString()}</strong>
-                : <strong>the end of your billing cycle</strong>}
-              . After that, your account will be downgraded to Free.
-            </p>
+            <div className="flex-1 space-y-2">
+              <p className="text-base text-amber-200">
+                Your subscription has been cancelled. Your current plan remains active until{" "}
+                {user.stripeCancelEffectiveDate
+                  ? <strong>{new Date(user.stripeCancelEffectiveDate).toLocaleDateString()}</strong>
+                  : <strong>the end of your billing cycle</strong>}
+                . After that, your account will be downgraded to Free.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-500/40 text-amber-200 hover:bg-amber-500/15"
+                onClick={handleReactivateSubscription}
+                disabled={reactivatePending}
+              >
+                {reactivatePending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Resuming…
+                  </>
+                ) : (
+                  "Resume subscription"
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -917,18 +845,18 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   try {
                     const origin = window.location.origin;
                     sessionStorage.setItem("gw_pending_takeover_key_id", myKeyInfo.keyId);
-                    const { approvalUrl } = await takeOverSubscriptionAction({
+                    const { checkoutUrl } = await takeOverSubscriptionAction({
                       keyId: myKeyInfo.keyId,
-                      returnUrl: `${origin}/paypal/return`,
-                      cancelUrl: `${origin}/paypal/return?paypal_cancelled=1`,
+                      returnUrl: `${origin}/stripe/return`,
+                      cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
                     });
-                    window.location.href = approvalUrl;
+                    window.location.href = checkoutUrl;
                   } catch (err) {
                     toast.error(extractErrorMessage(err));
                   }
                 }}
               >
-                Set Up Payment via PayPal
+                Set Up Payment via Stripe
               </Button>
             </div>
           </div>
@@ -1271,22 +1199,22 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         )}
         {isAdmin && (
           <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
-            isPayPalConfigured
+            isStripeConfigured
               ? "border-border bg-card"
               : "border-amber-500/30 bg-amber-500/5"
           }`}>
             <div className="flex items-center gap-3">
-              <Settings2 className={`w-5 h-5 shrink-0 ${isPayPalConfigured ? "text-muted-foreground" : "text-amber-500"}`} />
+              <Settings2 className={`w-5 h-5 shrink-0 ${isStripeConfigured ? "text-muted-foreground" : "text-amber-500"}`} />
               <div>
                 <p className="font-semibold text-foreground text-sm">
-                  {isPayPalConfigured ? "PayPal plans configured" : "PayPal not yet configured"}
+                  {isStripeConfigured ? "Stripe prices configured" : "Stripe not yet configured"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {isPayPalConfigured
-                    ? "Re-initialize if you have switched to new PayPal credentials (e.g. sandbox → live)."
-                    : <>Make sure <code className="text-amber-600">PAYPAL_CLIENT_ID</code> and{" "}
-                      <code className="text-amber-600">PAYPAL_CLIENT_SECRET</code> are added in the
-                      Secrets tab, then click Initialize.</>}
+                  {isStripeConfigured
+                    ? "Re-initialize if you have switched Stripe keys (e.g. test → live)."
+                    : <>Make sure <code className="text-amber-600">STRIPE_SECRET_KEY</code> and{" "}
+                      <code className="text-amber-600">STRIPE_WEBHOOK_SECRET</code> are added in the
+                      Convex Secrets tab, then click Initialize.</>}
                 </p>
               </div>
             </div>
@@ -1302,10 +1230,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                   Initializing…
                 </>
-              ) : isPayPalConfigured ? (
-                "Re-initialize PayPal"
+              ) : isStripeConfigured ? (
+                "Re-initialize Stripe"
               ) : (
-                "Initialize PayPal"
+                "Initialize Stripe"
               )}
             </Button>
           </div>
@@ -1387,7 +1315,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
               <p className="text-xs text-muted-foreground">
-                Enable sandbox mode to let a user switch between plans freely without PayPal.
+                Enable sandbox mode to let a user switch between plans freely without going through Stripe.
               </p>
               <Input
                 placeholder="Filter by email…"
@@ -1476,9 +1404,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         <div>
           <h2 className="text-3xl font-bold text-foreground mb-2">Choose your plan</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            {isPayPalConfigured
-              ? "Subscribe securely via PayPal. Cancel any time."
-              : "Initialize PayPal above to enable real payment processing."}
+            {isStripeConfigured
+              ? "Subscribe securely via Stripe. Cancel any time."
+              : "Initialize Stripe above to enable real payment processing."}
           </p>
 
           <PlanCarousel
@@ -1489,7 +1417,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               const isCurrent = t === tier;
               const isUpgrade =
                 tierOrder.indexOf(t) > tierOrder.indexOf(tier);
-              const isPendingThis = paypalPending === t;
+              const isPendingThis = stripePending === t;
               const isFree = t === "free";
 
               const cardTint = {
@@ -1582,7 +1510,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                     </li>
                   </ul>
 
-                  {/* Admin/sandbox override: instant plan switch without PayPal */}
+                  {/* Admin/sandbox override: instant plan switch without Stripe */}
                   {(isAdmin || user?.sandboxMode) ? (
                     <Button
                       size="sm"
@@ -1602,18 +1530,18 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                         "Switch to this plan"
                       )}
                     </Button>
-                  ) : /* Free tier: no PayPal needed */
+                  ) : /* Free tier: no Stripe needed */
                   isFree ? (
                     <Button
                       size="sm"
                       className="w-full"
                       variant="secondary"
-                      disabled={isCurrent || !hasActivePayPalSub}
+                      disabled={isCurrent || !hasActiveStripeSub}
                       onClick={() => setCancelDialogOpen(true)}
                     >
                       {isCurrent ? "Current plan" : "Downgrade to Free"}
                     </Button>
-                  ) : isPayPalConfigured ? (
+                  ) : isStripeConfigured ? (
                     <Button
                       size="sm"
                       className="w-full"
@@ -1624,9 +1552,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                           ? "default"
                           : "secondary"
                       }
-                      disabled={isCurrent || paypalPending !== null || switchPending}
+                      disabled={isCurrent || stripePending !== null || switchPending}
                       onClick={() =>
-                        hasActivePayPalSub && !isCurrent
+                        hasActiveStripeSub && !isCurrent
                           ? setSwitchTarget(t)
                           : handleSubscribeClick(t)
                       }
@@ -1638,7 +1566,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                         </>
                       ) : isCurrent ? (
                         "Current plan"
-                      ) : hasActivePayPalSub ? (
+                      ) : hasActiveStripeSub ? (
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
                           Switch to this plan
@@ -1646,12 +1574,12 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       ) : isUpgrade ? (
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                          Subscribe via PayPal
+                          Subscribe via Stripe
                         </>
                       ) : (
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                          Switch via PayPal
+                          Switch via Stripe
                         </>
                       )}
                     </Button>
@@ -1662,7 +1590,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       variant="secondary"
                       disabled
                     >
-                      PayPal required
+                      Stripe required
                     </Button>
                   )}
                 </div>
@@ -1670,9 +1598,9 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             })}
           />
 
-          {hasActivePayPalSub && (
+          {hasActiveStripeSub && (
             <p className="text-sm text-muted-foreground mt-4">
-              Switching plans will cancel your current subscription and start a new one via PayPal.
+              Switching plans will cancel your current subscription and start a new one via Stripe.
             </p>
           )}
 
@@ -1744,7 +1672,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         </div>
 
         <p className="text-center text-base text-muted-foreground pb-8">
-          Payments are processed securely via PayPal.
+          Payments are processed securely via Stripe.
           <br />
           Questions? Contact us at{" "}
           <a href="mailto:groundwork@teezfpo.com" className="text-primary hover:underline">
@@ -1788,8 +1716,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             </DialogTitle>
             <DialogDescription>
               Your current <strong>{TIER_CONFIG[tier].name}</strong> subscription will be
-              cancelled and you will be redirected to PayPal to start a new{" "}
+              set to cancel at the end of the billing period and you will be redirected
+              to Stripe to start a new{" "}
               <strong>{switchTarget ? TIER_CONFIG[switchTarget].name : ""}</strong> subscription.
+              If you change your mind, you can resume your current plan from the billing page.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1807,7 +1737,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   Processing…
                 </>
               ) : (
-                "Continue to PayPal"
+                "Continue to Stripe"
               )}
             </Button>
           </DialogFooter>
@@ -2027,16 +1957,16 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               </div>
               <button
                 type="button"
-                onClick={() => setCreateTeamSeats(Math.min(50, createTeamSeats + 1))}
+                onClick={() => setCreateTeamSeats(Math.min(MAX_TEAM_SEATS, createTeamSeats + 1))}
                 className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
-                disabled={createTeamSeats >= 50}
+                disabled={createTeamSeats >= MAX_TEAM_SEATS}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
             {createTeamSeats > 1 && (
               <p className="text-xs text-muted-foreground">
-                {createTeamSeats - 1} extra seat{createTeamSeats > 2 ? "s" : ""} × $1.99 = ${((createTeamSeats - 1) * 1.99).toFixed(2)}/mo additional
+                {createTeamSeats - 1} extra seat{createTeamSeats > 2 ? "s" : ""} × ${EXTRA_SEAT_PRICE} = ${((createTeamSeats - 1) * EXTRA_SEAT_PRICE).toFixed(2)}/mo additional
               </p>
             )}
           </div>
@@ -2114,16 +2044,16 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
               </div>
               <button
                 type="button"
-                onClick={() => setEditSeatsValue(Math.min(50, editSeatsValue + 1))}
+                onClick={() => setEditSeatsValue(Math.min(MAX_TEAM_SEATS, editSeatsValue + 1))}
                 className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
-                disabled={editSeatsValue >= 50}
+                disabled={editSeatsValue >= MAX_TEAM_SEATS}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
             {editSeatsValue > 1 && (
               <p className="text-xs text-muted-foreground">
-                {editSeatsValue - 1} extra seat{editSeatsValue > 2 ? "s" : ""} × $1.99 = ${((editSeatsValue - 1) * 1.99).toFixed(2)}/mo additional
+                {editSeatsValue - 1} extra seat{editSeatsValue > 2 ? "s" : ""} × ${EXTRA_SEAT_PRICE} = ${((editSeatsValue - 1) * EXTRA_SEAT_PRICE).toFixed(2)}/mo additional
               </p>
             )}
           </div>
@@ -2135,11 +2065,6 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
             <Button onClick={handleEditSeats} disabled={editSeatsPending}>
               {editSeatsPending ? (
                 <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
-              ) : hasActivePayPalSub && editSeatsValue !== (myKeyInfo?.maxMembers ?? null) ? (
-                <>
-                  <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                  Save &amp; approve in PayPal
-                </>
               ) : (
                 "Save seats"
               )}
@@ -2155,7 +2080,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           onClose={() => setSubTypeDialogTier(null)}
           tier={subTypeDialogTier}
           onConfirm={handleSubTypeConfirm}
-          isPending={paypalPending !== null}
+          isPending={stripePending !== null}
         />
       )}
     </div>
