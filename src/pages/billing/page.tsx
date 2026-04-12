@@ -1686,19 +1686,21 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           </div>
         </div>
 
-        <p className="text-center text-base text-muted-foreground">
-          Payments are processed securely via Stripe.
-          <br />
-          Questions? Contact us at{" "}
-          <a href="mailto:groundwork@teezfpo.com" className="text-primary hover:underline">
-            groundwork@teezfpo.com
-          </a>
-        </p>
-        <p className="text-center text-base text-muted-foreground/60 pb-8 mt-2">
-          <a href="/account-deletion" className="hover:text-destructive transition-colors">
-            Close account
-          </a>
-        </p>
+        <div className="text-center text-base text-muted-foreground pb-8 space-y-1">
+          <p>
+            Payments are processed securely via Stripe.
+            <br />
+            Questions? Contact us at{" "}
+            <a href="mailto:groundwork@teezfpo.com" className="text-primary hover:underline">
+              groundwork@teezfpo.com
+            </a>
+          </p>
+          <p>
+            <a href="/account-deletion" className="text-muted-foreground/50 hover:text-destructive transition-colors">
+              Close account
+            </a>
+          </p>
+        </div>
       </motion.div>
 
       {/* Leave team confirmation dialog */}
