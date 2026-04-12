@@ -572,3 +572,14 @@ export const _clearStalePendingSeats = internalMutation({
     }
   },
 });
+
+/** Internal: delete a user by ID (admin tooling only). */
+export const _deleteUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return { deleted: false };
+    await ctx.db.delete(args.userId);
+    return { deleted: true, email: user.email };
+  },
+});
