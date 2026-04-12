@@ -143,9 +143,9 @@ function AuthenticatedDeletion() {
     <div className="space-y-6">
       <a
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-5 h-5" />
         Back to dashboard
       </a>
 
@@ -210,7 +210,7 @@ function AuthenticatedDeletion() {
         )}
       </Button>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-base text-muted-foreground text-center">
         After deletion, you will be signed out and redirected to the home page.
       </p>
     </div>
