@@ -1252,3 +1252,22 @@ export const _searchForApi = internalQuery({
     }));
   },
 });
+
+/** Internal: delete all logs by a specific author (admin cleanup). */
+export const _deleteLogsByAuthor = internalMutation({
+  args: { authorId: v.id("users") },
+  handler: async (ctx, args) => {
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", args.authorId))
+      .collect();
+    for (const log of logs) {
+      const r2Keys = log.photos?.map((p) => p.key) ?? [];
+      if (r2Keys.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: r2Keys });
+      }
+      await ctx.db.delete(log._id);
+    }
+    return { deleted: logs.length };
+  },
+});
