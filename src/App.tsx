@@ -21,6 +21,7 @@ const NativeCallback = lazy(() => import("./pages/auth/NativeCallback.tsx"));
 const PrivacyPage = lazy(() => import("./pages/landing/PrivacyPage.tsx"));
 const TermsPage = lazy(() => import("./pages/landing/TermsPage.tsx"));
 const RefundPolicyPage = lazy(() => import("./pages/landing/RefundPolicyPage.tsx"));
+const AccountDeletionPage = lazy(() => import("./pages/landing/AccountDeletionPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function PageLoader() {
@@ -121,6 +122,7 @@ function AppInner() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
+            <Route path="/account-deletion" element={<AccountDeletionPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
