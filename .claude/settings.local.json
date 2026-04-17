@@ -73,7 +73,9 @@
       "Bash(pnpm add:*)",
       "Bash(npx cap:*)",
       "Bash(./gradlew.bat assembleDebug)",
-      "Bash(\"C:/Users/cyr/AppData/Local/Android/Sdk/platform-tools/adb.exe\" uninstall:*)"
+      "Bash(\"C:/Users/cyr/AppData/Local/Android/Sdk/platform-tools/adb.exe\" uninstall:*)",
+      "Bash(mv ~/.claude ~/.claude.stub)",
+      "Bash(gh repo *)"
     ]
   }
 }
