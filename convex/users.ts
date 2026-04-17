@@ -585,6 +585,135 @@ export const _deleteUser = internalMutation({
 });
 
 /**
+ * Internal: admin cascade-delete. Mirrors deleteMyAccount logic but takes
+ * a userId instead of reading identity. Removes the user's logs (+ R2 photos),
+ * personal sites, team membership (dissolving the team if last member or
+ * transferring admin otherwise), API keys, webhooks, push tokens, and the
+ * user record itself. Returns counts of what was deleted.
+ */
+export const _adminDeleteUserAndAllData = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return { deleted: false };
+
+    const userId = args.userId;
+    const allR2Keys: string[] = [];
+
+    const logs = await ctx.db
+      .query("logs")
+      .withIndex("by_author", (q) => q.eq("authorId", userId))
+      .collect();
+    for (const log of logs) {
+      if (log.photos?.length) {
+        for (const photo of log.photos) allR2Keys.push(photo.key);
+      }
+      if (log.photoStorageIds?.length) {
+        for (const storageId of log.photoStorageIds) {
+          await ctx.storage.delete(storageId);
+        }
+      }
+      await ctx.db.delete(log._id);
+    }
+
+    const personalSites = await ctx.db
+      .query("sites")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+    let personalSitesDeleted = 0;
+    for (const site of personalSites) {
+      if (!site.teamKeyId) {
+        await ctx.db.delete(site._id);
+        personalSitesDeleted++;
+      }
+    }
+
+    let teamDissolved = false;
+    let teamSitesDeleted = 0;
+    if (user.appliedLicenseKeyId) {
+      const keyId = user.appliedLicenseKeyId;
+      const key = await ctx.db.get(keyId);
+      const membership = await ctx.db
+        .query("keyMemberships")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      if (membership) await ctx.db.delete(membership._id);
+
+      if (key) {
+        const remaining = await ctx.db
+          .query("keyMemberships")
+          .withIndex("by_key", (q) => q.eq("keyId", keyId))
+          .collect();
+        if (remaining.length === 0) {
+          const teamSites = await ctx.db
+            .query("sites")
+            .withIndex("by_team_key", (q) => q.eq("teamKeyId", keyId))
+            .collect();
+          for (const site of teamSites) {
+            const siteLogs = await ctx.db
+              .query("logs")
+              .withIndex("by_site", (q) => q.eq("siteId", site._id))
+              .collect();
+            for (const log of siteLogs) {
+              if (log.photos?.length) {
+                for (const photo of log.photos) allR2Keys.push(photo.key);
+              }
+              await ctx.db.delete(log._id);
+            }
+            await ctx.db.delete(site._id);
+            teamSitesDeleted++;
+          }
+          await ctx.db.delete(keyId);
+          teamDissolved = true;
+        } else {
+          const currentAdmin = key.adminUserId ?? key.createdBy;
+          if (currentAdmin === userId) {
+            await ctx.db.patch(keyId, { adminUserId: remaining[0].userId });
+          }
+        }
+      }
+    }
+
+    const apiKeys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const k of apiKeys) await ctx.db.delete(k._id);
+
+    const webhooks = await ctx.db
+      .query("webhooks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const wh of webhooks) await ctx.db.delete(wh._id);
+
+    const pushTokens = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const pt of pushTokens) await ctx.db.delete(pt._id);
+
+    await ctx.db.delete(userId);
+
+    if (allR2Keys.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: allR2Keys });
+    }
+
+    return {
+      deleted: true,
+      email: user.email,
+      logsDeleted: logs.length,
+      personalSitesDeleted,
+      teamDissolved,
+      teamSitesDeleted,
+      apiKeysDeleted: apiKeys.length,
+      webhooksDeleted: webhooks.length,
+      pushTokensDeleted: pushTokens.length,
+      r2PhotosScheduledForDeletion: allR2Keys.length,
+    };
+  },
+});
+
+/**
  * Self-service account deletion. Deletes the calling user's:
  * - All log entries and schedules R2 photo cleanup
  * - All personal sites (non-team)
