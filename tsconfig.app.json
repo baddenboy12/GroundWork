@@ -9,7 +9,6 @@
     "incremental": true,
 
     /* Bundler mode */
-    "baseUrl": ".",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
