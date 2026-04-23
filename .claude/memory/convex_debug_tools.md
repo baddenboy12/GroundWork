@@ -36,6 +36,9 @@ npx convex run users:_setPaypalSubscription '{"userId":"...","paypalSubscription
 # Clear cancel date
 npx convex run users:_setCancelEffectiveDate '{"userId":"...","date":""}'
 
+# Admin cascade-delete a user and ALL their data (logs, R2 photos, sites, team, api keys, webhooks, push tokens)
+npx convex run users:_adminDeleteUserAndAllData '{"userId":"..."}'
+
 # Push to dev
 npx convex dev --once
 
@@ -43,11 +46,17 @@ npx convex dev --once
 npx convex deploy --cmd 'npm run build'
 ```
 
+## Running Convex CLI in a fresh shell
+The Convex CLI needs two things before `npx convex run` works:
+1. Auth token at `C:/Users/cyr/.convex/config.json` — created by running `npx convex dev` once (can Ctrl+C after it connects).
+2. Deployment selector — pass `CONVEX_DEPLOYMENT=useful-ox-860` as env var (there's no `.env.local` in this project).
+3. For `convex dev --once` (pushing code), node_modules must be installed so `convex/server` can resolve. Use `corepack pnpm install` if node_modules is missing; pnpm is not on PATH but corepack is at `/c/Program Files/nodejs/corepack`.
+4. Prefer `./node_modules/.bin/convex` over `npx convex` when pushing — `npx` installs a separate copy that can't resolve workspace deps.
+
 ## Test Accounts
 - Corey Butler: baddenboy12@gmail.com (app super_admin)
 - Corey2 Butler2: baddenboy15@live.com
 - Corey3 Butler3: c.yr@hotmail.com
-- Celeste: alburyc242@gmail.com (sandbox tester)
 - Torian Neymour: torianneymour@yahoo.com (sandbox tester)
 
 ## Sandbox Mode
