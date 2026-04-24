@@ -1,5 +1,10 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalQuery,
+  internalMutation,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel.d.ts";
@@ -9,7 +14,7 @@ const categoryValidator = v.union(
   v.literal("maintenance"),
   v.literal("incident"),
   v.literal("audit"),
-  v.literal("general")
+  v.literal("general"),
 );
 
 // Validator for a single R2 photo object
@@ -25,7 +30,7 @@ async function resolvePhotoUrls(
     photos?: Array<{ url: string; key: string; bytes: number }>;
     photoStorageIds?: Id<"_storage">[];
   },
-  storageGetUrl: (id: Id<"_storage">) => Promise<string | null>
+  storageGetUrl: (id: Id<"_storage">) => Promise<string | null>,
 ): Promise<string[]> {
   // R2 photos take priority.
   // Always rebuild the URL from the key + the current R2_PUBLIC_URL env var so that
@@ -39,7 +44,7 @@ async function resolvePhotoUrls(
   // Legacy Convex storage fallback
   if (log.photoStorageIds?.length) {
     const urls = await Promise.all(
-      log.photoStorageIds.map((id) => storageGetUrl(id))
+      log.photoStorageIds.map((id) => storageGetUrl(id)),
     );
     return urls.filter((u): u is string => u !== null);
   }
@@ -56,7 +61,9 @@ export const listRecent = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
     if (!user) return [];
 
@@ -78,8 +85,8 @@ export const listRecent = query({
             .query("logs")
             .withIndex("by_site", (q) => q.eq("siteId", site._id))
             .order("desc")
-            .take(limit)
-        )
+            .take(limit),
+        ),
       );
 
       logs = perSiteLogs
@@ -93,7 +100,7 @@ export const listRecent = query({
         .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
         .collect();
       const personalSiteIds = new Set(
-        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id),
       );
 
       const rawLogs = await ctx.db
@@ -102,16 +109,25 @@ export const listRecent = query({
         .order("desc")
         .take(limit * 5); // overfetch to compensate for site filtering
 
-      logs = rawLogs.filter((l) => personalSiteIds.has(l.siteId)).slice(0, limit);
+      logs = rawLogs
+        .filter((l) => personalSiteIds.has(l.siteId))
+        .slice(0, limit);
     }
 
     return await Promise.all(
       logs.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
-      })
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
+        return {
+          ...log,
+          siteName: site?.name ?? "Unknown site",
+          authorName: author?.name ?? "Unknown",
+          photoUrls,
+        };
+      }),
     );
   },
 });
@@ -130,7 +146,9 @@ export const listRecentFiltered = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
     if (!user) return [];
 
@@ -152,8 +170,8 @@ export const listRecentFiltered = query({
             .query("logs")
             .withIndex("by_site", (q) => q.eq("siteId", site._id))
             .order("desc")
-            .collect()
-        )
+            .collect(),
+        ),
       );
 
       logs = perSiteLogs
@@ -166,7 +184,7 @@ export const listRecentFiltered = query({
         .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
         .collect();
       const personalSiteIds = new Set(
-        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id),
       );
 
       const rawLogs = await ctx.db
@@ -196,9 +214,16 @@ export const listRecentFiltered = query({
       logs.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
-      })
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
+        return {
+          ...log,
+          siteName: site?.name ?? "Unknown site",
+          authorName: author?.name ?? "Unknown",
+          photoUrls,
+        };
+      }),
     );
   },
 });
@@ -217,7 +242,9 @@ export const searchAllLogs = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
     if (!user) return [];
 
@@ -267,7 +294,7 @@ export const searchAllLogs = query({
         .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
         .collect();
       const personalSiteIds = new Set(
-        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id)
+        ownedSites.filter((s) => !s.teamKeyId).map((s) => s._id),
       );
 
       const [titleResults, contentResults] = await Promise.all([
@@ -281,7 +308,9 @@ export const searchAllLogs = query({
         ctx.db
           .query("logs")
           .withSearchIndex("search_content_global", (q) => {
-            const base = q.search("content", args.query).eq("authorId", user._id);
+            const base = q
+              .search("content", args.query)
+              .eq("authorId", user._id);
             return args.category ? base.eq("category", args.category) : base;
           })
           .take(100),
@@ -312,9 +341,16 @@ export const searchAllLogs = query({
       results.map(async (log) => {
         const site = await ctx.db.get(log.siteId);
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
-        return { ...log, siteName: site?.name ?? "Unknown site", authorName: author?.name ?? "Unknown", photoUrls };
-      })
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
+        return {
+          ...log,
+          siteName: site?.name ?? "Unknown site",
+          authorName: author?.name ?? "Unknown",
+          photoUrls,
+        };
+      }),
     );
   },
 });
@@ -331,7 +367,12 @@ export const listBySite = query({
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
 
     const site = await ctx.db.get(args.siteId);
-    if (!site) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
+    if (!site)
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: args.paginationOpts.cursor ?? "",
+      };
 
     const results = await ctx.db
       .query("logs")
@@ -344,9 +385,11 @@ export const listBySite = query({
       page: await Promise.all(
         results.page.map(async (log) => {
           const author = await ctx.db.get(log.authorId);
-          const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+          const photoUrls = await resolvePhotoUrls(log, (id) =>
+            ctx.storage.getUrl(id),
+          );
           return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
-        })
+        }),
       ),
     };
   },
@@ -372,9 +415,11 @@ export const listBySiteSimple = query({
     return await Promise.all(
       logs.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
         return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
-      })
+      }),
     );
   },
 });
@@ -402,7 +447,9 @@ export const searchBySite = query({
       ctx.db
         .query("logs")
         .withSearchIndex("search_content", (q) => {
-          const base = q.search("content", args.query).eq("siteId", args.siteId);
+          const base = q
+            .search("content", args.query)
+            .eq("siteId", args.siteId);
           return args.category ? base.eq("category", args.category) : base;
         })
         .take(100),
@@ -421,9 +468,11 @@ export const searchBySite = query({
     return await Promise.all(
       merged.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
         return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
-      })
+      }),
     );
   },
 });
@@ -436,7 +485,9 @@ export const get = query({
     const log = await ctx.db.get(args.logId);
     if (!log) return null;
     const author = await ctx.db.get(log.authorId);
-    const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+    const photoUrls = await resolvePhotoUrls(log, (id) =>
+      ctx.storage.getUrl(id),
+    );
     return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
   },
 });
@@ -458,14 +509,22 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    if (!identity)
+      throw new ConvexError({
+        message: "Not authenticated",
+        code: "UNAUTHENTICATED",
+      });
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(args.siteId);
-    if (!site) throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
+    if (!site)
+      throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
 
     // Verify user can log on this site (owns it or is a team member with same key)
     const canLog =
@@ -473,16 +532,24 @@ export const create = mutation({
       (user.appliedLicenseKeyId !== undefined &&
         site.teamKeyId === user.appliedLicenseKeyId);
     if (!canLog) {
-      throw new ConvexError({ message: "You don't have access to this site", code: "FORBIDDEN" });
+      throw new ConvexError({
+        message: "You don't have access to this site",
+        code: "FORBIDDEN",
+      });
     }
 
     // Block creation if team key is suspended due to payment failure
     if (user.appliedLicenseKeyId) {
       const key = await ctx.db.get(user.appliedLicenseKeyId);
-      if (key && key.status === "suspended" && key.suspendedReason === "payment_failed") {
+      if (
+        key &&
+        key.status === "suspended" &&
+        key.suspendedReason === "payment_failed"
+      ) {
         throw new ConvexError({
           code: "PAYMENT_SUSPENDED",
-          message: "Your team subscription payment has failed. New content creation is disabled until payment is resolved.",
+          message:
+            "Your team subscription payment has failed. New content creation is disabled until payment is resolved.",
         });
       }
     }
@@ -509,12 +576,11 @@ export const create = mutation({
     };
     const maxLogs = logLimits[user.subscriptionTier ?? "free"] ?? null;
     if (maxLogs !== null) {
-      const existingCount = await ctx.db
+      const existingLogsAtLimit = await ctx.db
         .query("logs")
         .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
-        .collect()
-        .then((l) => l.length);
-      if (existingCount >= maxLogs) {
+        .take(maxLogs);
+      if (existingLogsAtLimit.length >= maxLogs) {
         throw new ConvexError({
           code: "FORBIDDEN",
           message: `Entry limit reached for your plan. Upgrade to add more entries.`,
@@ -537,12 +603,16 @@ export const create = mutation({
 
     // Fire webhook delivery for Business-plan users
     if ((user.subscriptionTier ?? "free") === "business") {
-      await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
-        userId: user._id,
-        event: "log.created",
-        logId,
-        siteName: site.name,
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.integrations.webhookActions.deliver,
+        {
+          userId: user._id,
+          event: "log.created",
+          logId,
+          siteName: site.name,
+        },
+      );
     }
     return logId;
   },
@@ -564,23 +634,33 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    if (!identity)
+      throw new ConvexError({
+        message: "Not authenticated",
+        code: "UNAUTHENTICATED",
+      });
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const log = await ctx.db.get(args.logId);
-    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
-    if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
+    if (!log)
+      throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    if (log.authorId !== user._id)
+      throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
 
     // If changing site, verify the user can access the new site
     if (args.siteId && args.siteId !== log.siteId) {
       const newSite = await ctx.db.get(args.siteId);
-      const canAccess = newSite && (
-        newSite.ownerId === user._id ||
-        (user.appliedLicenseKeyId !== undefined && newSite.teamKeyId === user.appliedLicenseKeyId)
-      );
+      const canAccess =
+        newSite &&
+        (newSite.ownerId === user._id ||
+          (user.appliedLicenseKeyId !== undefined &&
+            newSite.teamKeyId === user.appliedLicenseKeyId));
       if (!canAccess) {
         throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
       }
@@ -604,29 +684,45 @@ export const remove = mutation({
   args: { logId: v.id("logs") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    if (!identity)
+      throw new ConvexError({
+        message: "Not authenticated",
+        code: "UNAUTHENTICATED",
+      });
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
     const log = await ctx.db.get(args.logId);
-    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
-    if (log.authorId !== user._id) throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
+    if (!log)
+      throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    if (log.authorId !== user._id)
+      throw new ConvexError({ message: "Forbidden", code: "FORBIDDEN" });
 
     // Decrement storage counter for R2 photos
     const photoBytes = log.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
     if (photoBytes > 0) {
       await ctx.db.patch(user._id, {
-        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - photoBytes),
+        storageUsedBytes: Math.max(
+          0,
+          (user.storageUsedBytes ?? 0) - photoBytes,
+        ),
       });
     }
 
     // Schedule R2 deletion (best-effort, non-blocking)
     if (log.photos?.length) {
-      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
-        keys: log.photos.map((p) => p.key),
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.r2.storageActions.deletePhotosFromR2,
+        {
+          keys: log.photos.map((p) => p.key),
+        },
+      );
     }
 
     // Legacy Convex storage cleanup
@@ -651,13 +747,20 @@ export const listBySiteForExport = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    if (!identity)
+      throw new ConvexError({
+        message: "Not authenticated",
+        code: "UNAUTHENTICATED",
+      });
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
     const site = await ctx.db.get(args.siteId);
     if (!site) return [];
@@ -678,10 +781,12 @@ export const listBySiteForExport = query({
     const filtered = all.filter((log) => {
       if (args.category && log.category !== args.category) return false;
       if (args.dateFrom) {
-        if (new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z")) return false;
+        if (new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z"))
+          return false;
       }
       if (args.dateTo) {
-        if (new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z")) return false;
+        if (new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z"))
+          return false;
       }
       return true;
     });
@@ -689,9 +794,11 @@ export const listBySiteForExport = query({
     return await Promise.all(
       filtered.map(async (log) => {
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
         return { ...log, authorName: author?.name ?? "Unknown", photoUrls };
-      })
+      }),
     );
   },
 });
@@ -706,13 +813,20 @@ export const listForGlobalExport = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
+    if (!identity)
+      throw new ConvexError({
+        message: "Not authenticated",
+        code: "UNAUTHENTICATED",
+      });
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
     const ownSites = await ctx.db
       .query("sites")
@@ -724,7 +838,9 @@ export const listForGlobalExport = query({
     if (user.appliedLicenseKeyId) {
       const teamSiteDocs = await ctx.db
         .query("sites")
-        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+        .withIndex("by_team_key", (q) =>
+          q.eq("teamKeyId", user.appliedLicenseKeyId!),
+        )
         .collect();
       const ownIds = new Set(ownSites.map((s) => s._id));
       for (const s of teamSiteDocs) {
@@ -734,7 +850,9 @@ export const listForGlobalExport = query({
 
     const targetSites =
       args.siteIds && args.siteIds.length > 0
-        ? allSites.filter((s) => (args.siteIds as Id<"sites">[]).includes(s._id))
+        ? allSites.filter((s) =>
+            (args.siteIds as Id<"sites">[]).includes(s._id),
+          )
         : allSites;
 
     const collectedLogs: Array<{
@@ -763,11 +881,21 @@ export const listForGlobalExport = query({
 
       for (const log of siteLogs) {
         if (args.category && log.category !== args.category) continue;
-        if (args.dateFrom && new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z")) continue;
-        if (args.dateTo && new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z")) continue;
+        if (
+          args.dateFrom &&
+          new Date(log.loggedAt) < new Date(args.dateFrom + "T00:00:00.000Z")
+        )
+          continue;
+        if (
+          args.dateTo &&
+          new Date(log.loggedAt) > new Date(args.dateTo + "T23:59:59.999Z")
+        )
+          continue;
 
         const author = await ctx.db.get(log.authorId);
-        const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+        const photoUrls = await resolvePhotoUrls(log, (id) =>
+          ctx.storage.getUrl(id),
+        );
         collectedLogs.push({
           ...log,
           siteName: site.name,
@@ -789,7 +917,9 @@ type SiteStat = { siteName: string; count: number };
 
 export const getStats = query({
   args: {},
-  handler: async (ctx): Promise<{
+  handler: async (
+    ctx,
+  ): Promise<{
     totalEntries: number;
     thisWeek: number;
     thisMonth: number;
@@ -804,7 +934,9 @@ export const getStats = query({
     if (!identity) return null;
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
     if (!user) return null;
 
@@ -827,8 +959,8 @@ export const getStats = query({
           ctx.db
             .query("logs")
             .withIndex("by_site", (q) => q.eq("siteId", site._id))
-            .collect()
-        )
+            .collect(),
+        ),
       );
       allLogs = perSiteLogs.flat();
     } else {
@@ -850,7 +982,9 @@ export const getStats = query({
 
     const nowMs = Date.now();
     const weekAgoIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const monthAgoIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const monthAgoIso = new Date(
+      nowMs - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     const thisWeek = allLogs.filter((l) => l.loggedAt >= weekAgoIso).length;
     const thisMonth = allLogs.filter((l) => l.loggedAt >= monthAgoIso).length;
@@ -865,7 +999,8 @@ export const getStats = query({
     };
     for (const log of allLogs) {
       if (log.category in categoryBreakdown) {
-        categoryBreakdown[log.category] = (categoryBreakdown[log.category] ?? 0) + 1;
+        categoryBreakdown[log.category] =
+          (categoryBreakdown[log.category] ?? 0) + 1;
       }
     }
 
@@ -883,7 +1018,7 @@ export const getStats = query({
       topSiteEntries.map(async ([siteId, count]) => {
         const site = await ctx.db.get(siteId as Id<"sites">);
         return { siteName: site?.name ?? "Unknown", count };
-      })
+      }),
     );
 
     // Daily activity (last 30 days)
@@ -898,12 +1033,15 @@ export const getStats = query({
         dailyMap[dateStr] = (dailyMap[dateStr] ?? 0) + 1;
       }
     }
-    const dailyActivity = Object.entries(dailyMap).map(([date, count]) => ({ date, count }));
+    const dailyActivity = Object.entries(dailyMap).map(([date, count]) => ({
+      date,
+      count,
+    }));
 
     const totalPhotos = allLogs.reduce(
       (sum, log) =>
         sum + (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
-      0
+      0,
     );
 
     // Top author by log count
@@ -912,7 +1050,9 @@ export const getStats = query({
       const key = log.authorId as string;
       authorCountMap[key] = (authorCountMap[key] ?? 0) + 1;
     }
-    const topAuthorEntry = Object.entries(authorCountMap).sort((a, b) => b[1] - a[1])[0];
+    const topAuthorEntry = Object.entries(authorCountMap).sort(
+      (a, b) => b[1] - a[1],
+    )[0];
     let topAuthor: { authorName: string; count: number } | null = null;
     if (topAuthorEntry) {
       const authorUser = await ctx.db.get(topAuthorEntry[0] as Id<"users">);
@@ -956,7 +1096,9 @@ export const listAllForOfflineCache = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
       .unique();
     if (!user) return {};
 
@@ -970,7 +1112,9 @@ export const listAllForOfflineCache = query({
     if (user.appliedLicenseKeyId) {
       const teamSiteDocs = await ctx.db
         .query("sites")
-        .withIndex("by_team_key", (q) => q.eq("teamKeyId", user.appliedLicenseKeyId!))
+        .withIndex("by_team_key", (q) =>
+          q.eq("teamKeyId", user.appliedLicenseKeyId!),
+        )
         .collect();
       const ownIds = new Set(ownSitesForCache.map((s) => s._id));
       for (const s of teamSiteDocs) {
@@ -989,7 +1133,9 @@ export const listAllForOfflineCache = query({
 
       result[site._id as string] = await Promise.all(
         logs.map(async (log) => {
-          const photoUrls = await resolvePhotoUrls(log, (id) => ctx.storage.getUrl(id));
+          const photoUrls = await resolvePhotoUrls(log, (id) =>
+            ctx.storage.getUrl(id),
+          );
           // Resolve author name — may be a different team member
           let authorName = user.name ?? "Unknown";
           if (log.authorId !== user._id) {
@@ -997,7 +1143,7 @@ export const listAllForOfflineCache = query({
             authorName = author?.name ?? "Teammate";
           }
           return { ...log, authorName, photoUrls };
-        })
+        }),
       );
     }
 
@@ -1022,9 +1168,7 @@ export const _getAllPhotoKeys = internalQuery({
     };
 
     while (!isDone) {
-      const page = await ctx.db
-        .query("logs")
-        .paginate(paginationOpts);
+      const page = await ctx.db.query("logs").paginate(paginationOpts);
       for (const log of page.page) {
         if (log.photos?.length) {
           for (const photo of log.photos) {
@@ -1072,7 +1216,8 @@ export const _listBySiteForApi = internalQuery({
       location: log.location ?? null,
       latitude: log.latitude ?? null,
       longitude: log.longitude ?? null,
-      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      photoCount:
+        (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
       createdAt: new Date(log._creationTime).toISOString(),
     }));
   },
@@ -1089,7 +1234,7 @@ export const _createFromApi = internalMutation({
       v.literal("maintenance"),
       v.literal("incident"),
       v.literal("audit"),
-      v.literal("general")
+      v.literal("general"),
     ),
     loggedAt: v.string(),
     location: v.optional(v.string()),
@@ -1103,8 +1248,10 @@ export const _createFromApi = internalMutation({
     }
     // Check ownership or team membership
     const user = await ctx.db.get(args.authorId);
-    const canAccess = site.ownerId === args.authorId ||
-      (user?.appliedLicenseKeyId !== undefined && site.teamKeyId === user.appliedLicenseKeyId);
+    const canAccess =
+      site.ownerId === args.authorId ||
+      (user?.appliedLicenseKeyId !== undefined &&
+        site.teamKeyId === user.appliedLicenseKeyId);
     if (!canAccess) {
       throw new ConvexError({ message: "Site not found", code: "NOT_FOUND" });
     }
@@ -1119,12 +1266,16 @@ export const _createFromApi = internalMutation({
       latitude: args.latitude,
       longitude: args.longitude,
     });
-    await ctx.scheduler.runAfter(0, internal.integrations.webhookActions.deliver, {
-      userId: args.authorId,
-      event: "log.created",
-      logId,
-      siteName: site.name,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.integrations.webhookActions.deliver,
+      {
+        userId: args.authorId,
+        event: "log.created",
+        logId,
+        siteName: site.name,
+      },
+    );
     return logId;
   },
 });
@@ -1147,7 +1298,8 @@ export const _getByIdForApi = internalQuery({
       location: log.location ?? null,
       latitude: log.latitude ?? null,
       longitude: log.longitude ?? null,
-      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      photoCount:
+        (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
       createdAt: new Date(log._creationTime).toISOString(),
     };
   },
@@ -1168,10 +1320,14 @@ export const _updateFromApi = internalMutation({
   },
   handler: async (ctx, args) => {
     const log = await ctx.db.get(args.logId);
-    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    if (!log)
+      throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(log.siteId);
     if (!site || site.ownerId !== args.userId) {
-      throw new ConvexError({ message: "Log not found or access denied", code: "NOT_FOUND" });
+      throw new ConvexError({
+        message: "Log not found or access denied",
+        code: "NOT_FOUND",
+      });
     }
     await ctx.db.patch(args.logId, {
       ...(args.title !== undefined && { title: args.title.trim() }),
@@ -1190,24 +1346,36 @@ export const _deleteFromApi = internalMutation({
   args: { logId: v.id("logs"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const log = await ctx.db.get(args.logId);
-    if (!log) throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
+    if (!log)
+      throw new ConvexError({ message: "Log not found", code: "NOT_FOUND" });
     const site = await ctx.db.get(log.siteId);
     if (!site || site.ownerId !== args.userId) {
-      throw new ConvexError({ message: "Log not found or access denied", code: "NOT_FOUND" });
+      throw new ConvexError({
+        message: "Log not found or access denied",
+        code: "NOT_FOUND",
+      });
     }
     const user = await ctx.db.get(args.userId);
-    if (!user) throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
+    if (!user)
+      throw new ConvexError({ message: "User not found", code: "NOT_FOUND" });
 
     const photoBytes = log.photos?.reduce((s, p) => s + p.bytes, 0) ?? 0;
     if (photoBytes > 0) {
       await ctx.db.patch(user._id, {
-        storageUsedBytes: Math.max(0, (user.storageUsedBytes ?? 0) - photoBytes),
+        storageUsedBytes: Math.max(
+          0,
+          (user.storageUsedBytes ?? 0) - photoBytes,
+        ),
       });
     }
     if (log.photos?.length) {
-      await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, {
-        keys: log.photos.map((p) => p.key),
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.r2.storageActions.deletePhotosFromR2,
+        {
+          keys: log.photos.map((p) => p.key),
+        },
+      );
     }
     if (log.photoStorageIds?.length) {
       for (const storageId of log.photoStorageIds) {
@@ -1247,7 +1415,8 @@ export const _searchForApi = internalQuery({
       location: log.location ?? null,
       latitude: log.latitude ?? null,
       longitude: log.longitude ?? null,
-      photoCount: (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
+      photoCount:
+        (log.photos?.length ?? 0) + (log.photoStorageIds?.length ?? 0),
       createdAt: new Date(log._creationTime).toISOString(),
     }));
   },
@@ -1264,7 +1433,11 @@ export const _deleteLogsByAuthor = internalMutation({
     for (const log of logs) {
       const r2Keys = log.photos?.map((p) => p.key) ?? [];
       if (r2Keys.length > 0) {
-        await ctx.scheduler.runAfter(0, internal.r2.storageActions.deletePhotosFromR2, { keys: r2Keys });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.r2.storageActions.deletePhotosFromR2,
+          { keys: r2Keys },
+        );
       }
       await ctx.db.delete(log._id);
     }

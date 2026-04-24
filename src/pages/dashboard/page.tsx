@@ -1,11 +1,27 @@
-import { useState, useEffect } from "react";
-import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth, useQuery } from "convex/react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  Authenticated,
+  Unauthenticated,
+  AuthLoading,
+  useConvexAuth,
+  useQuery,
+} from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Plus, FileDown, Lock, WifiOff, ChevronLeft, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  FileDown,
+  Lock,
+  WifiOff,
+  ChevronLeft,
+  AlertCircle,
+} from "lucide-react";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { useOfflineSync, useOfflineQueueState } from "@/hooks/use-offline-queue.ts";
+import {
+  useOfflineSync,
+  useOfflineQueueState,
+} from "@/hooks/use-offline-queue.ts";
 import { useBackgroundCacheSync } from "@/hooks/use-background-cache-sync.ts";
 import { usePushNotifications } from "@/hooks/use-push-notifications.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
@@ -16,12 +32,6 @@ import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
 import LogList from "./_components/LogList.tsx";
 import DashboardHome from "./_components/DashboardHome.tsx";
-import StatsView from "./_components/StatsView.tsx";
-import IntegrationsView from "./_components/IntegrationsView.tsx";
-import BillingView from "./_components/BillingView.tsx";
-import CreateLogDialog from "./_components/CreateLogDialog.tsx";
-import ExportDialog from "./_components/ExportDialog.tsx";
-import GlobalExportDialog from "./_components/GlobalExportDialog.tsx";
 import UpgradeDialog from "./_components/UpgradeDialog.tsx";
 import FilterBar, { type FilterState } from "./_components/FilterBar.tsx";
 import { useCachedQuery } from "@/hooks/use-cached-query.ts";
@@ -29,7 +39,23 @@ import { useDebounce } from "@/hooks/use-debounce.ts";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 
-const DEFAULT_FILTERS: FilterState = { search: "", category: "all", dateFrom: "", dateTo: "" };
+const DEFAULT_FILTERS: FilterState = {
+  search: "",
+  category: "all",
+  dateFrom: "",
+  dateTo: "",
+};
+
+const StatsView = lazy(() => import("./_components/StatsView.tsx"));
+const IntegrationsView = lazy(
+  () => import("./_components/IntegrationsView.tsx"),
+);
+const BillingView = lazy(() => import("./_components/BillingView.tsx"));
+const CreateLogDialog = lazy(() => import("./_components/CreateLogDialog.tsx"));
+const ExportDialog = lazy(() => import("./_components/ExportDialog.tsx"));
+const GlobalExportDialog = lazy(
+  () => import("./_components/GlobalExportDialog.tsx"),
+);
 
 // Blocks the Android back button / swipe-back gesture in standalone PWA mode.
 function BackBlocker() {
@@ -80,18 +106,26 @@ function DashboardSessionGuard({ children }: { children: React.ReactNode }) {
 }
 
 function DashboardInner() {
-  const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<Id<"sites"> | null>(
+    null,
+  );
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
+  const [createDialogLoaded, setCreateDialogLoaded] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
   const [homeKey, setHomeKey] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportDialogLoaded, setExportDialogLoaded] = useState(false);
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [debouncedSearch] = useDebounce(filters.search.trim(), 300);
   const isSearchMode = debouncedSearch.length > 0;
-  const isFiltered = isSearchMode || filters.category !== "all" || !!filters.dateFrom || !!filters.dateTo;
+  const isFiltered =
+    isSearchMode ||
+    filters.category !== "all" ||
+    !!filters.dateFrom ||
+    !!filters.dateTo;
 
   // Push notifications — registers FCM token on native
   usePushNotifications();
@@ -116,6 +150,11 @@ function DashboardInner() {
     setFilters(DEFAULT_FILTERS);
   };
 
+  const openCreateLogDialog = () => {
+    setCreateDialogLoaded(true);
+    setGlobalCreateOpen(true);
+  };
+
   const handleSiteDeleted = (id: Id<"sites">) => {
     if (selectedSiteId === id) selectSite(null);
   };
@@ -134,6 +173,7 @@ function DashboardInner() {
       setExportUpgradeOpen(true);
       return;
     }
+    setExportDialogLoaded(true);
     setExportOpen(true);
   };
 
@@ -146,17 +186,21 @@ function DashboardInner() {
         <div className="flex items-start gap-2.5 mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
           <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
           <p className="text-sm text-red-200">
-            <span className="font-semibold">Payment failed</span> — your team is in read-only mode.
-            Contact support or re-subscribe to restore full access.
+            <span className="font-semibold">Payment failed</span> — your team is
+            in read-only mode. Contact support or re-subscribe to restore full
+            access.
             {graceDaysLeft !== null && (
-              <span className="font-semibold"> {graceDaysLeft} day{graceDaysLeft !== 1 ? "s" : ""} remaining.</span>
+              <span className="font-semibold">
+                {" "}
+                {graceDaysLeft} day{graceDaysLeft !== 1 ? "s" : ""} remaining.
+              </span>
             )}
           </p>
         </div>
       )}
 
       <DashboardNavbar
-        onNewLog={() => setGlobalCreateOpen(true)}
+        onNewLog={openCreateLogDialog}
         onHome={() => {
           setShowStats(false);
           setShowIntegrations(false);
@@ -215,14 +259,26 @@ function DashboardInner() {
             />
             <Button
               variant="secondary"
-              className={cn("gap-3.5 h-[5rem] w-[197px] !px-12 !text-3xl rounded-2xl scale-[0.80] active:scale-[0.75] transition-transform ml-auto shrink-0 border border-white/10", !isOnline && "opacity-50")}
-              style={{ background: "linear-gradient(160deg, hsl(30 14% 22%) 0%, hsl(30 12% 14%) 50%, hsl(30 14% 18%) 100%)" }}
+              className={cn(
+                "gap-3.5 h-[5rem] w-[197px] !px-12 !text-3xl rounded-2xl scale-[0.80] active:scale-[0.75] transition-transform ml-auto shrink-0 border border-white/10",
+                !isOnline && "opacity-50",
+              )}
+              style={{
+                background:
+                  "linear-gradient(160deg, hsl(30 14% 22%) 0%, hsl(30 12% 14%) 50%, hsl(30 14% 18%) 100%)",
+              }}
               onClick={handleExport}
-              title={!isOnline ? "Export requires an internet connection" : undefined}
+              title={
+                !isOnline ? "Export requires an internet connection" : undefined
+              }
             >
-              {!isOnline
-                ? <WifiOff style={{ width: 28, height: 28 }} />
-                : canExport ? <FileDown style={{ width: 28, height: 28 }} /> : <Lock style={{ width: 28, height: 28 }} />}
+              {!isOnline ? (
+                <WifiOff style={{ width: 28, height: 28 }} />
+              ) : canExport ? (
+                <FileDown style={{ width: 28, height: 28 }} />
+              ) : (
+                <Lock style={{ width: 28, height: 28 }} />
+              )}
               <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
@@ -237,29 +293,34 @@ function DashboardInner() {
       />
 
       <main className="flex-1 overflow-hidden flex flex-col">
-        {showStats ? (
-          <StatsView onBack={() => setShowStats(false)} />
-        ) : showIntegrations ? (
-          <IntegrationsView onBack={() => setShowIntegrations(false)} />
-        ) : showBilling ? (
-          <BillingView onBack={() => setShowBilling(false)} />
-        ) : selectedSiteId ? (
-          <LogList siteId={selectedSiteId} filters={filters} />
-        ) : (
-          <DashboardHome
-            key={homeKey}
-            filters={filters}
-            onSelectSite={selectSite}
-          />
-        )}
+        <Suspense fallback={<DashboardPanelLoading />}>
+          {showStats ? (
+            <StatsView onBack={() => setShowStats(false)} />
+          ) : showIntegrations ? (
+            <IntegrationsView onBack={() => setShowIntegrations(false)} />
+          ) : showBilling ? (
+            <BillingView onBack={() => setShowBilling(false)} />
+          ) : selectedSiteId ? (
+            <LogList siteId={selectedSiteId} filters={filters} />
+          ) : (
+            <DashboardHome
+              key={homeKey}
+              filters={filters}
+              onSelectSite={selectSite}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* Floating new log button */}
       {!showStats && !showIntegrations && !showBilling && (
         <button
           className={`fixed bottom-36 right-12 w-[5.25rem] h-[5.25rem] rounded-full text-primary-foreground shadow-2xl flex items-center justify-center hover:brightness-110 active:scale-90 transition-all z-50 border border-white/15 ${isPaymentSuspended ? "opacity-40 pointer-events-none" : ""}`}
-          style={{ background: "linear-gradient(145deg, hsl(30 25% 70%) 0%, hsl(30 20% 55%) 50%, hsl(30 22% 62%) 100%)" }}
-          onClick={() => !isPaymentSuspended && setGlobalCreateOpen(true)}
+          style={{
+            background:
+              "linear-gradient(145deg, hsl(30 25% 70%) 0%, hsl(30 20% 55%) 50%, hsl(30 22% 62%) 100%)",
+          }}
+          onClick={() => !isPaymentSuspended && openCreateLogDialog()}
           aria-label="New log"
           disabled={isPaymentSuspended}
         >
@@ -268,24 +329,35 @@ function DashboardInner() {
       )}
 
       {/* Global create dialog */}
-      <CreateLogDialog
-        open={globalCreateOpen}
-        onClose={() => setGlobalCreateOpen(false)}
-        onCreated={handleLogCreated}
-        initialSiteName={selectedSite?.name}
-      />
+      {createDialogLoaded && (
+        <Suspense fallback={null}>
+          <CreateLogDialog
+            open={globalCreateOpen}
+            onClose={() => setGlobalCreateOpen(false)}
+            onCreated={handleLogCreated}
+            initialSiteName={selectedSite?.name}
+          />
+        </Suspense>
+      )}
 
       {/* Export dialogs */}
-      {selectedSiteId && selectedSite ? (
-        <ExportDialog
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          siteId={selectedSiteId}
-          siteName={selectedSite.name}
-          siteLocation={selectedSite.location}
-        />
-      ) : (
-        <GlobalExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
+      {exportDialogLoaded && (
+        <Suspense fallback={null}>
+          {selectedSiteId && selectedSite ? (
+            <ExportDialog
+              open={exportOpen}
+              onClose={() => setExportOpen(false)}
+              siteId={selectedSiteId}
+              siteName={selectedSite.name}
+              siteLocation={selectedSite.location}
+            />
+          ) : (
+            <GlobalExportDialog
+              open={exportOpen}
+              onClose={() => setExportOpen(false)}
+            />
+          )}
+        </Suspense>
       )}
 
       <UpgradeDialog
@@ -295,6 +367,19 @@ function DashboardInner() {
         featureName="PDF & CSV Export"
         featureDescription="Export your log entries as PDF reports or CSV spreadsheets with a Business plan."
       />
+    </div>
+  );
+}
+
+function DashboardPanelLoading() {
+  return (
+    <div className="flex-1 overflow-hidden p-4 md:p-8 space-y-5">
+      <Skeleton className="h-10 w-48" />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-64 w-full rounded-xl" />
+        ))}
+      </div>
     </div>
   );
 }

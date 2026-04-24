@@ -1,11 +1,14 @@
-import { useState, memo } from "react";
+import { lazy, memo, Suspense, useState } from "react";
 import { format } from "date-fns";
 import { motion } from "motion/react";
 import { Clock, User, ImageIcon, MapPin } from "lucide-react";
-import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  type LogCategory,
+} from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
-import LogDetailDialog from "./LogDetailDialog.tsx";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -14,6 +17,8 @@ type Props = {
   /** When provided, renders a site name badge above the category tag */
   siteName?: string;
 };
+
+const LogDetailDialog = lazy(() => import("./LogDetailDialog.tsx"));
 
 const LogCard = memo(function LogCard({ log, siteName }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
@@ -60,7 +65,7 @@ const LogCard = memo(function LogCard({ log, siteName }: Props) {
             <span
               className={cn(
                 "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border shrink-0",
-                CATEGORY_COLORS[log.category as LogCategory]
+                CATEGORY_COLORS[log.category as LogCategory],
               )}
             >
               {CATEGORY_LABELS[log.category as LogCategory]}
@@ -73,10 +78,12 @@ const LogCard = memo(function LogCard({ log, siteName }: Props) {
           </h3>
 
           {/* Excerpt */}
-          <p className="text-base text-muted-foreground leading-relaxed line-clamp-2" style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}>
+          <p
+            className="text-base text-muted-foreground leading-relaxed line-clamp-2"
+            style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
+          >
             {log.content}
           </p>
-
         </div>
         <div className="absolute bottom-3 left-5 right-2 flex items-center text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
@@ -98,11 +105,15 @@ const LogCard = memo(function LogCard({ log, siteName }: Props) {
         </div>
       </motion.button>
 
-      <LogDetailDialog
-        log={log}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-      />
+      {detailOpen && (
+        <Suspense fallback={null}>
+          <LogDetailDialog
+            log={log}
+            open={detailOpen}
+            onClose={() => setDetailOpen(false)}
+          />
+        </Suspense>
+      )}
     </>
   );
 });

@@ -1,15 +1,24 @@
 import { useState, useRef, useEffect } from "react";
 import { LocateFixed, MapPin, X, Navigation } from "lucide-react";
 import L from "leaflet";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMapEvents,
+  useMap,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
 import { getCurrentPosition } from "@/hooks/use-native-geolocation.ts";
 
 // Fix Leaflet's default marker icons when bundled
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
+  ._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -29,7 +38,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`,
-      { headers: { "Accept-Language": "en" } }
+      { headers: { "Accept-Language": "en" } },
     );
     const data: NominatimResult = await res.json();
     return data.display_name;
@@ -131,7 +140,7 @@ export default function LocationPicker({
 }: Props) {
   const [gps, setGps] = useState<GpsState>({ status: "idle" });
   const [coords, setCoords] = useState<Coords | null>(
-    initialCoords ? { lat: initialCoords.lat, lng: initialCoords.lng } : null
+    initialCoords ? { lat: initialCoords.lat, lng: initialCoords.lng } : null,
   );
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [showMap, setShowMap] = useState(showMapByDefault && !!initialCoords);
@@ -144,7 +153,11 @@ export default function LocationPicker({
     try {
       const { latitude, longitude, accuracy: acc } = await getCurrentPosition();
       const address = await reverseGeocode(latitude, longitude);
-      const newCoords = { lat: latitude, lng: longitude, accuracy: Math.round(acc) };
+      const newCoords = {
+        lat: latitude,
+        lng: longitude,
+        accuracy: Math.round(acc),
+      };
       setCoords(newCoords);
       setAccuracy(Math.round(acc));
       onChange(address);
@@ -184,20 +197,27 @@ export default function LocationPicker({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className={cn("pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[22px]", inputClassName)}
+          className={cn(
+            "pl-14 pr-16 h-[5rem] rounded-2xl truncate !text-[22px]",
+            inputClassName,
+          )}
           autoComplete="off"
         />
         {/* GPS button — large, highlighted, easy to tap */}
         <button
           type="button"
-          title={gps.status === "loading" ? "Getting location…" : "Use my current location"}
+          title={
+            gps.status === "loading"
+              ? "Getting location…"
+              : "Use my current location"
+          }
           disabled={gps.status === "loading"}
           onClick={handleGps}
           className={cn(
             "absolute right-3 h-10 w-10 flex items-center justify-center rounded-lg transition-all",
             gps.status === "loading"
               ? "bg-primary/20 text-primary animate-pulse cursor-wait"
-              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
           )}
         >
           <LocateFixed className="w-5 h-5" />
@@ -221,7 +241,9 @@ export default function LocationPicker({
               <div className="bg-primary rounded-full p-1.5 shrink-0">
                 <Navigation className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold text-foreground">Location confirmed</span>
+              <span className="text-lg font-semibold text-foreground">
+                Location confirmed
+              </span>
               {accuracy !== null && (
                 <span className="text-sm text-primary bg-primary/10 rounded-full px-3 py-1 font-medium">
                   ±{accuracy}m
