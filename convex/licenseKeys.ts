@@ -254,6 +254,23 @@ export const removeKey = mutation({
 
     // ── Last member leaving: dissolve the team ────────────────────────
     if (isLastMember && key) {
+      // If this was a self-created (Stripe-backed) team, drop the
+      // extra-seat line item back to zero BEFORE deleting the key — otherwise
+      // the subscriber would keep paying for seats on a team that no longer
+      // exists. Scheduled because Stripe API calls require the Node runtime.
+      // Safe to skip for admin-granted keys (no Stripe sub).
+      if (key.selfCreated && (key.tier === "pro" || key.tier === "business")) {
+        const subscriberId = key.stripeSubscriberId ?? key.createdBy;
+        await ctx.scheduler.runAfter(
+          0,
+          internal.stripe.actions._trimExtraSeats,
+          {
+            userId: subscriberId,
+            tier: key.tier,
+          }
+        );
+      }
+
       // Delete all team sites, their logs, and clean up R2 photos
       const teamSites = await ctx.db
         .query("sites")

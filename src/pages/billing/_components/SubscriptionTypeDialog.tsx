@@ -194,7 +194,7 @@ export default function SubscriptionTypeDialog({
           <Button onClick={handleConfirm} disabled={isPending}>
             {isPending
               ? "Redirecting…"
-              : `Continue to Stripe — ${
+              : `Continue to Checkout — ${
                   mode === "team"
                     ? `${calcTeamPrice(cfg.price, seats)}/mo`
                     : `${cfg.price}/mo`

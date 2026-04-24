@@ -4,7 +4,7 @@
     {
       "name": "vite",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "pnpm", "dev"],
+      "runtimeArgs": ["/c", "npm", "run", "dev"],
       "port": 5173,
       "autoPort": false
     },
