@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useMutation, useAction, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
@@ -95,6 +95,12 @@ export function useOfflineQueueState(): OfflineEntry[] {
  */
 export function useOfflineSync() {
   const isOnline = useOnlineStatus();
+  // Convex is only usable for mutations once its WebSocket is authenticated.
+  // On reconnect after a long offline period, the id_token may have expired;
+  // Convex silently refreshes it via signinSilent() but mutations fired before
+  // that completes throw UNAUTHENTICATED. Gate sync on this flag so we don't
+  // burn the queue against a half-ready client.
+  const { isAuthenticated: isConvexAuthed } = useConvexAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   // Ref-based guard prevents concurrent sync calls from processing the same
   // queue entries twice. This avoids duplicate log creation when:
@@ -111,13 +117,26 @@ export function useOfflineSync() {
     // Hard guard — bail immediately if a sync is already in flight
     if (syncingRef.current) return;
     const pending = getOfflineQueue();
+    if (pending.length === 0) return;
     // Use the probed isOnline value (not navigator.onLine which is unreliable
     // on 4G with no data) so we don't attempt sync on a dead connection.
-    if (pending.length === 0 || !isOnline) return;
+    if (!isOnline) {
+      toast.error("Still offline — can't sync yet");
+      return;
+    }
+    // Convex WebSocket may be up but not yet authenticated (token refresh
+    // in flight after coming back online). Firing mutations here would
+    // throw UNAUTHENTICATED and discard the queue silently. Surface a
+    // clear message and let the auto-sync retry once auth settles.
+    if (!isConvexAuthed) {
+      toast.error("Reconnecting — try Sync now in a moment");
+      return;
+    }
 
     syncingRef.current = true;
     setIsSyncing(true);
     const failed: OfflineEntry[] = [];
+    const errors: string[] = [];
     let synced = 0;
 
     try {
@@ -172,7 +191,10 @@ export function useOfflineSync() {
             longitude: entry.longitude,
           });
           synced++;
-        } catch {
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[offline-sync] entry ${entry.id} failed:`, msg);
+          errors.push(msg);
           failed.push(entry);
         }
       }
@@ -185,8 +207,12 @@ export function useOfflineSync() {
         );
       }
       if (failed.length > 0) {
+        // Surface the first error so the user can see why sync stalled
+        // (auth expired, site limit hit, payment suspended, etc.) instead
+        // of a generic "will retry" message that loops forever.
+        const firstError = errors[0] ?? "unknown error";
         toast.error(
-          `${failed.length} ${failed.length === 1 ? "entry" : "entries"} failed to sync — will retry when online`
+          `${failed.length} ${failed.length === 1 ? "entry" : "entries"} failed — ${firstError}`
         );
       }
     } finally {
@@ -194,15 +220,15 @@ export function useOfflineSync() {
       syncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [createLog, findOrCreateSite, getUploadUrl, isOnline]);
+  }, [createLog, findOrCreateSite, getUploadUrl, isOnline, isConvexAuthed]);
 
-  // Auto-sync whenever we come back online
+  // Auto-sync whenever we come back online AND Convex auth is ready
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && isConvexAuthed) {
       syncQueue();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline]);
+  }, [isOnline, isConvexAuthed]);
 
   return { isSyncing, syncQueue, isOnline };
 }
