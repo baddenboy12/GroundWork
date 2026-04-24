@@ -11,6 +11,7 @@ import { internal } from "../_generated/api";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { PaidTier, SubscriptionTier } from "../_lib/tiers";
+import { TRIAL_DAYS } from "../_lib/trial";
 
 // ── Stripe client ────────────────────────────────────────────────────────────
 
@@ -273,6 +274,14 @@ export const createCheckoutSession = action({
       purpose: "new_subscription",
     };
 
+    // Eligibility check — one-time 30-day trial per account. Server-side source
+    // of truth; UI hints are advisory. Also hard-gated so admin-granted and
+    // sandbox users never accidentally consume the flag.
+    const trialEligible = await ctx.runQuery(
+      internal.users._getTrialEligibility,
+      { userId: user._id }
+    );
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
@@ -280,7 +289,20 @@ export const createCheckoutSession = action({
       success_url: `${args.returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: args.cancelUrl,
       metadata,
-      subscription_data: { metadata },
+      subscription_data: {
+        metadata,
+        ...(trialEligible
+          ? {
+              trial_period_days: TRIAL_DAYS,
+              trial_settings: {
+                end_behavior: { missing_payment_method: "cancel" },
+              },
+            }
+          : {}),
+      },
+      // Explicit: collect card upfront even during trial so auto-charge works
+      // when trial ends. Also defends against Stripe default drift.
+      payment_method_collection: "always",
       allow_promotion_codes: true,
     });
 
@@ -394,6 +416,9 @@ export const takeOverSubscription = action({
       keyId: args.keyId,
     };
 
+    // No trial on admin transfer — this is a continuation of an existing
+    // paying team, not a new subscription. The new admin's hasUsedTrial flag
+    // is intentionally not consulted here.
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
@@ -402,6 +427,7 @@ export const takeOverSubscription = action({
       cancel_url: args.cancelUrl,
       metadata,
       subscription_data: { metadata },
+      payment_method_collection: "always",
     });
 
     if (!session.url) {
@@ -532,11 +558,18 @@ export const syncSubscription = action({
       }
     }
 
+    // Detect that a trial was used: trial_end is non-null if Stripe attached
+    // a trial to this subscription, and stays set after the trial converts
+    // to active — so this catches the case where the webhook raced past the
+    // "trialing" window before we observed it here.
+    const usedTrial = subscription.trial_end != null;
+
     await ctx.runMutation(internal.users._setStripeSubscription, {
       userId: user._id,
       stripeSubscriptionId: subscription.id,
       stripeSubscriptionStatus: status,
       subscriptionTier: isActiveLike ? resolvedTier : null,
+      ...(usedTrial ? { hasUsedTrial: true } : {}),
     });
 
     return { tier: resolvedTier, status };
@@ -986,6 +1019,8 @@ export const reviseSubscriptionTier = action({
     }
 
     if (items.length > 0) {
+      // No trial concern here — this swaps price IDs on an existing sub;
+      // Stripe only honors trial_period_days at Checkout Session creation.
       await stripe.subscriptions.update(subscriptionId, {
         proration_behavior: "always_invoice",
         items,
@@ -1085,6 +1120,12 @@ export const processWebhook = internalAction({
         );
         break;
 
+      case "customer.subscription.trial_will_end":
+        // Acknowledged so Stripe doesn't log it as unhandled. Fires ~3 days
+        // before a trial ends. TODO: wire email notifications once the
+        // transactional email pipeline is in place.
+        break;
+
       default:
         console.log("Stripe webhook unhandled event type:", event.type);
     }
@@ -1175,12 +1216,17 @@ async function handleSubscriptionUpserted(
     effectiveStatus === "trialing" ||
     effectiveStatus === "cancel_pending";
 
+  // Detect trial consumption via trial_end (stays set after trial → active
+  // conversion, so even late webhooks record the flag).
+  const usedTrial = sub.trial_end != null;
+
   // State writes: subscription + tier (only if active-like and we resolved one)
   await ctx.runMutation(internal.users._setStripeSubscription, {
     userId,
     stripeSubscriptionId: sub.id,
     stripeSubscriptionStatus: effectiveStatus,
     subscriptionTier: isActiveLike && tier ? tier : null,
+    ...(usedTrial ? { hasUsedTrial: true } : {}),
   });
 
   // cancel_pending: record the effective date so the UI can show a countdown

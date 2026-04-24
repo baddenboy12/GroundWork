@@ -96,7 +96,25 @@
       "Bash(npx pnpm *)",
       "Bash(npx convex *)",
       "Read(//tmp/**)",
-      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\cyr\\\\\\\\.claude\\\\\\\\projects\\\\\\\\C--Users-cyr-Projects-GroundWork\\\\\\\\0af07ca9-6e59-41c2-ac82-cc4a2f1f6aca\\\\\\\\tool-results\\\\\\\\\")"
+      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\cyr\\\\\\\\.claude\\\\\\\\projects\\\\\\\\C--Users-cyr-Projects-GroundWork\\\\\\\\0af07ca9-6e59-41c2-ac82-cc4a2f1f6aca\\\\\\\\tool-results\\\\\\\\\")",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex dev --once)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run users:getTrialEligibility '{}' --identity '{\"email\":\"c.yr@hotmail.com\"}')",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex logs --limit 30)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex logs --history 50)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run clientErrors:_recentErrors '{}')",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run clientErrors:listRecent '{\"limit\":20}' --identity '{\"email\":\"baddenboy12@gmail.com\"}')",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run licenseKeys:_debugListUsers)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run clientErrors:_debugRecent '{}')",
+      "Bash(adb devices *)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 timeout 8 ./node_modules/.bin/convex logs --history 100)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex logs --history 200)",
+      "Bash(kill %1)",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run users:getTrialEligibility '{}')",
+      "Bash(CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex run users:listAllUsers '{}' --identity '{\"email\":\"baddenboy12@gmail.com\"}')",
+      "Bash(CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex deploy --yes)",
+      "Bash(CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex run users:listAllUsers '{}' --identity '{\"email\":\"baddenboy12@gmail.com\"}')",
+      "Bash(CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex run licenseKeys:_debugListUsers)",
+      "Bash(CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex run users:adminResetUserStripeFields '{\"userId\":\"k57bccb2kcfw8d3v5h0mkhghzs84q0w9\"}')"
     ]
   }
 }
