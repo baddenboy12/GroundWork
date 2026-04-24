@@ -6,6 +6,11 @@ import { useEffect, useRef, useState } from "react";
  * - When fresh data arrives from Convex it is persisted to localStorage.
  * - When Convex returns `undefined` (offline / loading) the last cached value
  *   is returned instead, so the UI stays populated after app close/reopen.
+ * - When Convex returns `null` (transient unauthenticated — e.g. id_token
+ *   expired while offline, before the silent refresh completes) the cache is
+ *   NOT overwritten. Otherwise a momentary auth gap would poison the cache
+ *   with null and the UI would lose state (e.g. subscription tier reverting
+ *   to "free") until the next successful auth.
  * - The cache key must be unique per query + arguments combination.
  */
 export function useCachedQuery<T>(cacheKey: string, data: T | undefined): T | undefined {
@@ -36,7 +41,9 @@ export function useCachedQuery<T>(cacheKey: string, data: T | undefined): T | un
   }, [cacheKey]);
 
   useEffect(() => {
-    if (data === undefined) return;
+    // Skip undefined (loading) AND null (auth-rejected) to avoid poisoning
+    // a good cache with a transient unauthenticated response.
+    if (data === undefined || data === null) return;
     setCached(data);
     try {
       localStorage.setItem(cacheKey, JSON.stringify(data));

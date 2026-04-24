@@ -28,6 +28,7 @@
 - [Landing Page](landing_page.md) — Single-page hero+pricing, /features route, Keycloak registration
 - [Log Location Auto-fill](log_location_autofill.md) — Site location/GPS auto-fills in new/edit log dialogs
 - [30-Day Free Trial](free_trial.md) — Pro/Business one-time-per-account trial; hasUsedTrial sticky flag, Stripe `trial_period_days`
+- [Offline Sync Reconnect Invariants](offline_sync_reconnect.md) — Auth-gate on Convex, don't cache null, protect admin-granted tiers from Stripe webhook downgrades
 
 ## UI/UX
 - [UI Text Scaling](ui_text_scaling.md) — Consistent close buttons, text sizing, capitalization across all dialogs

@@ -421,8 +421,28 @@ export const _setStripeSubscription = internalMutation({
     hasUsedTrial: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return;
     const trialPatch =
       args.hasUsedTrial === true ? { hasUsedTrial: true } : {};
+
+    // Protect admin-granted tiers from being clobbered by Stripe webhooks for
+    // a prior/expired subscription. If an admin has explicitly granted a tier
+    // (e.g. comping a tester with sandbox Business), a delayed or retried
+    // webhook for a long-dead trial must not silently downgrade them. Only a
+    // fresh active/trialing subscription takes precedence over an admin grant.
+    const isActive =
+      args.stripeSubscriptionStatus === "active" ||
+      args.stripeSubscriptionStatus === "trialing";
+    if (user.adminGrantedTier === true && !isActive) {
+      await ctx.db.patch(args.userId, {
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        stripeSubscriptionStatus: args.stripeSubscriptionStatus,
+        ...trialPatch,
+      });
+      return;
+    }
+
     if (args.subscriptionTier !== null) {
       await ctx.db.patch(args.userId, {
         stripeSubscriptionId: args.stripeSubscriptionId,
