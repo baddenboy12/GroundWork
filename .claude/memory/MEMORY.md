@@ -13,6 +13,7 @@
 - [Convex Run Prod Flag](convex_run_prod_flag.md) — `npx convex run` needs `--prod` to hit prod; without it, targets dev per .env.local
 - [Deployment Workflow](deployment_workflow.md) — End-to-end deploy for web (SCP), Android (Capacitor), Convex backend
 - [Convex Debug Tools](convex_debug_tools.md) — Debug queries, CLI commands, test accounts, sandbox mode, version tracking
+- [Dashboard Performance Optimization](dashboard_performance_optimization.md) — 2026-04-24 bundle split, export lazy loading, dead-code cleanup, deployment record
 
 ## Features
 - [Export System](export_system.md) — PDF (jsPDF) and Excel (ExcelJS) exports, themes, page layout, native mobile save
