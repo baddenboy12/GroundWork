@@ -417,22 +417,76 @@ export const _setStripeSubscription = internalMutation({
       v.literal("pro"),
       v.literal("business")
     ),
+    // When provided, patched alongside status. Sticky — once true, stays true.
+    hasUsedTrial: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const trialPatch =
+      args.hasUsedTrial === true ? { hasUsedTrial: true } : {};
     if (args.subscriptionTier !== null) {
       await ctx.db.patch(args.userId, {
         stripeSubscriptionId: args.stripeSubscriptionId,
         stripeSubscriptionStatus: args.stripeSubscriptionStatus,
         subscriptionTier: args.subscriptionTier,
         adminGrantedTier: undefined,
+        ...trialPatch,
       });
     } else {
       await ctx.db.patch(args.userId, {
         stripeSubscriptionId: args.stripeSubscriptionId,
         stripeSubscriptionStatus: args.stripeSubscriptionStatus,
         adminGrantedTier: undefined,
+        ...trialPatch,
       });
     }
+  },
+});
+
+// ── Trial eligibility ───────────────────────────────────────────────────────
+
+/**
+ * Returns true if the given user is eligible to start a 30-day free trial.
+ * Eligibility = never used a trial, no existing Stripe subscription, not
+ * admin-granted, not in sandbox mode. Cheapest checks first to short-circuit.
+ */
+export const _getTrialEligibility = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args): Promise<boolean> => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return false;
+    return (
+      !user.hasUsedTrial &&
+      !user.stripeSubscriptionId &&
+      !user.adminGrantedTier &&
+      !user.sandboxMode
+    );
+  },
+});
+
+/**
+ * Public query consumed by the landing page and billing page plan carousels.
+ * Returns eligibility for the currently signed-in user. Returns
+ * `{ eligible: false }` for anonymous callers — the UI hardcodes trial
+ * messaging in the unauthenticated path.
+ */
+export const getTrialEligibility = query({
+  args: {},
+  handler: async (ctx): Promise<{ eligible: boolean }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { eligible: false };
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .unique();
+    if (!user) return { eligible: false };
+    const eligible =
+      !user.hasUsedTrial &&
+      !user.stripeSubscriptionId &&
+      !user.adminGrantedTier &&
+      !user.sandboxMode;
+    return { eligible };
   },
 });
 
@@ -480,6 +534,7 @@ export const adminResetUserStripeFields = internalMutation({
       stripeCancelEffectiveDate: _sced,
       pendingTeamSeats: _pts,
       pendingTeamSeatsAt: _ptsAt,
+      hasUsedTrial: _hut,
       _creationTime: _ct,
       _id: _id,
       ...rest

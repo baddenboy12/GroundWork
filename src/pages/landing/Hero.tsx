@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
-import { Authenticated, Unauthenticated } from "convex/react";
+import { Authenticated, Unauthenticated, useConvexAuth, useQuery } from "convex/react";
 import { ArrowRight, CheckCircle, Check, X, LogIn } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth.ts";
@@ -14,6 +14,7 @@ import {
   type SubscriptionTier,
 } from "@/pages/dashboard/_lib/subscription.ts";
 import { cn } from "@/lib/utils.ts";
+import { api } from "@/convex/_generated/api.js";
 
 const highlights = [
   "Photo-tagged logs",
@@ -31,7 +32,15 @@ const cardTints: Record<string, { border: string; gradient: string }> = {
 export default function Hero() {
   const navigate = useNavigate();
   const { signinRedirect } = useAuth();
+  const { isAuthenticated } = useConvexAuth();
   const [carouselIndex, setCarouselIndex] = useState(1); // Start on Pro
+  // Only runs when authenticated; otherwise skipped. Unauthenticated users are
+  // trivially trial-eligible (server-side check in createCheckoutSession is
+  // the source of truth).
+  const eligibility = useQuery(
+    api.users.getTrialEligibility,
+    isAuthenticated ? {} : "skip"
+  );
 
   const handleSignUp = (tier: SubscriptionTier) => {
     if (tier !== "free") {
@@ -43,6 +52,14 @@ export default function Hero() {
   const planCards = TIER_ORDER.map((t) => {
     const cfg = TIER_CONFIG[t];
     const tint = cardTints[t === "starter" ? "pro" : t]!;
+    const isPaidTier = t !== "free";
+    // Trial badge/CTA: always show for unauthenticated (they're trivially
+    // eligible). For authenticated users, wait for the query to resolve and
+    // only show if eligible — prevents a "trial available" flash for
+    // users who've already used it.
+    const showTrial =
+      isPaidTier &&
+      (!isAuthenticated || eligibility?.eligible === true);
 
     return (
       <div
@@ -101,7 +118,13 @@ export default function Hero() {
             variant={cfg.highlight ? "default" : "secondary"}
             onClick={() => navigate(t === "free" ? "/dashboard" : "/billing")}
           >
-            {t === "free" ? "Get started free" : cfg.highlight ? "Upgrade to Pro" : `Get ${cfg.name}`}
+            {t === "free"
+              ? "Get started free"
+              : showTrial
+              ? "Start 30-day Free Trial"
+              : cfg.highlight
+              ? "Upgrade to Pro"
+              : `Get ${cfg.name}`}
           </Button>
         </Authenticated>
         <Unauthenticated>
@@ -112,7 +135,11 @@ export default function Hero() {
             onClick={() => handleSignUp(t)}
           >
             <LogIn className="size-4" />
-            {t === "free" ? "Sign Up Free" : "Sign Up"}
+            {t === "free"
+              ? "Sign Up Free"
+              : showTrial
+              ? "Start 30-day Free Trial"
+              : "Sign Up"}
           </Button>
         </Unauthenticated>
       </div>

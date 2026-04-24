@@ -48,6 +48,7 @@ import {
   AlertCircle,
   Loader2,
   FlaskConical,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -126,6 +127,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const user = useQuery(api.users.getCurrentUser, {});
   const stripePricesStatus = useQuery(api.stripe.prices.getStripeStatus, {});
   const isAdmin = useQuery(api.users.getIsAdmin, {});
+  const trialEligibility = useQuery(api.users.getTrialEligibility, {});
   const myKeyInfo = useQuery(api.licenseKeys.getMyKeyInfo, {});
   const allKeys = useQuery(api.licenseKeys.listAll, {});
   const allUsers = useQuery(api.users.listAllUsers, {});
@@ -1561,6 +1563,15 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                 tierOrder.indexOf(t) > tierOrder.indexOf(tier);
               const isPendingThis = stripePending === t;
               const isFree = t === "free";
+              // Trial CTA applies only to the "start a new subscription" path —
+              // not to admin/sandbox switches, not when an active sub exists,
+              // and not to the Free card.
+              const showTrialCta =
+                !isFree &&
+                !isCurrent &&
+                !hasActiveStripeSub &&
+                !(isAdmin || user?.sandboxMode) &&
+                trialEligibility?.eligible === true;
 
               const cardTint = {
                 free: { border: "border-zinc-500/50", gradient: "linear-gradient(160deg, hsl(240 8% 9%) 0%, hsl(240 5% 7%) 60%, hsl(30 6% 6%) 100%)" },
@@ -1712,6 +1723,11 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
                           Switch to this plan
+                        </>
+                      ) : showTrialCta ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                          Start 30-day Free Trial
                         </>
                       ) : isUpgrade ? (
                         <>

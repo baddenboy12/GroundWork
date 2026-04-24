@@ -27,6 +27,7 @@
 - [Team Dissolution Seat Trim](team_dissolution_seat_trim.md) — removeKey schedules _trimExtraSeats when last member leaves self-created team, preventing phantom seat charges
 - [Landing Page](landing_page.md) — Single-page hero+pricing, /features route, Keycloak registration
 - [Log Location Auto-fill](log_location_autofill.md) — Site location/GPS auto-fills in new/edit log dialogs
+- [30-Day Free Trial](free_trial.md) — Pro/Business one-time-per-account trial; hasUsedTrial sticky flag, Stripe `trial_period_days`
 
 ## UI/UX
 - [UI Text Scaling](ui_text_scaling.md) — Consistent close buttons, text sizing, capitalization across all dialogs

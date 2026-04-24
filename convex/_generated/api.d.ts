@@ -9,6 +9,7 @@
  */
 
 import type * as _lib_tiers from "../_lib/tiers.js";
+import type * as _lib_trial from "../_lib/trial.js";
 import type * as _lib_validators from "../_lib/validators.js";
 import type * as clientErrors from "../clientErrors.js";
 import type * as crons from "../crons.js";
@@ -40,6 +41,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "_lib/tiers": typeof _lib_tiers;
+  "_lib/trial": typeof _lib_trial;
   "_lib/validators": typeof _lib_validators;
   clientErrors: typeof clientErrors;
   crons: typeof crons;

@@ -36,6 +36,10 @@ npx convex run users:_setPaypalSubscription '{"userId":"...","paypalSubscription
 # Clear cancel date
 npx convex run users:_setCancelEffectiveDate '{"userId":"...","date":""}'
 
+# Full reset for trial testing: wipes Stripe IDs + hasUsedTrial, sets tier=free
+# (does NOT touch sandboxMode — toggle that separately if needed)
+CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex run users:adminResetUserStripeFields '{"userId":"..."}'
+
 # Admin cascade-delete a user and ALL their data (logs, R2 photos, sites, team, api keys, webhooks, push tokens)
 npx convex run users:_adminDeleteUserAndAllData '{"userId":"..."}'
 
@@ -67,9 +71,11 @@ The Convex CLI needs two things before `npx convex run` works:
 - Backend: `setSubscriptionTier` mutation allows admin OR sandbox users to bypass PayPal
 
 ## Convex Deployments
-- **Dev**: `useful-ox-860` — used for localhost development and VPS (currently active)
-- **Prod**: `warmhearted-barracuda-277` — NOT in use yet, env vars were copied from dev
-- The app currently runs against the **dev** deployment everywhere (localhost + VPS)
+- **Dev**: `useful-ox-860` — used for `npm run dev` (localhost) via `.env.local`
+- **Prod**: `warmhearted-barracuda-277` — used for `npm run build` (VPS + APK) via `.env.production.local`
+- **IMPORTANT**: Production builds (VPS + APK) hit the PROD deployment. Any new/changed Convex function MUST be pushed to BOTH deployments before a production build, or the live app will throw "Server Error — Could not find public function".
+  - Dev push: `CONVEX_DEPLOYMENT=useful-ox-860 ./node_modules/.bin/convex dev --once`
+  - Prod push: `CONVEX_DEPLOYMENT=prod:warmhearted-barracuda-277 ./node_modules/.bin/convex deploy --yes`
 
 ## Version Tracking
 - App version is in `src/lib/version.ts` → `APP_VERSION` constant
