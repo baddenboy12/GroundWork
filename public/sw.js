@@ -12,9 +12,6 @@ const BYPASS = [
   // offline via the fetch handler below. Public R2 bucket CORS is required.
   "fonts.googleapis.com",
   "fonts.gstatic.com",
-  "paypal.com",
-  "sandbox.paypal.com",
-  "paypalobjects.com",
 ];
 
 // Minimum ms between background asset refreshes (avoids hammering the CDN on

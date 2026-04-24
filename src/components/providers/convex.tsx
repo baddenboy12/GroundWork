@@ -2,8 +2,7 @@ import { type ReactNode, useCallback, useMemo, useRef } from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { useAuth } from "react-oidc-context";
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL ?? "http://localhost:3000";
-const convex = new ConvexReactClient(convexUrl);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
 
 function useAuthFromOidc() {
   const auth = useAuth();

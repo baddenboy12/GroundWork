@@ -261,7 +261,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
               width: 22,
               height: 22,
               backgroundColor: "hsl(30 14% 17%)",
-              border: "1px solid hsl(var(--border))",
+              border: "1px solid var(--border)",
               borderRadius: 4,
               transform: "rotate(45deg)",
               zIndex: 0,
@@ -275,7 +275,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                 zIndex: 1,
                 borderRadius: "24px",
                 background: "linear-gradient(to bottom, hsl(30 14% 15%) 0%, hsl(30 12% 10%) 80px)",
-                border: "1px solid hsl(var(--border))",
+                border: "1px solid var(--border)",
               }}
             >
             {/* Panel header */}
@@ -418,7 +418,7 @@ export default function SitePopout({ selectedSiteId, onSelectSite, onSiteDeleted
                               <MoreVertical className="w-5 h-5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52 p-3 rounded-2xl" style={{ backgroundColor: "hsl(30 12% 8%)", border: "1px solid hsl(var(--border))" }}>
+                          <DropdownMenuContent align="end" className="w-52 p-3 rounded-2xl" style={{ backgroundColor: "hsl(30 12% 8%)", border: "1px solid var(--border)" }}>
                             {/* Edit — owner only */}
                             <DropdownMenuItem
                               className={cn("py-4 text-base cursor-pointer rounded-xl", (!isOnline || !site.isOwner) && "opacity-50")}

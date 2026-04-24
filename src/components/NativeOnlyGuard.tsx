@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Smartphone, ArrowLeft } from "lucide-react";
+import { Smartphone, ArrowLeft, LogOut } from "lucide-react";
 import { isNative } from "@/lib/platform";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
   children: ReactNode;
@@ -13,6 +14,8 @@ interface Props {
  * not a security boundary — Convex enforces access at the data layer.
  */
 export function NativeOnlyGuard({ children }: Props) {
+  const { isAuthenticated, signoutRedirect } = useAuth();
+
   if (isNative) return <>{children}</>;
 
   return (
@@ -32,7 +35,7 @@ export function NativeOnlyGuard({ children }: Props) {
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           <a
             href="/"
             className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
@@ -40,7 +43,16 @@ export function NativeOnlyGuard({ children }: Props) {
             <ArrowLeft className="size-4" />
             Back to homepage
           </a>
-          {/* TODO: replace with Play Store URL once the listing is live */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => { void signoutRedirect(); }}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <LogOut className="size-4" />
+              Sign out
+            </button>
+          )}
         </div>
       </div>
     </div>

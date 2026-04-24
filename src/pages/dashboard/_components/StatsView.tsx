@@ -136,15 +136,15 @@ export default function StatsView({ onBack }: Props) {
 
   const tooltipStyle = {
     contentStyle: {
-      background: "hsl(var(--card))",
-      border: "1px solid hsl(var(--border))",
+      background: "var(--card)",
+      border: "1px solid var(--border)",
       borderRadius: "8px",
       fontSize: 12,
       boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
     },
-    labelStyle: { color: "hsl(var(--foreground))", fontWeight: 600 },
-    itemStyle: { color: "hsl(var(--muted-foreground))" },
-    cursor: { fill: "hsl(var(--muted))", opacity: 0.5 },
+    labelStyle: { color: "var(--foreground)", fontWeight: 600 },
+    itemStyle: { color: "var(--muted-foreground)" },
+    cursor: { fill: "var(--muted)", opacity: 0.5 },
   };
 
   return (
@@ -218,13 +218,13 @@ export default function StatsView({ onBack }: Props) {
                 <BarChart data={activityData} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                     tickLine={false}
                     axisLine={false}
                     interval={4}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                     tickLine={false}
                     axisLine={false}
                     allowDecimals={false}
@@ -233,7 +233,7 @@ export default function StatsView({ onBack }: Props) {
                   <Bar
                     dataKey="count"
                     name="Entries"
-                    fill="hsl(var(--primary))"
+                    fill="var(--primary)"
                     radius={[3, 3, 0, 0]}
                     maxBarSize={24}
                   />
@@ -289,7 +289,7 @@ export default function StatsView({ onBack }: Props) {
                       iconSize={8}
                       wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
                       formatter={(value) => (
-                        <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>
+                        <span style={{ color: "var(--foreground)" }}>{value}</span>
                       )}
                     />
                   </PieChart>

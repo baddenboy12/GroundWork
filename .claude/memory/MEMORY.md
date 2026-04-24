@@ -32,3 +32,4 @@
 ## UI/UX
 - [UI Text Scaling](ui_text_scaling.md) — Consistent close buttons, text sizing, capitalization across all dialogs
 - [Deploy After Changes](feedback_deploy_after_changes.md) — Commit and push to VPS after each change, not batched
+- [Git History Creds Risk](feedback_git_history_creds.md) — Private-repo history is acceptable-risk; rotate creds, don't rewrite history

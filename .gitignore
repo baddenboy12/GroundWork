@@ -29,6 +29,9 @@ tsconfig.tsbuildinfo
 # Environment variables
 .env*
 
+# Claude Code local settings (may contain credentials in permission strings)
+.claude/settings.local.json
+
 # TWA build artifacts
 twa/.gradle/
 twa/app/build/
