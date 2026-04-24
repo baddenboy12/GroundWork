@@ -19,9 +19,8 @@ export function usePushNotifications() {
 
     (async () => {
       try {
-        const { PushNotifications } = await import(
-          "@capacitor/push-notifications"
-        );
+        const { PushNotifications } =
+          await import("@capacitor/push-notifications");
 
         // Request permission
         const permResult = await PushNotifications.requestPermissions();
@@ -35,7 +34,9 @@ export function usePushNotifications() {
 
         // Listen for the FCM token
         PushNotifications.addListener("registration", async (token) => {
-          console.log("[Push] FCM token:", token.value);
+          if (import.meta.env.DEV) {
+            console.debug("[Push] FCM token registered");
+          }
           await registerToken({ token: token.value, platform: "android" });
         });
 
@@ -47,18 +48,22 @@ export function usePushNotifications() {
         PushNotifications.addListener(
           "pushNotificationReceived",
           (notification) => {
-            console.log("[Push] Foreground notification:", notification);
+            if (import.meta.env.DEV) {
+              console.debug("[Push] Foreground notification:", notification);
+            }
             // Could show a toast or in-app notification here
-          }
+          },
         );
 
         // Handle notification tap (app was in background)
         PushNotifications.addListener(
           "pushNotificationActionPerformed",
           (action) => {
-            console.log("[Push] Notification tapped:", action);
+            if (import.meta.env.DEV) {
+              console.debug("[Push] Notification tapped:", action);
+            }
             // Could navigate to a specific page based on action.notification.data
-          }
+          },
         );
       } catch (err) {
         console.error("[Push] Setup error:", err);

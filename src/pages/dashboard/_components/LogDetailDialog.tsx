@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
@@ -21,13 +28,26 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
-import { Trash2, Pencil, Clock, User, MapPin, ImageIcon, X, WifiOff, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
-import { CATEGORY_COLORS, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
+import {
+  Trash2,
+  Pencil,
+  Clock,
+  User,
+  MapPin,
+  ImageIcon,
+  X,
+  WifiOff,
+  ChevronLeft,
+  ChevronRight,
+  MoreVertical,
+} from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  type LogCategory,
+} from "../_lib/constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
-import PhotoLightbox from "./PhotoLightbox.tsx";
-import EditLogDialog from "./EditLogDialog.tsx";
-import ZoomablePhoto from "./ZoomablePhoto.tsx";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -37,6 +57,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
 };
+
+const EditLogDialog = lazy(() => import("./EditLogDialog.tsx"));
+const PhotoLightbox = lazy(() => import("./PhotoLightbox.tsx"));
+const ZoomablePhoto = lazy(() => import("./ZoomablePhoto.tsx"));
 
 export default function LogDetailDialog({ log, open, onClose }: Props) {
   const removeLog = useMutation(api.logs.remove);
@@ -107,7 +131,9 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [visible]);
 
   const handleDelete = async () => {
@@ -183,9 +209,7 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
           </button>
 
           {/* Photo cascade stack */}
-          {photos.length > 0 && (
-            <PhotoCascade photos={photos} />
-          )}
+          {photos.length > 0 && <PhotoCascade photos={photos} />}
 
           <motion.div
             className="p-6 sm:p-8 space-y-6"
@@ -193,25 +217,32 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             animate="visible"
             variants={{
               hidden: {},
-              visible: { transition: { staggerChildren: 0.06, delayChildren: 0.15 } },
+              visible: {
+                transition: { staggerChildren: 0.06, delayChildren: 0.15 },
+              },
             }}
           >
             {/* Header */}
             <motion.div
               className="flex items-start justify-between gap-3 pr-6"
-              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                visible: { opacity: 1, y: 0 },
+              }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
             >
               <div className="space-y-2">
                 <span
                   className={cn(
                     "inline-flex items-center px-3 py-1 rounded-full text-base font-medium border",
-                    CATEGORY_COLORS[log.category as LogCategory]
+                    CATEGORY_COLORS[log.category as LogCategory],
                   )}
                 >
                   {CATEGORY_LABELS[log.category as LogCategory]}
                 </span>
-                <h2 className="text-4xl font-semibold leading-snug text-foreground">{log.title}</h2>
+                <h2 className="text-4xl font-semibold leading-snug text-foreground">
+                  {log.title}
+                </h2>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {/* Offline indicator */}
@@ -233,53 +264,82 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     <MoreVertical style={{ width: 32, height: 32 }} />
                   </button>
                   <AnimatePresence>
-                  {menuOpen && (
-                    <motion.div
-                      className="absolute right-0 top-[calc(100%+4px)] z-50 w-64 p-3 rounded-3xl bg-popover border border-border shadow-lg"
-                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <motion.button
-                        whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
-                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                        className={cn(
-                          "flex items-center gap-4 w-full py-5 px-4 text-[28px] rounded-xl hover:bg-accent transition-colors text-left bg-white/[0.04]",
-                          !isOnline && "opacity-50"
-                        )}
-                        onClick={() => {
-                          if (!isOnline) {
-                            toast.error("You're offline — editing requires a connection");
-                            return;
-                          }
-                          handleMenuOpenChange(false);
-                          setEditOpen(true);
+                    {menuOpen && (
+                      <motion.div
+                        className="absolute right-0 top-[calc(100%+4px)] z-50 w-64 p-3 rounded-3xl bg-popover border border-border shadow-lg"
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 30,
+                          mass: 0.8,
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="w-8 flex items-center justify-center shrink-0"><Pencil className="w-7 h-7" /></span> Edit
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.93, backgroundColor: "rgba(255,255,255,0.12)" }}
-                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                        className={cn(
-                          "flex items-center gap-4 w-full py-5 px-4 mt-1 text-[28px] rounded-xl hover:bg-accent transition-colors text-left text-destructive bg-white/[0.04]",
-                          !isOnline && "opacity-50"
-                        )}
-                        onClick={() => {
-                          if (!isOnline) {
-                            toast.error("You're offline — deletion requires a connection");
-                            return;
-                          }
-                          handleMenuOpenChange(false);
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        <span className="w-8 flex items-center justify-center shrink-0"><Trash2 className="w-7 h-7" /></span> Delete
-                      </motion.button>
-                    </motion.div>
-                  )}
+                        <motion.button
+                          whileTap={{
+                            scale: 0.93,
+                            backgroundColor: "rgba(255,255,255,0.12)",
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 17,
+                          }}
+                          className={cn(
+                            "flex items-center gap-4 w-full py-5 px-4 text-[28px] rounded-xl hover:bg-accent transition-colors text-left bg-white/[0.04]",
+                            !isOnline && "opacity-50",
+                          )}
+                          onClick={() => {
+                            if (!isOnline) {
+                              toast.error(
+                                "You're offline — editing requires a connection",
+                              );
+                              return;
+                            }
+                            handleMenuOpenChange(false);
+                            setEditOpen(true);
+                          }}
+                        >
+                          <span className="w-8 flex items-center justify-center shrink-0">
+                            <Pencil className="w-7 h-7" />
+                          </span>{" "}
+                          Edit
+                        </motion.button>
+                        <motion.button
+                          whileTap={{
+                            scale: 0.93,
+                            backgroundColor: "rgba(255,255,255,0.12)",
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 17,
+                          }}
+                          className={cn(
+                            "flex items-center gap-4 w-full py-5 px-4 mt-1 text-[28px] rounded-xl hover:bg-accent transition-colors text-left text-destructive bg-white/[0.04]",
+                            !isOnline && "opacity-50",
+                          )}
+                          onClick={() => {
+                            if (!isOnline) {
+                              toast.error(
+                                "You're offline — deletion requires a connection",
+                              );
+                              return;
+                            }
+                            handleMenuOpenChange(false);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <span className="w-8 flex items-center justify-center shrink-0">
+                            <Trash2 className="w-7 h-7" />
+                          </span>{" "}
+                          Delete
+                        </motion.button>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -287,7 +347,8 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete log entry?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete this log entry and all attached photos.
+                        This will permanently delete this log entry and all
+                        attached photos.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -307,10 +368,16 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             {/* Content */}
             <motion.div
               className="max-h-[420px] overflow-y-auto overscroll-contain rounded-lg pr-1"
-              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                visible: { opacity: 1, y: 0 },
+              }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
             >
-              <p className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed" style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}>
+              <p
+                className="text-2xl text-muted-foreground whitespace-pre-wrap leading-relaxed"
+                style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
+              >
                 {log.content}
               </p>
             </motion.div>
@@ -318,7 +385,10 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
             {/* Meta */}
             <motion.div
               className="flex flex-col gap-y-3 pt-3 border-t border-border/50 text-base text-muted-foreground"
-              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                visible: { opacity: 1, y: 0 },
+              }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
             >
               {/* Row 1: date + author */}
@@ -333,7 +403,8 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
                 </span>
               </div>
               {/* Row 2: location + coordinates */}
-              {(log.location || (log.latitude != null && log.longitude != null)) && (
+              {(log.location ||
+                (log.latitude != null && log.longitude != null)) && (
                 <div className="flex items-center gap-4 flex-wrap">
                   {log.location && (
                     <span className="flex items-center gap-1.5">
@@ -360,22 +431,28 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
         </div>
       </div>
 
-    {/* Lightbox — separate portal layer above everything */}
-    {lightboxIndex !== null && (
-      <PhotoLightbox
-        photos={photos}
-        initialIndex={lightboxIndex}
-        onClose={() => setLightboxIndex(null)}
-      />
-    )}
+      {/* Lightbox — separate portal layer above everything */}
+      {lightboxIndex !== null && (
+        <Suspense fallback={null}>
+          <PhotoLightbox
+            photos={photos}
+            initialIndex={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+          />
+        </Suspense>
+      )}
 
-    <EditLogDialog
-      open={editOpen}
-      onClose={() => setEditOpen(false)}
-      log={log}
-    />
+      {editOpen && (
+        <Suspense fallback={null}>
+          <EditLogDialog
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            log={log}
+          />
+        </Suspense>
+      )}
     </>,
-    document.body
+    document.body,
   );
 }
 
@@ -407,7 +484,10 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
     }
   };
 
-  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+  const handleDragEnd = (
+    _: unknown,
+    info: { offset: { x: number }; velocity: { x: number } },
+  ) => {
     const swipe = info.offset.x + info.velocity.x * 0.3;
     if (swipe < -swipeThreshold && activeIndex < photos.length - 1) {
       goNext();
@@ -429,7 +509,9 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
         style={{ perspective: "800px" }}
       >
         {/* Background stack cards (static, behind) */}
-        {Array.from({ length: Math.min(maxVisible - 1, photos.length - activeIndex - 1) }).map((_, i) => {
+        {Array.from({
+          length: Math.min(maxVisible - 1, photos.length - activeIndex - 1),
+        }).map((_, i) => {
           const stackPos = i + 1;
           return (
             <div
@@ -510,7 +592,10 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
         <div className="flex items-center gap-8 mt-4">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              goPrev();
+            }}
             disabled={activeIndex === 0}
             className="p-5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
@@ -521,7 +606,10 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
           </span>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); goNext(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              goNext();
+            }}
             disabled={activeIndex === photos.length - 1}
             className="p-5 rounded-full bg-muted/60 hover:bg-muted active:scale-90 disabled:opacity-30 transition-all"
           >
@@ -540,17 +628,22 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomed(false);
+              }}
             >
-              <ZoomablePhoto
-                src={photos[activeIndex]}
-                alt={`Photo ${activeIndex + 1}`}
-                onClose={() => setZoomed(false)}
-              />
+              <Suspense fallback={null}>
+                <ZoomablePhoto
+                  src={photos[activeIndex]}
+                  alt={`Photo ${activeIndex + 1}`}
+                  onClose={() => setZoomed(false)}
+                />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { format } from "date-fns";
 import { CATEGORY_LABELS, type LogCategory } from "./constants.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
@@ -44,22 +44,22 @@ export type Theme = {
   id: string;
   name: string;
   // Cover page
-  coverBg: RGB;       // full-bleed cover background
-  coverAccent: RGB;   // accent bar / label on cover
-  coverTitle: RGB;    // big site-name title
-  coverSub: RGB;      // secondary / muted cover text
+  coverBg: RGB; // full-bleed cover background
+  coverAccent: RGB; // accent bar / label on cover
+  coverTitle: RGB; // big site-name title
+  coverSub: RGB; // secondary / muted cover text
   // Running header (content pages)
   hdrBg: RGB;
-  hdrAccent: RGB;     // 2mm accent strip under header bar
+  hdrAccent: RGB; // 2mm accent strip under header bar
   hdrTitle: RGB;
   hdrSub: RGB;
   // Entry card
-  entryBg: RGB;       // card background (light for 'card', dark for 'dark', white for 'plain')
-  entryBar: RGB;      // left accent bar / bottom rule color
+  entryBg: RGB; // card background (light for 'card', dark for 'dark', white for 'plain')
+  entryBar: RGB; // left accent bar / bottom rule color
   entryTitle: RGB;
   entryBody: RGB;
   entryMuted: RGB;
-  entryBorder: RGB;   // separator lines
+  entryBorder: RGB; // separator lines
   // Metadata badges
   pillBg: RGB;
   pillText: RGB;
@@ -80,210 +80,550 @@ export type Theme = {
 export const THEMES: Theme[] = [
   // ── Dark cover + light card entries (8 themes) ──────────────────────────────
   {
-    id: "midnight", name: "Midnight",
-    coverBg: [18,24,38], coverAccent: [245,158,11], coverTitle: [255,255,255], coverSub: [155,170,205],
-    hdrBg: [18,24,38], hdrAccent: [245,158,11], hdrTitle: [255,255,255], hdrSub: [145,160,195],
-    entryBg: [245,247,250], entryBar: [245,158,11], entryTitle: [18,24,38], entryBody: [45,55,72], entryMuted: [110,125,150], entryBorder: [200,210,225],
-    pillBg: [40,50,70], pillText: [195,210,240],
-    statsBg: [28,38,58], statsNum: [245,158,11], statsSub: [145,160,195],
-    ftrBg: [18,24,38], ftrText: [95,110,140],
-    cover: "dark", entry: "card",
+    id: "midnight",
+    name: "Midnight",
+    coverBg: [18, 24, 38],
+    coverAccent: [245, 158, 11],
+    coverTitle: [255, 255, 255],
+    coverSub: [155, 170, 205],
+    hdrBg: [18, 24, 38],
+    hdrAccent: [245, 158, 11],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [145, 160, 195],
+    entryBg: [245, 247, 250],
+    entryBar: [245, 158, 11],
+    entryTitle: [18, 24, 38],
+    entryBody: [45, 55, 72],
+    entryMuted: [110, 125, 150],
+    entryBorder: [200, 210, 225],
+    pillBg: [40, 50, 70],
+    pillText: [195, 210, 240],
+    statsBg: [28, 38, 58],
+    statsNum: [245, 158, 11],
+    statsSub: [145, 160, 195],
+    ftrBg: [18, 24, 38],
+    ftrText: [95, 110, 140],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "obsidian", name: "Obsidian",
-    coverBg: [8,10,15], coverAccent: [59,130,246], coverTitle: [255,255,255], coverSub: [145,160,200],
-    hdrBg: [8,10,15], hdrAccent: [59,130,246], hdrTitle: [255,255,255], hdrSub: [135,150,190],
-    entryBg: [244,248,255], entryBar: [59,130,246], entryTitle: [10,20,45], entryBody: [28,42,78], entryMuted: [95,115,165], entryBorder: [190,208,245],
-    pillBg: [18,32,68], pillText: [175,200,248],
-    statsBg: [16,24,50], statsNum: [99,160,255], statsSub: [135,150,195],
-    ftrBg: [8,10,15], ftrText: [85,100,140],
-    cover: "dark", entry: "card",
+    id: "obsidian",
+    name: "Obsidian",
+    coverBg: [8, 10, 15],
+    coverAccent: [59, 130, 246],
+    coverTitle: [255, 255, 255],
+    coverSub: [145, 160, 200],
+    hdrBg: [8, 10, 15],
+    hdrAccent: [59, 130, 246],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [135, 150, 190],
+    entryBg: [244, 248, 255],
+    entryBar: [59, 130, 246],
+    entryTitle: [10, 20, 45],
+    entryBody: [28, 42, 78],
+    entryMuted: [95, 115, 165],
+    entryBorder: [190, 208, 245],
+    pillBg: [18, 32, 68],
+    pillText: [175, 200, 248],
+    statsBg: [16, 24, 50],
+    statsNum: [99, 160, 255],
+    statsSub: [135, 150, 195],
+    ftrBg: [8, 10, 15],
+    ftrText: [85, 100, 140],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "forest", name: "Forest",
-    coverBg: [10,30,18], coverAccent: [74,222,128], coverTitle: [255,255,255], coverSub: [130,190,150],
-    hdrBg: [12,35,22], hdrAccent: [74,222,128], hdrTitle: [255,255,255], hdrSub: [120,180,142],
-    entryBg: [243,252,247], entryBar: [34,197,94], entryTitle: [12,35,20], entryBody: [22,58,35], entryMuted: [72,125,92], entryBorder: [185,235,208],
-    pillBg: [20,52,32], pillText: [155,228,185],
-    statsBg: [16,45,26], statsNum: [74,222,128], statsSub: [120,180,142],
-    ftrBg: [10,30,18], ftrText: [72,125,92],
-    cover: "dark", entry: "card",
+    id: "forest",
+    name: "Forest",
+    coverBg: [10, 30, 18],
+    coverAccent: [74, 222, 128],
+    coverTitle: [255, 255, 255],
+    coverSub: [130, 190, 150],
+    hdrBg: [12, 35, 22],
+    hdrAccent: [74, 222, 128],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [120, 180, 142],
+    entryBg: [243, 252, 247],
+    entryBar: [34, 197, 94],
+    entryTitle: [12, 35, 20],
+    entryBody: [22, 58, 35],
+    entryMuted: [72, 125, 92],
+    entryBorder: [185, 235, 208],
+    pillBg: [20, 52, 32],
+    pillText: [155, 228, 185],
+    statsBg: [16, 45, 26],
+    statsNum: [74, 222, 128],
+    statsSub: [120, 180, 142],
+    ftrBg: [10, 30, 18],
+    ftrText: [72, 125, 92],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "crimson", name: "Crimson",
-    coverBg: [36,8,12], coverAccent: [251,191,36], coverTitle: [255,255,255], coverSub: [208,158,165],
-    hdrBg: [40,10,15], hdrAccent: [251,191,36], hdrTitle: [255,255,255], hdrSub: [198,148,155],
-    entryBg: [255,246,248], entryBar: [220,38,38], entryTitle: [55,10,15], entryBody: [78,24,28], entryMuted: [152,78,88], entryBorder: [255,198,205],
-    pillBg: [68,14,20], pillText: [255,178,188],
-    statsBg: [52,12,18], statsNum: [251,191,36], statsSub: [198,148,155],
-    ftrBg: [36,8,12], ftrText: [145,78,88],
-    cover: "dark", entry: "card",
+    id: "crimson",
+    name: "Crimson",
+    coverBg: [36, 8, 12],
+    coverAccent: [251, 191, 36],
+    coverTitle: [255, 255, 255],
+    coverSub: [208, 158, 165],
+    hdrBg: [40, 10, 15],
+    hdrAccent: [251, 191, 36],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [198, 148, 155],
+    entryBg: [255, 246, 248],
+    entryBar: [220, 38, 38],
+    entryTitle: [55, 10, 15],
+    entryBody: [78, 24, 28],
+    entryMuted: [152, 78, 88],
+    entryBorder: [255, 198, 205],
+    pillBg: [68, 14, 20],
+    pillText: [255, 178, 188],
+    statsBg: [52, 12, 18],
+    statsNum: [251, 191, 36],
+    statsSub: [198, 148, 155],
+    ftrBg: [36, 8, 12],
+    ftrText: [145, 78, 88],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "eclipse", name: "Eclipse",
-    coverBg: [18,10,38], coverAccent: [167,139,250], coverTitle: [255,255,255], coverSub: [178,162,222],
-    hdrBg: [22,12,46], hdrAccent: [167,139,250], hdrTitle: [255,255,255], hdrSub: [168,152,212],
-    entryBg: [250,248,255], entryBar: [139,92,246], entryTitle: [24,12,54], entryBody: [38,22,78], entryMuted: [118,98,172], entryBorder: [212,202,250],
-    pillBg: [34,18,74], pillText: [198,182,255],
-    statsBg: [26,14,58], statsNum: [167,139,250], statsSub: [168,152,212],
-    ftrBg: [18,10,38], ftrText: [108,92,162],
-    cover: "dark", entry: "card",
+    id: "eclipse",
+    name: "Eclipse",
+    coverBg: [18, 10, 38],
+    coverAccent: [167, 139, 250],
+    coverTitle: [255, 255, 255],
+    coverSub: [178, 162, 222],
+    hdrBg: [22, 12, 46],
+    hdrAccent: [167, 139, 250],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [168, 152, 212],
+    entryBg: [250, 248, 255],
+    entryBar: [139, 92, 246],
+    entryTitle: [24, 12, 54],
+    entryBody: [38, 22, 78],
+    entryMuted: [118, 98, 172],
+    entryBorder: [212, 202, 250],
+    pillBg: [34, 18, 74],
+    pillText: [198, 182, 255],
+    statsBg: [26, 14, 58],
+    statsNum: [167, 139, 250],
+    statsSub: [168, 152, 212],
+    ftrBg: [18, 10, 38],
+    ftrText: [108, 92, 162],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "ember", name: "Ember",
-    coverBg: [22,14,8], coverAccent: [249,115,22], coverTitle: [255,255,255], coverSub: [208,162,125],
-    hdrBg: [26,16,10], hdrAccent: [249,115,22], hdrTitle: [255,255,255], hdrSub: [198,152,115],
-    entryBg: [255,251,246], entryBar: [234,88,12], entryTitle: [30,18,8], entryBody: [54,30,14], entryMuted: [152,102,64], entryBorder: [255,218,192],
-    pillBg: [44,24,10], pillText: [255,182,135],
-    statsBg: [32,18,8], statsNum: [249,115,22], statsSub: [198,152,115],
-    ftrBg: [22,14,8], ftrText: [142,92,55],
-    cover: "dark", entry: "card",
+    id: "ember",
+    name: "Ember",
+    coverBg: [22, 14, 8],
+    coverAccent: [249, 115, 22],
+    coverTitle: [255, 255, 255],
+    coverSub: [208, 162, 125],
+    hdrBg: [26, 16, 10],
+    hdrAccent: [249, 115, 22],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [198, 152, 115],
+    entryBg: [255, 251, 246],
+    entryBar: [234, 88, 12],
+    entryTitle: [30, 18, 8],
+    entryBody: [54, 30, 14],
+    entryMuted: [152, 102, 64],
+    entryBorder: [255, 218, 192],
+    pillBg: [44, 24, 10],
+    pillText: [255, 182, 135],
+    statsBg: [32, 18, 8],
+    statsNum: [249, 115, 22],
+    statsSub: [198, 152, 115],
+    ftrBg: [22, 14, 8],
+    ftrText: [142, 92, 55],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "ocean", name: "Ocean",
-    coverBg: [5,22,45], coverAccent: [34,211,238], coverTitle: [255,255,255], coverSub: [125,182,222],
-    hdrBg: [6,26,55], hdrAccent: [34,211,238], hdrTitle: [255,255,255], hdrSub: [115,172,212],
-    entryBg: [242,251,255], entryBar: [6,182,212], entryTitle: [5,28,58], entryBody: [10,42,88], entryMuted: [62,128,172], entryBorder: [182,228,250],
-    pillBg: [8,38,78], pillText: [155,218,250],
-    statsBg: [7,30,62], statsNum: [34,211,238], statsSub: [115,172,212],
-    ftrBg: [5,22,45], ftrText: [62,128,172],
-    cover: "dark", entry: "card",
+    id: "ocean",
+    name: "Ocean",
+    coverBg: [5, 22, 45],
+    coverAccent: [34, 211, 238],
+    coverTitle: [255, 255, 255],
+    coverSub: [125, 182, 222],
+    hdrBg: [6, 26, 55],
+    hdrAccent: [34, 211, 238],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [115, 172, 212],
+    entryBg: [242, 251, 255],
+    entryBar: [6, 182, 212],
+    entryTitle: [5, 28, 58],
+    entryBody: [10, 42, 88],
+    entryMuted: [62, 128, 172],
+    entryBorder: [182, 228, 250],
+    pillBg: [8, 38, 78],
+    pillText: [155, 218, 250],
+    statsBg: [7, 30, 62],
+    statsNum: [34, 211, 238],
+    statsSub: [115, 172, 212],
+    ftrBg: [5, 22, 45],
+    ftrText: [62, 128, 172],
+    cover: "dark",
+    entry: "card",
   },
   {
-    id: "carbon", name: "Carbon",
-    coverBg: [12,12,12], coverAccent: [250,204,21], coverTitle: [255,255,255], coverSub: [175,175,175],
-    hdrBg: [18,18,18], hdrAccent: [250,204,21], hdrTitle: [255,255,255], hdrSub: [162,162,162],
-    entryBg: [248,248,248], entryBar: [234,179,8], entryTitle: [18,18,18], entryBody: [38,38,38], entryMuted: [112,112,112], entryBorder: [212,212,212],
-    pillBg: [32,32,32], pillText: [208,208,208],
-    statsBg: [24,24,24], statsNum: [250,204,21], statsSub: [162,162,162],
-    ftrBg: [12,12,12], ftrText: [100,100,100],
-    cover: "dark", entry: "card",
+    id: "carbon",
+    name: "Carbon",
+    coverBg: [12, 12, 12],
+    coverAccent: [250, 204, 21],
+    coverTitle: [255, 255, 255],
+    coverSub: [175, 175, 175],
+    hdrBg: [18, 18, 18],
+    hdrAccent: [250, 204, 21],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [162, 162, 162],
+    entryBg: [248, 248, 248],
+    entryBar: [234, 179, 8],
+    entryTitle: [18, 18, 18],
+    entryBody: [38, 38, 38],
+    entryMuted: [112, 112, 112],
+    entryBorder: [212, 212, 212],
+    pillBg: [32, 32, 32],
+    pillText: [208, 208, 208],
+    statsBg: [24, 24, 24],
+    statsNum: [250, 204, 21],
+    statsSub: [162, 162, 162],
+    ftrBg: [12, 12, 12],
+    ftrText: [100, 100, 100],
+    cover: "dark",
+    entry: "card",
   },
 
   // ── Light/band cover + card entries (4 themes) ──────────────────────────────
   {
-    id: "executive", name: "Executive",
-    coverBg: [255,255,255], coverAccent: [18,18,18], coverTitle: [255,255,255], coverSub: [205,205,205],
-    hdrBg: [18,18,18], hdrAccent: [200,158,38], hdrTitle: [255,255,255], hdrSub: [172,172,172],
-    entryBg: [252,252,252], entryBar: [18,18,18], entryTitle: [14,14,14], entryBody: [38,38,38], entryMuted: [112,112,112], entryBorder: [212,212,212],
-    pillBg: [28,28,28], pillText: [208,208,208],
-    statsBg: [244,244,244], statsNum: [18,18,18], statsSub: [118,118,118],
-    ftrBg: [18,18,18], ftrText: [148,148,148],
-    cover: "band", entry: "card",
+    id: "executive",
+    name: "Executive",
+    coverBg: [255, 255, 255],
+    coverAccent: [18, 18, 18],
+    coverTitle: [255, 255, 255],
+    coverSub: [205, 205, 205],
+    hdrBg: [18, 18, 18],
+    hdrAccent: [200, 158, 38],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [172, 172, 172],
+    entryBg: [252, 252, 252],
+    entryBar: [18, 18, 18],
+    entryTitle: [14, 14, 14],
+    entryBody: [38, 38, 38],
+    entryMuted: [112, 112, 112],
+    entryBorder: [212, 212, 212],
+    pillBg: [28, 28, 28],
+    pillText: [208, 208, 208],
+    statsBg: [244, 244, 244],
+    statsNum: [18, 18, 18],
+    statsSub: [118, 118, 118],
+    ftrBg: [18, 18, 18],
+    ftrText: [148, 148, 148],
+    cover: "band",
+    entry: "card",
   },
   {
-    id: "blueprint", name: "Blueprint",
-    coverBg: [255,255,255], coverAccent: [37,99,235], coverTitle: [255,255,255], coverSub: [178,198,242],
-    hdrBg: [28,56,136], hdrAccent: [147,197,253], hdrTitle: [255,255,255], hdrSub: [178,198,242],
-    entryBg: [245,249,255], entryBar: [37,99,235], entryTitle: [14,28,74], entryBody: [22,46,108], entryMuted: [88,118,182], entryBorder: [188,208,250],
-    pillBg: [28,56,136], pillText: [188,212,255],
-    statsBg: [236,245,255], statsNum: [37,99,235], statsSub: [98,128,188],
-    ftrBg: [28,56,136], ftrText: [148,172,228],
-    cover: "band", entry: "card",
+    id: "blueprint",
+    name: "Blueprint",
+    coverBg: [255, 255, 255],
+    coverAccent: [37, 99, 235],
+    coverTitle: [255, 255, 255],
+    coverSub: [178, 198, 242],
+    hdrBg: [28, 56, 136],
+    hdrAccent: [147, 197, 253],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [178, 198, 242],
+    entryBg: [245, 249, 255],
+    entryBar: [37, 99, 235],
+    entryTitle: [14, 28, 74],
+    entryBody: [22, 46, 108],
+    entryMuted: [88, 118, 182],
+    entryBorder: [188, 208, 250],
+    pillBg: [28, 56, 136],
+    pillText: [188, 212, 255],
+    statsBg: [236, 245, 255],
+    statsNum: [37, 99, 235],
+    statsSub: [98, 128, 188],
+    ftrBg: [28, 56, 136],
+    ftrText: [148, 172, 228],
+    cover: "band",
+    entry: "card",
   },
   {
-    id: "arctic", name: "Arctic",
-    coverBg: [238,248,255], coverAccent: [14,165,233], coverTitle: [255,255,255], coverSub: [178,215,242],
-    hdrBg: [5,142,202], hdrAccent: [186,230,253], hdrTitle: [255,255,255], hdrSub: [178,215,242],
-    entryBg: [244,252,255], entryBar: [2,132,199], entryTitle: [4,38,62], entryBody: [10,52,82], entryMuted: [58,128,162], entryBorder: [178,228,252],
-    pillBg: [10,118,182], pillText: [198,240,255],
-    statsBg: [222,242,254], statsNum: [2,132,199], statsSub: [78,148,192],
-    ftrBg: [5,142,202], ftrText: [158,212,242],
-    cover: "band", entry: "card",
+    id: "arctic",
+    name: "Arctic",
+    coverBg: [238, 248, 255],
+    coverAccent: [14, 165, 233],
+    coverTitle: [255, 255, 255],
+    coverSub: [178, 215, 242],
+    hdrBg: [5, 142, 202],
+    hdrAccent: [186, 230, 253],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [178, 215, 242],
+    entryBg: [244, 252, 255],
+    entryBar: [2, 132, 199],
+    entryTitle: [4, 38, 62],
+    entryBody: [10, 52, 82],
+    entryMuted: [58, 128, 162],
+    entryBorder: [178, 228, 252],
+    pillBg: [10, 118, 182],
+    pillText: [198, 240, 255],
+    statsBg: [222, 242, 254],
+    statsNum: [2, 132, 199],
+    statsSub: [78, 148, 192],
+    ftrBg: [5, 142, 202],
+    ftrText: [158, 212, 242],
+    cover: "band",
+    entry: "card",
   },
   {
-    id: "sand", name: "Sand",
-    coverBg: [255,252,238], coverAccent: [118,74,22], coverTitle: [255,255,255], coverSub: [238,212,178],
-    hdrBg: [108,66,20], hdrAccent: [218,162,68], hdrTitle: [255,255,255], hdrSub: [232,202,162],
-    entryBg: [255,254,248], entryBar: [182,122,42], entryTitle: [54,34,8], entryBody: [74,48,16], entryMuted: [158,122,68], entryBorder: [250,232,192],
-    pillBg: [98,60,16], pillText: [248,222,172],
-    statsBg: [254,248,226], statsNum: [152,102,28], statsSub: [162,128,72],
-    ftrBg: [108,66,20], ftrText: [218,175,118],
-    cover: "band", entry: "card",
+    id: "sand",
+    name: "Sand",
+    coverBg: [255, 252, 238],
+    coverAccent: [118, 74, 22],
+    coverTitle: [255, 255, 255],
+    coverSub: [238, 212, 178],
+    hdrBg: [108, 66, 20],
+    hdrAccent: [218, 162, 68],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [232, 202, 162],
+    entryBg: [255, 254, 248],
+    entryBar: [182, 122, 42],
+    entryTitle: [54, 34, 8],
+    entryBody: [74, 48, 16],
+    entryMuted: [158, 122, 68],
+    entryBorder: [250, 232, 192],
+    pillBg: [98, 60, 16],
+    pillText: [248, 222, 172],
+    statsBg: [254, 248, 226],
+    statsNum: [152, 102, 28],
+    statsSub: [162, 128, 72],
+    ftrBg: [108, 66, 20],
+    ftrText: [218, 175, 118],
+    cover: "band",
+    entry: "card",
   },
 
   // ── Dark cover + dark card entries (4 themes) ───────────────────────────────
   {
-    id: "steel", name: "Steel",
-    coverBg: [18,32,52], coverAccent: [249,115,22], coverTitle: [255,255,255], coverSub: [138,172,218],
-    hdrBg: [22,40,64], hdrAccent: [249,115,22], hdrTitle: [255,255,255], hdrSub: [128,162,208],
-    entryBg: [26,48,78], entryBar: [249,115,22], entryTitle: [222,238,255], entryBody: [182,208,244], entryMuted: [118,152,198], entryBorder: [44,68,102],
-    pillBg: [40,66,104], pillText: [178,212,250],
-    statsBg: [12,22,38], statsNum: [249,115,22], statsSub: [128,162,208],
-    ftrBg: [18,32,52], ftrText: [98,132,178],
-    cover: "dark", entry: "dark",
+    id: "steel",
+    name: "Steel",
+    coverBg: [18, 32, 52],
+    coverAccent: [249, 115, 22],
+    coverTitle: [255, 255, 255],
+    coverSub: [138, 172, 218],
+    hdrBg: [22, 40, 64],
+    hdrAccent: [249, 115, 22],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [128, 162, 208],
+    entryBg: [26, 48, 78],
+    entryBar: [249, 115, 22],
+    entryTitle: [222, 238, 255],
+    entryBody: [182, 208, 244],
+    entryMuted: [118, 152, 198],
+    entryBorder: [44, 68, 102],
+    pillBg: [40, 66, 104],
+    pillText: [178, 212, 250],
+    statsBg: [12, 22, 38],
+    statsNum: [249, 115, 22],
+    statsSub: [128, 162, 208],
+    ftrBg: [18, 32, 52],
+    ftrText: [98, 132, 178],
+    cover: "dark",
+    entry: "dark",
   },
   {
-    id: "royal", name: "Royal",
-    coverBg: [12,18,75], coverAccent: [251,191,36], coverTitle: [255,255,255], coverSub: [158,172,232],
-    hdrBg: [14,22,88], hdrAccent: [251,191,36], hdrTitle: [255,255,255], hdrSub: [152,166,228],
-    entryBg: [18,28,98], entryBar: [251,191,36], entryTitle: [228,232,255], entryBody: [188,202,248], entryMuted: [128,146,218], entryBorder: [32,48,128],
-    pillBg: [28,42,128], pillText: [182,198,255],
-    statsBg: [8,12,54], statsNum: [251,191,36], statsSub: [152,166,228],
-    ftrBg: [12,18,75], ftrText: [108,128,208],
-    cover: "dark", entry: "dark",
+    id: "royal",
+    name: "Royal",
+    coverBg: [12, 18, 75],
+    coverAccent: [251, 191, 36],
+    coverTitle: [255, 255, 255],
+    coverSub: [158, 172, 232],
+    hdrBg: [14, 22, 88],
+    hdrAccent: [251, 191, 36],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [152, 166, 228],
+    entryBg: [18, 28, 98],
+    entryBar: [251, 191, 36],
+    entryTitle: [228, 232, 255],
+    entryBody: [188, 202, 248],
+    entryMuted: [128, 146, 218],
+    entryBorder: [32, 48, 128],
+    pillBg: [28, 42, 128],
+    pillText: [182, 198, 255],
+    statsBg: [8, 12, 54],
+    statsNum: [251, 191, 36],
+    statsSub: [152, 166, 228],
+    ftrBg: [12, 18, 75],
+    ftrText: [108, 128, 208],
+    cover: "dark",
+    entry: "dark",
   },
   {
-    id: "storm", name: "Storm",
-    coverBg: [16,22,36], coverAccent: [99,210,255], coverTitle: [255,255,255], coverSub: [142,172,212],
-    hdrBg: [20,28,46], hdrAccent: [56,189,248], hdrTitle: [255,255,255], hdrSub: [132,162,202],
-    entryBg: [26,36,56], entryBar: [56,189,248], entryTitle: [212,230,255], entryBody: [172,198,238], entryMuted: [108,142,192], entryBorder: [42,58,88],
-    pillBg: [36,52,82], pillText: [162,202,248],
-    statsBg: [10,14,26], statsNum: [99,210,255], statsSub: [132,162,202],
-    ftrBg: [16,22,36], ftrText: [92,126,176],
-    cover: "dark", entry: "dark",
+    id: "storm",
+    name: "Storm",
+    coverBg: [16, 22, 36],
+    coverAccent: [99, 210, 255],
+    coverTitle: [255, 255, 255],
+    coverSub: [142, 172, 212],
+    hdrBg: [20, 28, 46],
+    hdrAccent: [56, 189, 248],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [132, 162, 202],
+    entryBg: [26, 36, 56],
+    entryBar: [56, 189, 248],
+    entryTitle: [212, 230, 255],
+    entryBody: [172, 198, 238],
+    entryMuted: [108, 142, 192],
+    entryBorder: [42, 58, 88],
+    pillBg: [36, 52, 82],
+    pillText: [162, 202, 248],
+    statsBg: [10, 14, 26],
+    statsNum: [99, 210, 255],
+    statsSub: [132, 162, 202],
+    ftrBg: [16, 22, 36],
+    ftrText: [92, 126, 176],
+    cover: "dark",
+    entry: "dark",
   },
   {
-    id: "sage", name: "Sage",
-    coverBg: [28,46,30], coverAccent: [186,230,135], coverTitle: [255,255,255], coverSub: [152,198,152],
-    hdrBg: [34,54,36], hdrAccent: [186,230,135], hdrTitle: [255,255,255], hdrSub: [144,190,144],
-    entryBg: [42,66,44], entryBar: [154,205,92], entryTitle: [232,248,228], entryBody: [192,226,188], entryMuted: [132,182,130], entryBorder: [56,84,58],
-    pillBg: [54,82,56], pillText: [182,228,172],
-    statsBg: [18,32,20], statsNum: [186,230,135], statsSub: [144,190,144],
-    ftrBg: [28,46,30], ftrText: [105,162,105],
-    cover: "dark", entry: "dark",
+    id: "sage",
+    name: "Sage",
+    coverBg: [28, 46, 30],
+    coverAccent: [186, 230, 135],
+    coverTitle: [255, 255, 255],
+    coverSub: [152, 198, 152],
+    hdrBg: [34, 54, 36],
+    hdrAccent: [186, 230, 135],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [144, 190, 144],
+    entryBg: [42, 66, 44],
+    entryBar: [154, 205, 92],
+    entryTitle: [232, 248, 228],
+    entryBody: [192, 226, 188],
+    entryMuted: [132, 182, 130],
+    entryBorder: [56, 84, 58],
+    pillBg: [54, 82, 56],
+    pillText: [182, 228, 172],
+    statsBg: [18, 32, 20],
+    statsNum: [186, 230, 135],
+    statsSub: [144, 190, 144],
+    ftrBg: [28, 46, 30],
+    ftrText: [105, 162, 105],
+    cover: "dark",
+    entry: "dark",
   },
 
   // ── Sidebar cover + editorial plain entries (4 themes) ──────────────────────
   {
-    id: "ink", name: "Ink",
-    coverBg: [255,255,255], coverAccent: [10,10,10], coverTitle: [10,10,10], coverSub: [88,88,88],
-    hdrBg: [10,10,10], hdrAccent: [198,158,38], hdrTitle: [255,255,255], hdrSub: [178,178,178],
-    entryBg: [255,255,255], entryBar: [10,10,10], entryTitle: [10,10,10], entryBody: [32,32,32], entryMuted: [108,108,108], entryBorder: [188,188,188],
-    pillBg: [14,14,14], pillText: [218,218,218],
-    statsBg: [244,244,244], statsNum: [10,10,10], statsSub: [108,108,108],
-    ftrBg: [10,10,10], ftrText: [158,158,158],
-    cover: "sidebar", entry: "plain",
+    id: "ink",
+    name: "Ink",
+    coverBg: [255, 255, 255],
+    coverAccent: [10, 10, 10],
+    coverTitle: [10, 10, 10],
+    coverSub: [88, 88, 88],
+    hdrBg: [10, 10, 10],
+    hdrAccent: [198, 158, 38],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [178, 178, 178],
+    entryBg: [255, 255, 255],
+    entryBar: [10, 10, 10],
+    entryTitle: [10, 10, 10],
+    entryBody: [32, 32, 32],
+    entryMuted: [108, 108, 108],
+    entryBorder: [188, 188, 188],
+    pillBg: [14, 14, 14],
+    pillText: [218, 218, 218],
+    statsBg: [244, 244, 244],
+    statsNum: [10, 10, 10],
+    statsSub: [108, 108, 108],
+    ftrBg: [10, 10, 10],
+    ftrText: [158, 158, 158],
+    cover: "sidebar",
+    entry: "plain",
   },
   {
-    id: "copper", name: "Copper",
-    coverBg: [255,255,255], coverAccent: [175,96,28], coverTitle: [255,255,255], coverSub: [244,222,196],
-    hdrBg: [42,20,6], hdrAccent: [208,128,48], hdrTitle: [255,255,255], hdrSub: [218,172,128],
-    entryBg: [255,255,255], entryBar: [182,102,32], entryTitle: [32,16,4], entryBody: [58,30,10], entryMuted: [152,102,62], entryBorder: [228,198,168],
-    pillBg: [48,22,6], pillText: [246,212,172],
-    statsBg: [250,240,226], statsNum: [172,92,26], statsSub: [158,108,68],
-    ftrBg: [42,20,6], ftrText: [198,152,108],
-    cover: "sidebar", entry: "plain",
+    id: "copper",
+    name: "Copper",
+    coverBg: [255, 255, 255],
+    coverAccent: [175, 96, 28],
+    coverTitle: [255, 255, 255],
+    coverSub: [244, 222, 196],
+    hdrBg: [42, 20, 6],
+    hdrAccent: [208, 128, 48],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [218, 172, 128],
+    entryBg: [255, 255, 255],
+    entryBar: [182, 102, 32],
+    entryTitle: [32, 16, 4],
+    entryBody: [58, 30, 10],
+    entryMuted: [152, 102, 62],
+    entryBorder: [228, 198, 168],
+    pillBg: [48, 22, 6],
+    pillText: [246, 212, 172],
+    statsBg: [250, 240, 226],
+    statsNum: [172, 92, 26],
+    statsSub: [158, 108, 68],
+    ftrBg: [42, 20, 6],
+    ftrText: [198, 152, 108],
+    cover: "sidebar",
+    entry: "plain",
   },
   {
-    id: "dusk", name: "Dusk",
-    coverBg: [255,255,255], coverAccent: [152,78,118], coverTitle: [255,255,255], coverSub: [248,218,238],
-    hdrBg: [98,44,76], hdrAccent: [232,152,192], hdrTitle: [255,255,255], hdrSub: [244,202,228],
-    entryBg: [255,255,255], entryBar: [182,98,142], entryTitle: [48,18,36], entryBody: [76,32,56], entryMuted: [158,98,132], entryBorder: [244,202,228],
-    pillBg: [98,44,76], pillText: [255,208,238],
-    statsBg: [252,242,250], statsNum: [152,78,118], statsSub: [158,98,132],
-    ftrBg: [98,44,76], ftrText: [218,162,198],
-    cover: "sidebar", entry: "plain",
+    id: "dusk",
+    name: "Dusk",
+    coverBg: [255, 255, 255],
+    coverAccent: [152, 78, 118],
+    coverTitle: [255, 255, 255],
+    coverSub: [248, 218, 238],
+    hdrBg: [98, 44, 76],
+    hdrAccent: [232, 152, 192],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [244, 202, 228],
+    entryBg: [255, 255, 255],
+    entryBar: [182, 98, 142],
+    entryTitle: [48, 18, 36],
+    entryBody: [76, 32, 56],
+    entryMuted: [158, 98, 132],
+    entryBorder: [244, 202, 228],
+    pillBg: [98, 44, 76],
+    pillText: [255, 208, 238],
+    statsBg: [252, 242, 250],
+    statsNum: [152, 78, 118],
+    statsSub: [158, 98, 132],
+    ftrBg: [98, 44, 76],
+    ftrText: [218, 162, 198],
+    cover: "sidebar",
+    entry: "plain",
   },
   {
-    id: "mono", name: "Mono",
-    coverBg: [248,248,248], coverAccent: [52,52,52], coverTitle: [22,22,22], coverSub: [108,108,108],
-    hdrBg: [52,52,52], hdrAccent: [198,198,198], hdrTitle: [255,255,255], hdrSub: [192,192,192],
-    entryBg: [255,255,255], entryBar: [52,52,52], entryTitle: [14,14,14], entryBody: [42,42,42], entryMuted: [118,118,118], entryBorder: [198,198,198],
-    pillBg: [52,52,52], pillText: [218,218,218],
-    statsBg: [238,238,238], statsNum: [42,42,42], statsSub: [112,112,112],
-    ftrBg: [52,52,52], ftrText: [178,178,178],
-    cover: "sidebar", entry: "plain",
+    id: "mono",
+    name: "Mono",
+    coverBg: [248, 248, 248],
+    coverAccent: [52, 52, 52],
+    coverTitle: [22, 22, 22],
+    coverSub: [108, 108, 108],
+    hdrBg: [52, 52, 52],
+    hdrAccent: [198, 198, 198],
+    hdrTitle: [255, 255, 255],
+    hdrSub: [192, 192, 192],
+    entryBg: [255, 255, 255],
+    entryBar: [52, 52, 52],
+    entryTitle: [14, 14, 14],
+    entryBody: [42, 42, 42],
+    entryMuted: [118, 118, 118],
+    entryBorder: [198, 198, 198],
+    pillBg: [52, 52, 52],
+    pillText: [218, 218, 218],
+    statsBg: [238, 238, 238],
+    statsNum: [42, 42, 42],
+    statsSub: [112, 112, 112],
+    ftrBg: [52, 52, 52],
+    ftrText: [178, 178, 178],
+    cover: "sidebar",
+    entry: "plain",
   },
 ];
 
@@ -320,7 +660,7 @@ type EntryData = {
   authorName: string;
   loggedAt: string;
   location?: string;
-  siteName?: string;   // multi-site only
+  siteName?: string; // multi-site only
   photoUrls?: string[];
 };
 
@@ -378,7 +718,8 @@ async function fetchPhotoInfo(url: string): Promise<PhotoInfo | null> {
     // Detect natural dimensions to get aspect ratio
     const ar = await new Promise<number>((resolve) => {
       const img = new Image();
-      img.onload = () => resolve(img.naturalWidth / Math.max(img.naturalHeight, 1));
+      img.onload = () =>
+        resolve(img.naturalWidth / Math.max(img.naturalHeight, 1));
       img.onerror = () => resolve(4 / 3);
       img.src = dataUrl;
     });
@@ -395,19 +736,30 @@ function imgFormat(d: string): string {
 // ─── Photo strip layout (aspect-ratio preserving) ────────────────────────────
 
 const PHOTO_MAX_H = 44; // mm — max height per photo row
-const PHOTO_GAP = 3;    // mm between photos horizontally
+const PHOTO_GAP = 3; // mm between photos horizontally
 const PHOTO_ROW_GAP = 4; // mm between rows
 const PHOTOS_PER_ROW = 4; // max photos per row
 
-type PhotoStrip = { photos: PhotoInfo[]; widths: number[]; actualH: number; stripH: number };
+type PhotoStrip = {
+  photos: PhotoInfo[];
+  widths: number[];
+  actualH: number;
+  stripH: number;
+};
 
 function calcStrip(photos: PhotoInfo[], areaW: number): PhotoStrip | null {
   if (!photos.length) return null;
   const rawW = photos.map((p) => PHOTO_MAX_H * p.ar);
-  const totalRaw = rawW.reduce((s, w) => s + w, 0) + PHOTO_GAP * (photos.length - 1);
+  const totalRaw =
+    rawW.reduce((s, w) => s + w, 0) + PHOTO_GAP * (photos.length - 1);
   const scale = Math.min(1, areaW / totalRaw);
   const actualH = PHOTO_MAX_H * scale;
-  return { photos, widths: rawW.map((w) => w * scale), actualH, stripH: actualH + 8 };
+  return {
+    photos,
+    widths: rawW.map((w) => w * scale),
+    actualH,
+    stripH: actualH + 8,
+  };
 }
 
 // Split photos into multiple rows of up to PHOTOS_PER_ROW each
@@ -425,15 +777,32 @@ function calcPhotoRows(photos: PhotoInfo[], areaW: number): PhotoStrip[] {
 // Total height consumed by all photo rows (including gaps between rows)
 function totalPhotoRowsHeight(rows: PhotoStrip[]): number {
   if (!rows.length) return 0;
-  return rows.reduce((sum, r) => sum + r.stripH, 0) + PHOTO_ROW_GAP * (rows.length - 1);
+  return (
+    rows.reduce((sum, r) => sum + r.stripH, 0) +
+    PHOTO_ROW_GAP * (rows.length - 1)
+  );
 }
 
-function renderStrip(doc: jsPDF, strip: PhotoStrip, startX: number, y: number): void {
+function renderStrip(
+  doc: jsPDF,
+  strip: PhotoStrip,
+  startX: number,
+  y: number,
+): void {
   let px = startX;
   for (let i = 0; i < strip.photos.length; i++) {
     const pw = strip.widths[i];
     try {
-      doc.addImage(strip.photos[i].dataUrl, imgFormat(strip.photos[i].dataUrl), px, y, pw, strip.actualH, undefined, "FAST");
+      doc.addImage(
+        strip.photos[i].dataUrl,
+        imgFormat(strip.photos[i].dataUrl),
+        px,
+        y,
+        pw,
+        strip.actualH,
+        undefined,
+        "FAST",
+      );
     } catch {
       doc.setFillColor(180, 190, 205);
       doc.roundedRect(px, y, pw, strip.actualH, 2, 2, "F");
@@ -442,7 +811,12 @@ function renderStrip(doc: jsPDF, strip: PhotoStrip, startX: number, y: number): 
   }
 }
 
-function renderPhotoRows(doc: jsPDF, rows: PhotoStrip[], startX: number, y: number): void {
+function renderPhotoRows(
+  doc: jsPDF,
+  rows: PhotoStrip[],
+  startX: number,
+  y: number,
+): void {
   let py = y;
   for (const row of rows) {
     renderStrip(doc, row, startX, py);
@@ -453,9 +827,16 @@ function renderPhotoRows(doc: jsPDF, rows: PhotoStrip[], startX: number, y: numb
 /** Page-aware photo rendering: adds pages when a photo row would overflow.
  *  Returns the final y position (on the final page). */
 function renderPhotoRowsPaged(
-  doc: jsPDF, rows: PhotoStrip[], startX: number, y: number,
-  pageH: number, margin: number, contentW: number,
-  theme: Theme, isCard: boolean, catColor: RGB,
+  doc: jsPDF,
+  rows: PhotoStrip[],
+  startX: number,
+  y: number,
+  pageH: number,
+  margin: number,
+  contentW: number,
+  theme: Theme,
+  isCard: boolean,
+  catColor: RGB,
 ): number {
   const pageBottom = pageH - 14;
   let py = y;
@@ -489,7 +870,9 @@ function periodLabel(from?: string, to?: string): string {
 }
 
 function totalPageCount(doc: jsPDF): number {
-  return (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
+  return (
+    doc.internal as unknown as { getNumberOfPages: () => number }
+  ).getNumberOfPages();
 }
 
 function drawRunningHeader(
@@ -499,7 +882,7 @@ function drawRunningHeader(
   title: string,
   subtitle: string,
   dateTxt: string,
-  margin: number
+  margin: number,
 ): void {
   doc.setFillColor(...theme.hdrBg);
   doc.rect(0, 0, pageW, 28, "F");
@@ -523,7 +906,7 @@ function drawFooter(
   page: number,
   total: number,
   theme: Theme,
-  margin: number
+  margin: number,
 ): void {
   doc.setFillColor(...theme.ftrBg);
   doc.rect(0, pageH - 10, pageW, 10, "F");
@@ -531,10 +914,12 @@ function drawFooter(
   doc.setFontSize(7);
   doc.setTextColor(...theme.ftrText);
   doc.text("Confidential field report", margin, pageH - 3.5);
-  doc.text(`Page ${page} of ${total}`, pageW - margin, pageH - 3.5, { align: "right" });
+  doc.text(`Page ${page} of ${total}`, pageW - margin, pageH - 3.5, {
+    align: "right",
+  });
 }
 
-const CONTENT_Y = 35;  // first entry row on a content page (below 28mm header)
+const CONTENT_Y = 35; // first entry row on a content page (below 28mm header)
 
 // ─── Cover page renderers ─────────────────────────────────────────────────────
 
@@ -569,7 +954,9 @@ function drawCoverDark(doc: jsPDF, o: CoverOpts): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...theme.coverSub);
-  doc.text(format(new Date(), "MMMM d, yyyy"), pageW - margin, 20, { align: "right" });
+  doc.text(format(new Date(), "MMMM d, yyyy"), pageW - margin, 20, {
+    align: "right",
+  });
 
   // ── Title block — vertically centered in upper half ────────────────────────
   let y = 80;
@@ -653,7 +1040,11 @@ function drawCoverBand(doc: jsPDF, o: CoverOpts): void {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...theme.hdrSub);
-    doc.text(doc.splitTextToSize(o.siteSubtitle, contentW), margin, 36 + titleLines.length * 9 + 2);
+    doc.text(
+      doc.splitTextToSize(o.siteSubtitle, contentW),
+      margin,
+      36 + titleLines.length * 9 + 2,
+    );
   }
 
   // Below band — dark text on white
@@ -664,10 +1055,18 @@ function drawCoverBand(doc: jsPDF, o: CoverOpts): void {
   doc.text(`Period: ${periodLabel(o.dateFrom, o.dateTo)}`, margin, y);
   y += 6;
   if (o.category && o.category !== "all") {
-    doc.text(`Category: ${CATEGORY_LABELS[o.category as LogCategory] ?? o.category}`, margin, y);
+    doc.text(
+      `Category: ${CATEGORY_LABELS[o.category as LogCategory] ?? o.category}`,
+      margin,
+      y,
+    );
     y += 6;
   }
-  doc.text(`Generated: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`, margin, y);
+  doc.text(
+    `Generated: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`,
+    margin,
+    y,
+  );
 
   drawStatsBox(doc, o.logs, 140, theme, margin, contentW, true);
 
@@ -695,7 +1094,10 @@ function drawCoverSidebar(doc: jsPDF, o: CoverOpts): void {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
-  doc.text(o.reportLabel.toUpperCase(), SIDEBAR_W / 2, pageH - 30, { angle: 90, align: "center" });
+  doc.text(o.reportLabel.toUpperCase(), SIDEBAR_W / 2, pageH - 30, {
+    angle: 90,
+    align: "center",
+  });
 
   // Vertical separator accent line
   doc.setFillColor(...theme.hdrAccent);
@@ -731,10 +1133,18 @@ function drawCoverSidebar(doc: jsPDF, o: CoverOpts): void {
   doc.text(`Period: ${periodLabel(o.dateFrom, o.dateTo)}`, CONTENT_X, y);
   y += 6;
   if (o.category && o.category !== "all") {
-    doc.text(`Category: ${CATEGORY_LABELS[o.category as LogCategory] ?? o.category}`, CONTENT_X, y);
+    doc.text(
+      `Category: ${CATEGORY_LABELS[o.category as LogCategory] ?? o.category}`,
+      CONTENT_X,
+      y,
+    );
     y += 6;
   }
-  doc.text(`Generated: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`, CONTENT_X, y);
+  doc.text(
+    `Generated: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`,
+    CONTENT_X,
+    y,
+  );
 
   drawStatsBox(doc, o.logs, 148, theme, CONTENT_X, rightW, true);
 
@@ -751,7 +1161,7 @@ function drawStatsBox(
   theme: Theme,
   x: number,
   w: number,
-  lightBg = false
+  lightBg = false,
 ): void {
   doc.setFillColor(...theme.statsBg);
   doc.roundedRect(x, y, w, 40, 3, 3, "F");
@@ -769,17 +1179,25 @@ function drawStatsBox(
 
   // Category breakdown
   const counts: Partial<Record<LogCategory, number>> = {};
-  logs.forEach((l) => { counts[l.category as LogCategory] = (counts[l.category as LogCategory] ?? 0) + 1; });
+  logs.forEach((l) => {
+    counts[l.category as LogCategory] =
+      (counts[l.category as LogCategory] ?? 0) + 1;
+  });
 
   let cx = x + 56;
   for (const [cat, cnt] of Object.entries(counts)) {
     if (cx > x + w - 28) break;
-    const col = CAT_COLORS[cat as LogCategory] ?? ([100, 116, 139] satisfies RGB);
+    const col =
+      CAT_COLORS[cat as LogCategory] ?? ([100, 116, 139] satisfies RGB);
     doc.setFillColor(...col);
     doc.roundedRect(cx, y + 10, 3, 20, 1, 1, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.setTextColor(lightBg ? 30 : 255, lightBg ? 30 : 255, lightBg ? 30 : 255);
+    doc.setTextColor(
+      lightBg ? 30 : 255,
+      lightBg ? 30 : 255,
+      lightBg ? 30 : 255,
+    );
     doc.text(String(cnt), cx + 8, y + 22);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -794,11 +1212,18 @@ function drawStatsBox(
 const LINE_H = 4.5;
 const TITLE_H = 5.5;
 const TWO_COL_THRESHOLD = 15; // lines before switching to two-column notes
-const COL_GAP = 6;            // mm gap between columns
+const COL_GAP = 6; // mm gap between columns
 
 function measureBodyLines(
-  doc: jsPDF, content: string, areaW: number
-): { lines: string[]; twoCol: boolean; colLines: [string[], string[]]; colW: number } {
+  doc: jsPDF,
+  content: string,
+  areaW: number,
+): {
+  lines: string[];
+  twoCol: boolean;
+  colLines: [string[], string[]];
+  colW: number;
+} {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   const bodyTxt = content.trim() || "(no notes)";
@@ -828,7 +1253,7 @@ function measureEntry(
   entry: EntryData,
   photoRows: PhotoStrip[],
   theme: Theme,
-  contentW: number
+  contentW: number,
 ): number {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -843,22 +1268,22 @@ function measureEntry(
 
   if (theme.entry === "plain") {
     return (
-      titleLines.length * TITLE_H +   // title
-      6 +                              // meta row
-      3 +                              // rule
-      4 +                              // gap before content
+      titleLines.length * TITLE_H + // title
+      6 + // meta row
+      3 + // rule
+      4 + // gap before content
       bodyH +
       locationH +
       photoH +
-      8                                // bottom gap
+      8 // bottom gap
     );
   }
   // card or dark
   return (
     6 +
     titleLines.length * TITLE_H +
-    8 +              // badge row
-    0.5 +            // separator
+    8 + // badge row
+    0.5 + // separator
     4 +
     bodyH +
     locationH +
@@ -873,11 +1298,14 @@ function drawEntry(
   y: number,
   photoRows: PhotoStrip[],
   theme: Theme,
-  config: { margin: number; pageW: number; contentW: number; pageH: number }
+  config: { margin: number; pageW: number; contentW: number; pageH: number },
 ): number {
   const { margin, pageW, contentW } = config;
-  const catColor: RGB = CAT_COLORS[entry.category as LogCategory] ?? ([100, 116, 139] satisfies RGB);
-  const catLabel = CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category;
+  const catColor: RGB =
+    CAT_COLORS[entry.category as LogCategory] ??
+    ([100, 116, 139] satisfies RGB);
+  const catLabel =
+    CATEGORY_LABELS[entry.category as LogCategory] ?? entry.category;
   const dateStr = format(new Date(entry.loggedAt), "MMM d, yyyy  h:mm a");
 
   doc.setFont("helvetica", "bold");
@@ -959,7 +1387,8 @@ function drawEntry(
     if (body.twoCol) {
       doc.text(body.colLines[0], margin + 8, ey);
       doc.text(body.colLines[1], margin + 8 + body.colW + COL_GAP, ey);
-      ey += Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
+      ey +=
+        Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
     } else {
       doc.text(body.lines, margin + 8, ey);
       ey += body.lines.length * LINE_H + 3;
@@ -984,11 +1413,21 @@ function drawEntry(
         doc.setFillColor(...catColor);
         doc.rect(margin, ey, 3.5, photoStartH, "F");
       }
-      ey = renderPhotoRowsPaged(doc, photoRows, margin + 8, ey, pageH, margin, contentW, theme, true, catColor);
+      ey = renderPhotoRowsPaged(
+        doc,
+        photoRows,
+        margin + 8,
+        ey,
+        pageH,
+        margin,
+        contentW,
+        theme,
+        true,
+        catColor,
+      );
     }
     ey += 6; // bottom gap
     return ey;
-
   } else {
     // ── Plain / editorial ─────────────────────────────────────────────────────
     let ey = y;
@@ -1040,7 +1479,8 @@ function drawEntry(
     if (body.twoCol) {
       doc.text(body.colLines[0], margin, ey);
       doc.text(body.colLines[1], margin + body.colW + COL_GAP, ey);
-      ey += Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
+      ey +=
+        Math.max(body.colLines[0].length, body.colLines[1].length) * LINE_H + 3;
     } else {
       doc.text(body.lines, margin, ey);
       ey += body.lines.length * LINE_H + 3;
@@ -1057,7 +1497,18 @@ function drawEntry(
 
     // Photos (page-aware)
     if (photoRows.length) {
-      ey = renderPhotoRowsPaged(doc, photoRows, margin, ey, pageH, margin, contentW, theme, false, catColor);
+      ey = renderPhotoRowsPaged(
+        doc,
+        photoRows,
+        margin,
+        ey,
+        pageH,
+        margin,
+        contentW,
+        theme,
+        false,
+        catColor,
+      );
     }
     ey += 8; // bottom gap
     return ey;
@@ -1079,26 +1530,50 @@ type RenderOpts = {
 };
 
 async function renderReport(opts: RenderOpts): Promise<void> {
-  const { entries, reportLabel, siteTitle, siteSubtitle, dateFrom, dateTo, category, theme, filename } = opts;
+  const {
+    entries,
+    reportLabel,
+    siteTitle,
+    siteSubtitle,
+    dateFrom,
+    dateTo,
+    category,
+    theme,
+    filename,
+  } = opts;
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const { default: JsPDF } = await import("jspdf");
+  const doc = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentW = pageW - margin * 2;
 
   // Pre-fetch all photos in parallel
-  const allUrls = Array.from(new Set(entries.flatMap((e) => e.photoUrls ?? [])));
+  const allUrls = Array.from(
+    new Set(entries.flatMap((e) => e.photoUrls ?? [])),
+  );
   const photoMap = new Map<string, PhotoInfo | null>();
-  await Promise.all(allUrls.map(async (url) => {
-    photoMap.set(url, await fetchPhotoInfo(url));
-  }));
+  await Promise.all(
+    allUrls.map(async (url) => {
+      photoMap.set(url, await fetchPhotoInfo(url));
+    }),
+  );
 
   // ── Cover page ──────────────────────────────────────────────────────────────
   const coverOpts: CoverOpts = {
-    reportLabel, siteTitle, siteSubtitle,
-    dateFrom, dateTo, category, logs: entries,
-    theme, pageW, pageH, margin, contentW,
+    reportLabel,
+    siteTitle,
+    siteSubtitle,
+    dateFrom,
+    dateTo,
+    category,
+    logs: entries,
+    theme,
+    pageW,
+    pageH,
+    margin,
+    contentW,
   };
   if (theme.cover === "band") drawCoverBand(doc, coverOpts);
   else if (theme.cover === "sidebar") drawCoverSidebar(doc, coverOpts);
@@ -1123,7 +1598,12 @@ async function renderReport(opts: RenderOpts): Promise<void> {
       y = CONTENT_Y;
     }
 
-    y = drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW, pageH });
+    y = drawEntry(doc, entry, y, photoRows, theme, {
+      margin,
+      pageW,
+      contentW,
+      pageH,
+    });
 
     // For plain style: draw a light bottom rule between entries
     if (theme.entry === "plain") {
@@ -1139,7 +1619,15 @@ async function renderReport(opts: RenderOpts): Promise<void> {
   const now = new Date();
   for (let i = 2; i <= total; i++) {
     doc.setPage(i);
-    drawRunningHeader(doc, pageW, theme, reportLabel, siteTitle, `Generated: ${format(now, "MMM d, yyyy")}`, margin);
+    drawRunningHeader(
+      doc,
+      pageW,
+      theme,
+      reportLabel,
+      siteTitle,
+      `Generated: ${format(now, "MMM d, yyyy")}`,
+      margin,
+    );
     drawFooter(doc, pageW, pageH, i - 1, total - 1, theme, margin);
   }
 
@@ -1165,8 +1653,14 @@ type MultiSiteRenderOpts = {
 };
 
 function drawSiteDivider(
-  doc: jsPDF, siteName: string, entryCount: number,
-  y: number, theme: Theme, margin: number, pageW: number, contentW: number
+  doc: jsPDF,
+  siteName: string,
+  entryCount: number,
+  y: number,
+  theme: Theme,
+  margin: number,
+  pageW: number,
+  contentW: number,
 ): number {
   // Accent bar
   doc.setFillColor(...theme.hdrAccent);
@@ -1184,7 +1678,12 @@ function drawSiteDivider(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...theme.entryMuted);
-  doc.text(`${entryCount} ${entryCount === 1 ? "entry" : "entries"}`, pageW - margin, y + 5, { align: "right" });
+  doc.text(
+    `${entryCount} ${entryCount === 1 ? "entry" : "entries"}`,
+    pageW - margin,
+    y + 5,
+    { align: "right" },
+  );
 
   y += nameLines.length * 6 + 8;
 
@@ -1201,27 +1700,48 @@ function drawSiteDivider(
 const SITE_DIVIDER_H = 22; // approximate height of site divider
 
 async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
-  const { siteGroups, allEntries, reportLabel, dateFrom, dateTo, category, theme, filename } = opts;
+  const {
+    siteGroups,
+    allEntries,
+    reportLabel,
+    dateFrom,
+    dateTo,
+    category,
+    theme,
+    filename,
+  } = opts;
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const { default: JsPDF } = await import("jspdf");
+  const doc = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentW = pageW - margin * 2;
 
   // Pre-fetch all photos in parallel
-  const allUrls = Array.from(new Set(allEntries.flatMap((e) => e.photoUrls ?? [])));
+  const allUrls = Array.from(
+    new Set(allEntries.flatMap((e) => e.photoUrls ?? [])),
+  );
   const photoMap = new Map<string, PhotoInfo | null>();
-  await Promise.all(allUrls.map(async (url) => {
-    photoMap.set(url, await fetchPhotoInfo(url));
-  }));
+  await Promise.all(
+    allUrls.map(async (url) => {
+      photoMap.set(url, await fetchPhotoInfo(url));
+    }),
+  );
 
   // ── Cover page ─────────────────────────────────────────────────────────────
   const coverOpts: CoverOpts = {
     reportLabel,
     siteTitle: reportLabel,
-    dateFrom, dateTo, category, logs: allEntries,
-    theme, pageW, pageH, margin, contentW,
+    dateFrom,
+    dateTo,
+    category,
+    logs: allEntries,
+    theme,
+    pageW,
+    pageH,
+    margin,
+    contentW,
   };
   if (theme.cover === "band") drawCoverBand(doc, coverOpts);
   else if (theme.cover === "sidebar") drawCoverSidebar(doc, coverOpts);
@@ -1234,7 +1754,16 @@ async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
     // Start each site on a new page with divider
     doc.addPage();
     let y = CONTENT_Y;
-    y = drawSiteDivider(doc, siteName, entries.length, y, theme, margin, pageW, contentW);
+    y = drawSiteDivider(
+      doc,
+      siteName,
+      entries.length,
+      y,
+      theme,
+      margin,
+      pageW,
+      contentW,
+    );
 
     for (let ei = 0; ei < entries.length; ei++) {
       const entry = entries[ei];
@@ -1253,7 +1782,12 @@ async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
         y = CONTENT_Y;
       }
 
-      y = drawEntry(doc, entry, y, photoRows, theme, { margin, pageW, contentW, pageH });
+      y = drawEntry(doc, entry, y, photoRows, theme, {
+        margin,
+        pageW,
+        contentW,
+        pageH,
+      });
 
       if (theme.entry === "plain") {
         doc.setDrawColor(...theme.entryBorder);
@@ -1270,7 +1804,15 @@ async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
 
   for (let i = 2; i <= total; i++) {
     doc.setPage(i);
-    drawRunningHeader(doc, pageW, theme, reportLabel, "", `Generated: ${format(now, "MMM d, yyyy")}`, margin);
+    drawRunningHeader(
+      doc,
+      pageW,
+      theme,
+      reportLabel,
+      "",
+      `Generated: ${format(now, "MMM d, yyyy")}`,
+      margin,
+    );
     drawFooter(doc, pageW, pageH, i - 1, total - 1, theme, margin);
   }
 
@@ -1285,7 +1827,14 @@ async function renderMultiSiteReport(opts: MultiSiteRenderOpts): Promise<void> {
 // ─── Public export functions ──────────────────────────────────────────────────
 
 export async function exportFullReportPDF({
-  siteName, siteLocation, logs, dateFrom, dateTo, category, theme, reportTitle,
+  siteName,
+  siteLocation,
+  logs,
+  dateFrom,
+  dateTo,
+  category,
+  theme,
+  reportTitle,
 }: ExportOptions): Promise<void> {
   const entries: EntryData[] = logs.map((l) => ({
     title: l.title,
@@ -1302,13 +1851,22 @@ export async function exportFullReportPDF({
     reportLabel: reportTitle?.trim() || "Field Log Report",
     siteTitle: siteName,
     siteSubtitle: siteLocation,
-    dateFrom, dateTo, category, theme,
+    dateFrom,
+    dateTo,
+    category,
+    theme,
     filename: `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
   });
 }
 
 export async function exportGlobalFullReportPDF({
-  logs, siteNames, dateFrom, dateTo, category, theme, reportTitle,
+  logs,
+  siteNames,
+  dateFrom,
+  dateTo,
+  category,
+  theme,
+  reportTitle,
 }: GlobalExportOptions): Promise<void> {
   // Group entries by site, preserving site order from siteNames
   const bySite = new Map<string, EntryData[]>();
@@ -1316,8 +1874,12 @@ export async function exportGlobalFullReportPDF({
   for (const l of logs) {
     const bucket = bySite.get(l.siteName);
     const entry: EntryData = {
-      title: l.title, content: l.content, category: l.category,
-      authorName: l.authorName, loggedAt: l.loggedAt, location: l.location,
+      title: l.title,
+      content: l.content,
+      category: l.category,
+      authorName: l.authorName,
+      loggedAt: l.loggedAt,
+      location: l.location,
       photoUrls: l.photoUrls,
     };
     if (bucket) bucket.push(entry);
@@ -1325,9 +1887,14 @@ export async function exportGlobalFullReportPDF({
   }
 
   const allEntries: EntryData[] = logs.map((l) => ({
-    title: l.title, content: l.content, category: l.category,
-    authorName: l.authorName, loggedAt: l.loggedAt, location: l.location,
-    siteName: l.siteName, photoUrls: l.photoUrls,
+    title: l.title,
+    content: l.content,
+    category: l.category,
+    authorName: l.authorName,
+    loggedAt: l.loggedAt,
+    location: l.location,
+    siteName: l.siteName,
+    photoUrls: l.photoUrls,
   }));
 
   const label = reportTitle?.trim() || "Multi-Site Field Log Report";
@@ -1336,27 +1903,37 @@ export async function exportGlobalFullReportPDF({
     siteGroups: bySite,
     allEntries,
     reportLabel: label,
-    dateFrom, dateTo, category, theme,
+    dateFrom,
+    dateTo,
+    category,
+    theme,
     filename: `multi-site-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
   });
 }
 
 // ─── XLSX & CSV exports ───────────────────────────────────────────────────────
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 
 type PhotoData = { base64: string; ext: "jpeg" | "png"; ar: number };
 
 /** Pre-fetch all unique photo URLs through the proxy and return a cache map */
-async function buildPhotoCache(urls: string[]): Promise<Map<string, PhotoData | null>> {
+async function buildPhotoCache(
+  urls: string[],
+): Promise<Map<string, PhotoData | null>> {
   const cache = new Map<string, PhotoData | null>();
   await Promise.all(
     Array.from(new Set(urls)).map(async (url) => {
       const info = await fetchPhotoInfo(url);
-      if (!info) { cache.set(url, null); return; }
+      if (!info) {
+        cache.set(url, null);
+        return;
+      }
       const base64 = info.dataUrl.split(",")[1];
-      const ext = (info.dataUrl.startsWith("data:image/png") ? "png" : "jpeg") as "jpeg" | "png";
+      const ext = (
+        info.dataUrl.startsWith("data:image/png") ? "png" : "jpeg"
+      ) as "jpeg" | "png";
       cache.set(url, { base64, ext, ar: info.ar });
-    })
+    }),
   );
   return cache;
 }
@@ -1373,10 +1950,10 @@ type XlsxEntry = {
 };
 
 // ── Photo grid constants ──────────────────────────────────────────────────────
-const XLSX_PHOTOS_PER_ROW = 4;          // max photos side-by-side in Excel
-const XLSX_PHOTO_COL_UNITS = 42;        // Excel column width units per photo col (≈300px)
-const XLSX_PHOTO_UNIFORM_H = 300;       // uniform photo height in pixels (all photos same height)
-const XLSX_PHOTO_MAX_W = 300;           // max photo width in pixels (fits within column)
+const XLSX_PHOTOS_PER_ROW = 4; // max photos side-by-side in Excel
+const XLSX_PHOTO_COL_UNITS = 42; // Excel column width units per photo col (≈300px)
+const XLSX_PHOTO_UNIFORM_H = 300; // uniform photo height in pixels (all photos same height)
+const XLSX_PHOTO_MAX_W = 300; // max photo width in pixels (fits within column)
 const XLSX_TOTAL_COLS = 1 + XLSX_PHOTOS_PER_ROW; // cols A–E
 
 /** Scale a photo to uniform height, clamping width to column bounds */
@@ -1396,9 +1973,10 @@ function calcXlsxPhotoDims(photo: PhotoData): { imgW: number; imgH: number } {
 async function buildEntryWorkbook(
   entries: XlsxEntry[],
   metaRows: [string, string][],
-  sheetName: string
+  sheetName: string,
 ): Promise<ExcelJS.Workbook> {
-  const workbook = new ExcelJS.Workbook();
+  const { default: ExcelJsRuntime } = await import("exceljs");
+  const workbook = new ExcelJsRuntime.Workbook();
   workbook.creator = "GroundWork";
   workbook.created = new Date();
   const ws = workbook.addWorksheet(sheetName);
@@ -1415,12 +1993,24 @@ async function buildEntryWorkbook(
   const titleMetaRow = ws.addRow([titleLabel, "", "", "", ""]);
   ws.mergeCells(titleMetaRowNum, 1, titleMetaRowNum, XLSX_TOTAL_COLS);
   titleMetaRow.height = 32;
-  titleMetaRow.getCell(1).font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
-  titleMetaRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+  titleMetaRow.getCell(1).font = {
+    bold: true,
+    size: 14,
+    color: { argb: "FFFFFFFF" },
+  };
+  titleMetaRow.getCell(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1E293B" },
+  };
   titleMetaRow.getCell(1).alignment = { vertical: "middle" };
   // Fill all merged cells so background spans full width
   for (let c = 2; c <= XLSX_TOTAL_COLS; c++) {
-    titleMetaRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+    titleMetaRow.getCell(c).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1E293B" },
+    };
   }
 
   ws.addRow([]);
@@ -1444,36 +2034,56 @@ async function buildEntryWorkbook(
     // Category accent color for entry title bar
     const catKey = entry.category as LogCategory;
     const catRgb = CAT_COLORS[catKey] ?? [100, 116, 139];
-    const catArgb = "FF" + catRgb.map((c) => c.toString(16).padStart(2, "0")).join("");
+    const catArgb =
+      "FF" + catRgb.map((c) => c.toString(16).padStart(2, "0")).join("");
 
     // Title row — merged across all columns with category accent
     const titleRowNum = ws.rowCount + 1;
     const titleRow = ws.addRow([entry.title, "", "", "", ""]);
     ws.mergeCells(titleRowNum, 1, titleRowNum, XLSX_TOTAL_COLS);
     titleRow.height = 28;
-    titleRow.getCell(1).font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
-    titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: catArgb } };
+    titleRow.getCell(1).font = {
+      bold: true,
+      size: 12,
+      color: { argb: "FFFFFFFF" },
+    };
+    titleRow.getCell(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: catArgb },
+    };
     titleRow.getCell(1).alignment = { vertical: "middle" };
     titleRow.getCell(1).border = {
       bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
     };
     for (let c = 2; c <= XLSX_TOTAL_COLS; c++) {
-      titleRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: catArgb } };
-      titleRow.getCell(c).border = { bottom: { style: "thin", color: { argb: "FFE2E8F0" } } };
+      titleRow.getCell(c).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: catArgb },
+      };
+      titleRow.getCell(c).border = {
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+      };
     }
 
     // Data field rows — value merged across B–E with alternating shading
     const fields: [string, string][] = [
-      ["Date & Time", format(new Date(entry.loggedAt), "EEEE, MMMM d yyyy  h:mm a")],
+      [
+        "Date & Time",
+        format(new Date(entry.loggedAt), "EEEE, MMMM d yyyy  h:mm a"),
+      ],
       ["Category", CATEGORY_LABELS[catKey] ?? entry.category],
       ["Author", entry.authorName],
       ...(entry.siteName ? [["Site", entry.siteName] as [string, string]] : []),
-      ...(entry.location ? [["Location", entry.location] as [string, string]] : []),
+      ...(entry.location
+        ? [["Location", entry.location] as [string, string]]
+        : []),
       ["Notes", entry.content || "(no notes)"],
     ];
 
-    const evenBg = "FFF8FAFC";  // very light slate
-    const oddBg = "FFFFFFFF";   // white
+    const evenBg = "FFF8FAFC"; // very light slate
+    const oddBg = "FFFFFFFF"; // white
 
     for (let fi = 0; fi < fields.length; fi++) {
       const [label, value] = fields[fi];
@@ -1482,28 +2092,50 @@ async function buildEntryWorkbook(
       const row = ws.addRow([label, value, "", "", ""]);
       ws.mergeCells(rowNum, 2, rowNum, XLSX_TOTAL_COLS);
       row.height = isNotes
-        ? Math.max(20, (() => {
-            const segments = value.split("\n");
-            const totalLines = segments.reduce(
-              (sum, seg) => sum + Math.max(1, Math.ceil(seg.length / 100)),
-              0
-            );
-            return totalLines * 16;
-          })())
+        ? Math.max(
+            20,
+            (() => {
+              const segments = value.split("\n");
+              const totalLines = segments.reduce(
+                (sum, seg) => sum + Math.max(1, Math.ceil(seg.length / 100)),
+                0,
+              );
+              return totalLines * 16;
+            })(),
+          )
         : 20;
       const rowBg = fi % 2 === 0 ? evenBg : oddBg;
-      row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF475569" } };
-      row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      row.getCell(1).font = {
+        bold: true,
+        size: 9,
+        color: { argb: "FF475569" },
+      };
+      row.getCell(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF1F5F9" },
+      };
       row.getCell(1).alignment = { vertical: "top" };
       row.getCell(2).font = { size: 10, color: { argb: "FF1E293B" } };
-      row.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+      row.getCell(2).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: rowBg },
+      };
       row.getCell(2).alignment = { wrapText: true, vertical: "top" };
-      const borderStyle = { style: "hair" as const, color: { argb: "FFE2E8F0" } };
+      const borderStyle = {
+        style: "hair" as const,
+        color: { argb: "FFE2E8F0" },
+      };
       row.getCell(1).border = { bottom: borderStyle };
       row.getCell(2).border = { bottom: borderStyle };
       // Fill merged range cells for consistent background
       for (let c = 3; c <= XLSX_TOTAL_COLS; c++) {
-        row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+        row.getCell(c).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: rowBg },
+        };
         row.getCell(c).border = { bottom: borderStyle };
       }
     }
@@ -1515,16 +2147,42 @@ async function buildEntryWorkbook(
 
     if (photos.length > 0) {
       const photoLabelRowNum = ws.rowCount + 1;
-      const photoLabelRow = ws.addRow(["Photos", `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`, "", "", ""]);
+      const photoLabelRow = ws.addRow([
+        "Photos",
+        `${photos.length} photo${photos.length > 1 ? "s" : ""} attached`,
+        "",
+        "",
+        "",
+      ]);
       ws.mergeCells(photoLabelRowNum, 2, photoLabelRowNum, XLSX_TOTAL_COLS);
       photoLabelRow.height = 20;
-      photoLabelRow.getCell(1).font = { bold: true, size: 9, color: { argb: "FF475569" } };
-      photoLabelRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      photoLabelRow.getCell(1).font = {
+        bold: true,
+        size: 9,
+        color: { argb: "FF475569" },
+      };
+      photoLabelRow.getCell(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF1F5F9" },
+      };
       photoLabelRow.getCell(1).alignment = { vertical: "middle" };
-      photoLabelRow.getCell(2).font = { size: 9, italic: true, color: { argb: "FF64748B" } };
-      photoLabelRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      photoLabelRow.getCell(2).font = {
+        size: 9,
+        italic: true,
+        color: { argb: "FF64748B" },
+      };
+      photoLabelRow.getCell(2).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF8FAFC" },
+      };
       for (let c = 3; c <= XLSX_TOTAL_COLS; c++) {
-        photoLabelRow.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+        photoLabelRow.getCell(c).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8FAFC" },
+        };
       }
 
       // Group into rows of XLSX_PHOTOS_PER_ROW, each photo in its own column (B–E)
@@ -1543,7 +2201,10 @@ async function buildEntryWorkbook(
           const { imgW, imgH } = photoDims[j];
           // Column B = index 1, C = 2, D = 3, E = 4 (0-indexed)
           const colIdx = 1 + j;
-          const imageId = workbook.addImage({ base64: photo.base64, extension: photo.ext });
+          const imageId = workbook.addImage({
+            base64: photo.base64,
+            extension: photo.ext,
+          });
           ws.addImage(imageId, {
             tl: { col: colIdx, row: rowIdx } as { col: number; row: number },
             ext: { width: imgW, height: imgH },
@@ -1560,7 +2221,10 @@ async function buildEntryWorkbook(
   return workbook;
 }
 
-async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
+async function downloadWorkbook(
+  workbook: ExcelJS.Workbook,
+  filename: string,
+): Promise<void> {
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer as ArrayBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1596,13 +2260,34 @@ async function downloadCsv(rows: string[][], filename: string): Promise<void> {
   }
 }
 
-export async function exportXLSX({ siteName, siteLocation, logs, dateFrom, dateTo, category }: ExportOptions): Promise<void> {
+export async function exportXLSX({
+  siteName,
+  siteLocation,
+  logs,
+  dateFrom,
+  dateTo,
+  category,
+}: ExportOptions): Promise<void> {
   const metaRows: [string, string][] = [
     ["GroundWork — Field Log Export", ""],
     ["Site:", siteName],
     ...(siteLocation ? [["Location:", siteLocation] as [string, string]] : []),
-    ...(dateFrom || dateTo ? [["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [string, string]] : []),
-    ...(category && category !== "all" ? [["Category:", CATEGORY_LABELS[category as LogCategory] ?? category] as [string, string]] : []),
+    ...(dateFrom || dateTo
+      ? [
+          ["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(category && category !== "all"
+      ? [
+          [
+            "Category:",
+            CATEGORY_LABELS[category as LogCategory] ?? category,
+          ] as [string, string],
+        ]
+      : []),
     ["Exported:", format(new Date(), "yyyy-MM-dd HH:mm")],
     ["Total entries:", String(logs.length)],
   ];
@@ -1620,12 +2305,26 @@ export async function exportXLSX({ siteName, siteLocation, logs, dateFrom, dateT
   const workbook = await buildEntryWorkbook(entries, metaRows, "Log Export");
   await downloadWorkbook(
     workbook,
-    `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`
+    `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
   );
 }
 
-export async function exportCSV({ siteName, logs, dateFrom, dateTo, category }: ExportOptions): Promise<void> {
-  const headers = ["Date & Time", "Title", "Category", "Author", "Notes", "Location", "Photos"];
+export async function exportCSV({
+  siteName,
+  logs,
+  dateFrom,
+  dateTo,
+  category,
+}: ExportOptions): Promise<void> {
+  const headers = [
+    "Date & Time",
+    "Title",
+    "Category",
+    "Author",
+    "Notes",
+    "Location",
+    "Photos",
+  ];
   const rows = logs.map((l) => [
     format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
     l.title,
@@ -1638,21 +2337,48 @@ export async function exportCSV({ siteName, logs, dateFrom, dateTo, category }: 
   const meta: string[][] = [
     ["Field Log Export"],
     [`Site: ${siteName}`],
-    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
-    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
+    ...(dateFrom || dateTo
+      ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]]
+      : []),
+    ...(category && category !== "all"
+      ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]]
+      : []),
     [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
     [`Total entries: ${logs.length}`],
     [],
   ];
-  await downloadCsv([...meta, headers, ...rows], `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  await downloadCsv(
+    [...meta, headers, ...rows],
+    `${siteName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`,
+  );
 }
 
-export async function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): Promise<void> {
+export async function exportGlobalXLSX({
+  logs,
+  siteNames,
+  dateFrom,
+  dateTo,
+  category,
+}: GlobalExportOptions): Promise<void> {
   const metaRows: [string, string][] = [
     ["GroundWork — Multi-Site Export", ""],
     ["Sites:", siteNames.join(", ")],
-    ...(dateFrom || dateTo ? [["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [string, string]] : []),
-    ...(category && category !== "all" ? [["Category:", CATEGORY_LABELS[category as LogCategory] ?? category] as [string, string]] : []),
+    ...(dateFrom || dateTo
+      ? [
+          ["Period:", `${dateFrom ?? "start"} → ${dateTo ?? "present"}`] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(category && category !== "all"
+      ? [
+          [
+            "Category:",
+            CATEGORY_LABELS[category as LogCategory] ?? category,
+          ] as [string, string],
+        ]
+      : []),
     ["Exported:", format(new Date(), "yyyy-MM-dd HH:mm")],
     ["Total entries:", String(logs.length)],
   ];
@@ -1668,12 +2394,34 @@ export async function exportGlobalXLSX({ logs, siteNames, dateFrom, dateTo, cate
     photoUrls: l.photoUrls,
   }));
 
-  const workbook = await buildEntryWorkbook(entries, metaRows, "Multi-Site Export");
-  await downloadWorkbook(workbook, `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  const workbook = await buildEntryWorkbook(
+    entries,
+    metaRows,
+    "Multi-Site Export",
+  );
+  await downloadWorkbook(
+    workbook,
+    `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
+  );
 }
 
-export async function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, category }: GlobalExportOptions): Promise<void> {
-  const headers = ["Date & Time", "Site", "Title", "Category", "Author", "Notes", "Location", "Photos"];
+export async function exportGlobalCSV({
+  logs,
+  siteNames,
+  dateFrom,
+  dateTo,
+  category,
+}: GlobalExportOptions): Promise<void> {
+  const headers = [
+    "Date & Time",
+    "Site",
+    "Title",
+    "Category",
+    "Author",
+    "Notes",
+    "Location",
+    "Photos",
+  ];
   const rows = logs.map((l) => [
     format(new Date(l.loggedAt), "yyyy-MM-dd HH:mm"),
     l.siteName,
@@ -1687,11 +2435,18 @@ export async function exportGlobalCSV({ logs, siteNames, dateFrom, dateTo, categ
   const meta: string[][] = [
     ["Multi-Site Export"],
     [`Sites: ${siteNames.join(", ")}`],
-    ...(dateFrom || dateTo ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]] : []),
-    ...(category && category !== "all" ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]] : []),
+    ...(dateFrom || dateTo
+      ? [[`Period: ${dateFrom ?? "start"} to ${dateTo ?? "present"}`]]
+      : []),
+    ...(category && category !== "all"
+      ? [[`Category: ${CATEGORY_LABELS[category as LogCategory] ?? category}`]]
+      : []),
     [`Exported: ${format(new Date(), "yyyy-MM-dd HH:mm")}`],
     [`Total entries: ${logs.length}`],
     [],
   ];
-  await downloadCsv([...meta, headers, ...rows], `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  await downloadCsv(
+    [...meta, headers, ...rows],
+    `groundwork-export-${format(new Date(), "yyyy-MM-dd")}.csv`,
+  );
 }

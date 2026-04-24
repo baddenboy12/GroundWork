@@ -1,6 +1,5 @@
 import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
-import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { registerServiceWorker } from "@/lib/register-sw.ts";
@@ -22,8 +21,12 @@ const FeaturesPage = lazy(() => import("./pages/landing/FeaturesPage.tsx"));
 const NativeCallback = lazy(() => import("./pages/auth/NativeCallback.tsx"));
 const PrivacyPage = lazy(() => import("./pages/landing/PrivacyPage.tsx"));
 const TermsPage = lazy(() => import("./pages/landing/TermsPage.tsx"));
-const RefundPolicyPage = lazy(() => import("./pages/landing/RefundPolicyPage.tsx"));
-const AccountDeletionPage = lazy(() => import("./pages/landing/AccountDeletionPage.tsx"));
+const RefundPolicyPage = lazy(
+  () => import("./pages/landing/RefundPolicyPage.tsx"),
+);
+const AccountDeletionPage = lazy(
+  () => import("./pages/landing/AccountDeletionPage.tsx"),
+);
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function PageLoader() {
@@ -75,7 +78,9 @@ function OidcErrorGuard() {
     // Unhandled-rejection handler (catches most OIDC errors)
     const rejectionHandler = (event: PromiseRejectionEvent) => {
       const message = String(
-        (event.reason as { message?: string } | null)?.message ?? event.reason ?? ""
+        (event.reason as { message?: string } | null)?.message ??
+          event.reason ??
+          "",
       );
       const isOidcStateError =
         /state.*(mismatch|not found|invalid)/i.test(message) ||
@@ -171,9 +176,30 @@ function AppInner() {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
             <Route path="/account-deletion" element={<AccountDeletionPage />} />
-            <Route path="/dashboard" element={<NativeOnlyGuard><DashboardPage /></NativeOnlyGuard>} />
-            <Route path="/billing" element={<NativeOnlyGuard><BillingPage /></NativeOnlyGuard>} />
-            <Route path="/integrations" element={<NativeOnlyGuard><IntegrationsPage /></NativeOnlyGuard>} />
+            <Route
+              path="/dashboard"
+              element={
+                <NativeOnlyGuard>
+                  <DashboardPage />
+                </NativeOnlyGuard>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <NativeOnlyGuard>
+                  <BillingPage />
+                </NativeOnlyGuard>
+              }
+            />
+            <Route
+              path="/integrations"
+              element={
+                <NativeOnlyGuard>
+                  <IntegrationsPage />
+                </NativeOnlyGuard>
+              }
+            />
             <Route path="/stripe/return" element={<StripeReturn />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/native-callback" element={<NativeCallback />} />

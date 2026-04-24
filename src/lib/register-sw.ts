@@ -120,11 +120,14 @@ export function registerServiceWorker() {
         const newWorker = registration.installing;
         if (!newWorker) return;
         newWorker.addEventListener("statechange", () => {
-          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+          if (
+            newWorker.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
             showUpdateToast();
           }
         });
       });
     })
-    .catch((err) => console.log("Service Worker registration failed:", err));
+    .catch((err) => console.warn("Service Worker registration failed:", err));
 }
