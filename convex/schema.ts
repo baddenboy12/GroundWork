@@ -44,6 +44,9 @@ export default defineSchema({
     pendingTeamSeatsAt: v.optional(v.number()),
     // true when user can freely switch tiers without a real subscription (for testing)
     sandboxMode: v.optional(v.boolean()),
+    // Legacy field from a removed profile-editing feature. Kept in the schema
+    // so existing docs validate; safe to drop via migration later.
+    nameManuallySet: v.optional(v.boolean()),
   })
     .index("by_token", ["tokenIdentifier"])
     .index("by_stripe_customer", ["stripeCustomerId"]),

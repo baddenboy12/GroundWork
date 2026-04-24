@@ -75,7 +75,28 @@
       "Bash(./gradlew.bat assembleDebug)",
       "Bash(\"C:/Users/cyr/AppData/Local/Android/Sdk/platform-tools/adb.exe\" uninstall:*)",
       "Bash(mv ~/.claude ~/.claude.stub)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(ssh root@172.233.163.131 \"cp /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css.bak-\\\\$\\(date +%F\\) && grep -n 'color: inherit !important' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css\")",
+      "Bash(ssh root@172.233.163.131 \"sed -n '20,40p;60,80p' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css\")",
+      "Bash(ssh root@172.233.163.131 \"sed -i '70s/color: inherit !important;/color: #f4f0e8 !important;/' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css && sed -n '65,75p' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css && echo '---HEADER-UNTOUCHED---' && sed -n '30,34p' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css\")",
+      "Bash(curl -s \"https://auth.teezfpo.com/realms/groundwork/login-actions/registration?client_id=groundwork-app&tab_id=test\" -o /tmp/reg.html)",
+      "Bash(curl -s \"https://auth.teezfpo.com/resources/4sdwn/login/groundwork/css/groundwork.css\")",
+      "Bash(curl -sI \"https://auth.teezfpo.com/resources/4sdwn/login/groundwork/css/groundwork.css\")",
+      "Bash(corepack pnpm *)",
+      "Bash(ssh root@172.233.163.131 \"sed -n '75,95p' /opt/keycloak/themes/groundwork/login/resources/css/groundwork.css\")",
+      "Bash(python)",
+      "PowerShell($paths = @\\('HKCU:\\\\Software\\\\Microsoft\\\\Office\\\\16.0\\\\Excel\\\\Security','HKCU:\\\\Software\\\\Microsoft\\\\Office\\\\15.0\\\\Excel\\\\Security','HKCU:\\\\Software\\\\Policies\\\\Microsoft\\\\Office\\\\16.0\\\\Excel\\\\Security'\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Output \"--- $p ---\"; Get-ItemProperty -Path $p | Select-Object VBAWarnings, AccessVBOM, BlockContentExecutionFromInternet, ExcelBypassEncryptedMacroScan | Format-List } })",
+      "Bash(npm run *)",
+      "Bash(scp -r /c/Users/cyr/Projects/GroundWork/dist/* root@172.233.163.131:/opt/groundwork/dist/)",
+      "Bash(curl -s https://groundwork.teezfpo.com/dashboard)",
+      "Bash(curl -s https://groundwork.teezfpo.com/features)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://groundwork.teezfpo.com/stripe/return)",
+      "Read(//c/tmp/**)",
+      "Read(//c/Users/**)",
+      "Bash(npx pnpm *)",
+      "Bash(npx convex *)",
+      "Read(//tmp/**)",
+      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\cyr\\\\\\\\.claude\\\\\\\\projects\\\\\\\\C--Users-cyr-Projects-GroundWork\\\\\\\\0af07ca9-6e59-41c2-ac82-cc4a2f1f6aca\\\\\\\\tool-results\\\\\\\\\")"
     ]
   }
 }

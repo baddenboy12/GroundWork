@@ -30,6 +30,22 @@
                 <data android:scheme="groundwork" android:host="auth" />
             </intent-filter>
 
+            <!-- App Link for Stripe Checkout return URL.
+                 autoVerify + the assetlinks.json hosted at
+                 https://groundwork.teezfpo.com/.well-known/assetlinks.json
+                 lets Android intercept this URL from Chrome Custom Tabs and
+                 open the app directly — user never sees the site URL in CCT.
+                 Scoped to the exact /stripe/return path to avoid hijacking
+                 other groundwork.teezfpo.com browsing. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="groundwork.teezfpo.com"
+                      android:path="/stripe/return" />
+            </intent-filter>
+
         </activity>
 
         <provider

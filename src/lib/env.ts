@@ -28,12 +28,10 @@ function validateEnv(): Record<EnvKey, string> {
 
   if (missing.length > 0) {
     const message = `[GroundWork] Missing required environment variables:\n${missing.map((k) => `  - ${k}`).join("\n")}\n\nCheck your .env file and restart the dev server.`;
-    // In dev, throw so it's impossible to miss. In prod, log a clear error.
-    if (import.meta.env.DEV) {
-      throw new Error(message);
-    } else {
-      console.error(message);
-    }
+    // Throw in both dev and prod so a broken build fails loudly at app start
+    // (surfaced by ErrorBoundary) instead of silently rendering with undefined
+    // auth/backend URLs, which manifests as a misleading "Login error" later.
+    throw new Error(message);
   }
 
   return result as Record<EnvKey, string>;

@@ -17,6 +17,9 @@ importers:
       '@capacitor/android':
         specifier: ^8.2.0
         version: 8.2.0(@capacitor/core@8.2.0)
+      '@capacitor/app':
+        specifier: ^8.1.0
+        version: 8.1.0(@capacitor/core@8.2.0)
       '@capacitor/browser':
         specifier: ^8.0.2
         version: 8.0.2(@capacitor/core@8.2.0)
@@ -90,8 +93,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       convex:
-        specifier: ^1.32.0
-        version: 1.32.0(react@19.2.4)
+        specifier: ^1.35.1
+        version: 1.35.1(react@19.2.4)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -161,7 +164,7 @@ importers:
         version: 8.2.0
       '@convex-dev/eslint-plugin':
         specifier: ^1.1.1
-        version: 1.1.1(convex@1.32.0(react@19.2.4))(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)
+        version: 1.1.1(convex@1.35.1(react@19.2.4))(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)
       '@eslint/js':
         specifier: ^9.39.3
         version: 9.39.3
@@ -391,6 +394,11 @@ packages:
     resolution: {integrity: sha512-XLm5OsWLPfXQxDxzFS7SOdMEgGvW+2c7TGLXkTR2cSKdkWK5Abns4imlT5qghKYhjM9r74IrDkBWg/9ALUGNKQ==}
     peerDependencies:
       '@capacitor/core': ^8.2.0
+
+  '@capacitor/app@8.1.0':
+    resolution: {integrity: sha512-MlmttTOWHDedr/G4SrhNRxsXMqY+R75S4MM4eIgzsgCzOYhb/MpCkA5Q3nuOCfL1oHm26xjUzqZ5aupbOwdfYg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@capacitor/browser@8.0.2':
     resolution: {integrity: sha512-oJEtVP5huwPJ8GgOCH3OewhsBPTW6aVtWg8hU6g65MxBdhkcAKyzYrhsyXupC5GaMxltqLf1JzKETMmGkh6tDw==}
@@ -2202,18 +2210,21 @@ packages:
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
-  convex@1.32.0:
-    resolution: {integrity: sha512-5FlajdLpW75pdLS+/CgGH5H6yeRuA+ru50AKJEYbJpmyILUS+7fdTvsdTaQ7ZFXMv0gE8mX4S+S3AtJ94k0mfw==}
+  convex@1.35.1:
+    resolution: {integrity: sha512-g23KrTjBiXqRHzWIN0PVFagKjrmFxWUaOSiBsAWPTpXX2rXl0L1F4PR0YpAcMJEzMgfZR9AGymJvLTM+KA6lsQ==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
       '@clerk/clerk-react': ^4.12.8 || ^5.0.0
+      '@clerk/react': ^6.0.0
       react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
     peerDependenciesMeta:
       '@auth0/auth0-react':
         optional: true
       '@clerk/clerk-react':
+        optional: true
+      '@clerk/react':
         optional: true
       react:
         optional: true
@@ -4008,6 +4019,10 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.2.0
 
+  '@capacitor/app@8.1.0(@capacitor/core@8.2.0)':
+    dependencies:
+      '@capacitor/core': 8.2.0
+
   '@capacitor/browser@8.0.2(@capacitor/core@8.2.0)':
     dependencies:
       '@capacitor/core': 8.2.0
@@ -4066,10 +4081,10 @@ snapshots:
 
   '@capacitor/synapse@1.0.4': {}
 
-  '@convex-dev/eslint-plugin@1.1.1(convex@1.32.0(react@19.2.4))(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)':
+  '@convex-dev/eslint-plugin@1.1.1(convex@1.35.1(react@19.2.4))(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
       '@typescript-eslint/utils': 8.49.0(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)
-      convex: 1.32.0(react@19.2.4)
+      convex: 1.35.1(react@19.2.4)
     transitivePeerDependencies:
       - eslint
       - supports-color
@@ -5805,7 +5820,7 @@ snapshots:
 
   concat-map@0.0.1: {}
 
-  convex@1.32.0(react@19.2.4):
+  convex@1.35.1(react@19.2.4):
     dependencies:
       esbuild: 0.27.0
       prettier: 3.8.1

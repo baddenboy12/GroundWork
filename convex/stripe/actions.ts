@@ -477,10 +477,21 @@ export const syncSubscription = action({
         });
       }
     } else {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "sessionId or subscriptionId is required.",
+      // No session/subscription ID — look up the customer's latest subscription.
+      // Used on native after Stripe Checkout closes in Chrome Custom Tabs, since
+      // the session_id never gets back to the app's WebView sessionStorage.
+      if (!user.stripeCustomerId) {
+        throw new ConvexError({
+          code: "NOT_FOUND",
+          message: "No Stripe customer on file for this user.",
+        });
+      }
+      const list = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: "all",
+        limit: 1,
       });
+      subscription = list.data[0] ?? null;
     }
 
     if (!subscription) {
@@ -627,6 +638,166 @@ export const reactivateSubscription = action({
   },
 });
 
+// ── Shared seat-change prep (used by preview + apply actions) ────────────────
+
+/**
+ * Authenticates, authorizes, and builds the Stripe `items` diff needed to
+ * change a team's seat quantity. Returns everything the caller needs to either
+ * preview the charge (via `invoices.createPreview`) or apply it (via
+ * `subscriptions.update`), so the two flows can't drift on the items math.
+ */
+async function _prepareSeatChange(
+  ctx: ActionCtx,
+  args: { keyId: Id<"licenseKeys">; maxMembers: number }
+): Promise<{
+  tier: PaidTier;
+  subscriptionId: string;
+  stripe: Stripe;
+  subscription: Stripe.Subscription;
+  items: Stripe.SubscriptionUpdateParams.Item[];
+}> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
+  }
+  if (args.maxMembers < 1 || args.maxMembers > MAX_TEAM_SEATS) {
+    throw new ConvexError({
+      code: "BAD_REQUEST",
+      message: `maxMembers must be between 1 and ${MAX_TEAM_SEATS}.`,
+    });
+  }
+  const user = await ctx.runQuery(internal.users._getByToken, {
+    tokenIdentifier: identity.tokenIdentifier,
+  });
+  if (!user) {
+    throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+  }
+
+  const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
+    keyId: args.keyId,
+  });
+  if (!key) {
+    throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
+  }
+  const currentAdmin = key.adminUserId ?? key.createdBy;
+  if (currentAdmin !== user._id) {
+    throw new ConvexError({
+      code: "FORBIDDEN",
+      message: "Only the team admin can revise billing.",
+    });
+  }
+
+  const subscriberId = key.stripeSubscriberId ?? key.createdBy;
+  const subscriber =
+    subscriberId === user._id
+      ? user
+      : await ctx.runQuery(internal.users._getById, { userId: subscriberId });
+  const subscriptionId = subscriber?.stripeSubscriptionId;
+  if (!subscriptionId) {
+    throw new ConvexError({
+      code: "BAD_REQUEST",
+      message: "No active subscription to revise.",
+    });
+  }
+
+  const tier = key.tier as PaidTier;
+  const seatPrice = await ctx.runQuery(
+    internal.stripe.prices._getPriceByTierAndKind,
+    { tier, kind: "seat" }
+  );
+  if (!seatPrice) {
+    throw new ConvexError({
+      code: "NOT_FOUND",
+      message: "Seat price not initialized for this tier.",
+    });
+  }
+
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ["items.data"],
+  });
+
+  const seatItem = subscription.items.data.find(
+    (it) => it.price.id === seatPrice.priceId
+  );
+  const newSeatQty = args.maxMembers - 1;
+
+  const items: Stripe.SubscriptionUpdateParams.Item[] = [];
+  if (seatItem && newSeatQty > 0) {
+    items.push({ id: seatItem.id, quantity: newSeatQty });
+  } else if (seatItem && newSeatQty === 0) {
+    items.push({ id: seatItem.id, deleted: true });
+  } else if (!seatItem && newSeatQty > 0) {
+    items.push({ price: seatPrice.priceId, quantity: newSeatQty });
+  }
+  // else: !seatItem && newSeatQty === 0 — nothing to do
+
+  return { tier, subscriptionId, stripe, subscription, items };
+}
+
+// ── previewSubscriptionSeats ─────────────────────────────────────────────────
+
+/**
+ * Dry-run of `reviseSubscriptionSeats`: asks Stripe what the prorated invoice
+ * would look like for the new seat count without actually applying the change.
+ * Returns the immediate charge and the next full-cycle total so the UI can
+ * show the real dollars before the user confirms.
+ */
+export const previewSubscriptionSeats = action({
+  args: {
+    keyId: v.id("licenseKeys"),
+    maxMembers: v.number(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    immediateChargeCents: number;
+    nextInvoiceTotalCents: number;
+    nextInvoiceDate: string | null;
+    currency: string;
+  }> => {
+    const { tier, subscriptionId, stripe, subscription, items } =
+      await _prepareSeatChange(ctx, args);
+
+    const periodEndSec = subscription.items.data[0]?.current_period_end ?? null;
+    const nextInvoiceDate = toIsoOrNull(periodEndSec);
+    const nextInvoiceTotalCents =
+      BASE_PRICE_CENTS[tier] + SEAT_PRICE_CENTS * Math.max(0, args.maxMembers - 1);
+
+    // If nothing would actually change, there's no proration to preview.
+    if (items.length === 0) {
+      return {
+        immediateChargeCents: 0,
+        nextInvoiceTotalCents,
+        nextInvoiceDate,
+        currency: subscription.currency,
+      };
+    }
+
+    const customerId =
+      typeof subscription.customer === "string"
+        ? subscription.customer
+        : subscription.customer.id;
+
+    const preview = await stripe.invoices.createPreview({
+      customer: customerId,
+      subscription: subscriptionId,
+      subscription_details: {
+        items,
+        proration_behavior: "always_invoice",
+      },
+    });
+
+    return {
+      immediateChargeCents: preview.amount_due,
+      nextInvoiceTotalCents,
+      nextInvoiceDate,
+      currency: preview.currency,
+    };
+  },
+});
+
 // ── reviseSubscriptionSeats ──────────────────────────────────────────────────
 
 /**
@@ -642,81 +813,7 @@ export const reviseSubscriptionSeats = action({
     ctx,
     args
   ): Promise<{ maxMembers: number; applied: true }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
-    }
-    if (args.maxMembers < 1 || args.maxMembers > MAX_TEAM_SEATS) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: `maxMembers must be between 1 and ${MAX_TEAM_SEATS}.`,
-      });
-    }
-    const user = await ctx.runQuery(internal.users._getByToken, {
-      tokenIdentifier: identity.tokenIdentifier,
-    });
-    if (!user) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-    }
-
-    const key = await ctx.runQuery(internal.licenseKeys._getKeyById, {
-      keyId: args.keyId,
-    });
-    if (!key) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "License key not found" });
-    }
-    const currentAdmin = key.adminUserId ?? key.createdBy;
-    if (currentAdmin !== user._id) {
-      throw new ConvexError({
-        code: "FORBIDDEN",
-        message: "Only the team admin can revise billing.",
-      });
-    }
-
-    const subscriberId = key.stripeSubscriberId ?? key.createdBy;
-    const subscriber =
-      subscriberId === user._id
-        ? user
-        : await ctx.runQuery(internal.users._getById, { userId: subscriberId });
-    const subscriptionId = subscriber?.stripeSubscriptionId;
-    if (!subscriptionId) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "No active subscription to revise.",
-      });
-    }
-
-    const tier = key.tier as PaidTier;
-    const seatPrice = await ctx.runQuery(
-      internal.stripe.prices._getPriceByTierAndKind,
-      { tier, kind: "seat" }
-    );
-    if (!seatPrice) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Seat price not initialized for this tier.",
-      });
-    }
-
-    const stripe = getStripe();
-    const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ["items.data"],
-    });
-
-    const seatItem = sub.items.data.find(
-      (it) => it.price.id === seatPrice.priceId
-    );
-    const newSeatQty = args.maxMembers - 1;
-
-    const items: Stripe.SubscriptionUpdateParams.Item[] = [];
-    if (seatItem && newSeatQty > 0) {
-      items.push({ id: seatItem.id, quantity: newSeatQty });
-    } else if (seatItem && newSeatQty === 0) {
-      items.push({ id: seatItem.id, deleted: true });
-    } else if (!seatItem && newSeatQty > 0) {
-      items.push({ price: seatPrice.priceId, quantity: newSeatQty });
-    }
-    // else: !seatItem && newSeatQty === 0 — nothing to do
+    const { subscriptionId, stripe, items } = await _prepareSeatChange(ctx, args);
 
     if (items.length > 0) {
       await stripe.subscriptions.update(subscriptionId, {
@@ -731,6 +828,69 @@ export const reviseSubscriptionSeats = action({
     });
 
     return { maxMembers: args.maxMembers, applied: true };
+  },
+});
+
+// ── _trimExtraSeats ──────────────────────────────────────────────────────────
+
+/**
+ * Drops the extra-seat line item on a user's subscription back to zero (base
+ * tier only). Used when the last member of a self-created team leaves —
+ * the team is dissolved on our side, and the subscriber should stop paying
+ * for seats they can't use. Takes a user ID + tier directly (no keyId) so
+ * it can be called from mutations that are tearing down the key itself.
+ *
+ * No-ops if the user has no subscription, no seat price row, or no seat
+ * item on the current Stripe sub.
+ */
+export const _trimExtraSeats = internalAction({
+  args: {
+    userId: v.id("users"),
+    tier: v.union(v.literal("pro"), v.literal("business")),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ trimmed: boolean; reason?: string }> => {
+    const user = await ctx.runQuery(internal.users._getById, {
+      userId: args.userId,
+    });
+    if (!user?.stripeSubscriptionId) {
+      return { trimmed: false, reason: "no_subscription" };
+    }
+
+    const seatPrice = await ctx.runQuery(
+      internal.stripe.prices._getPriceByTierAndKind,
+      { tier: args.tier, kind: "seat" }
+    );
+    if (!seatPrice) {
+      return { trimmed: false, reason: "no_seat_price" };
+    }
+
+    const stripe = getStripe();
+    let sub: Stripe.Subscription;
+    try {
+      sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
+        expand: ["items.data"],
+      });
+    } catch (err) {
+      console.warn("_trimExtraSeats: subscription retrieve failed", err);
+      return { trimmed: false, reason: "retrieve_failed" };
+    }
+
+    const seatItem = sub.items.data.find(
+      (it) => it.price.id === seatPrice.priceId
+    );
+    if (!seatItem) {
+      return { trimmed: false, reason: "no_seat_item" };
+    }
+
+    await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      proration_behavior: "always_invoice",
+      items: [{ id: seatItem.id, deleted: true }],
+    });
+
+    return { trimmed: true };
   },
 });
 

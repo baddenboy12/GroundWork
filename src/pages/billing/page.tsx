@@ -52,7 +52,9 @@ import {
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import SubscriptionTypeDialog, { EXTRA_SEAT_PRICE, MAX_TEAM_SEATS } from "./_components/SubscriptionTypeDialog.tsx";
+import ProrationConfirmDialog, { type ProrationPreview } from "./_components/ProrationConfirmDialog.tsx";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
+import { isNative } from "@/lib/platform.ts";
 
 // Feature rows shown in the comparison table
 const FEATURE_ROWS: { label: string; key: keyof typeof TIER_CONFIG.pro }[] = [
@@ -105,7 +107,7 @@ function StripeBadge({ status }: { status: string }) {
       )}
     >
       <CreditCard className="w-2.5 h-2.5" />
-      Stripe {label}
+      {label}
     </span>
   );
 }
@@ -135,6 +137,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   const reactivateSubscriptionAction = useAction(api.stripe.actions.reactivateSubscription);
   const initializePlansAction = useAction(api.stripe.actions.initializeStripePrices);
   const reviseSubscriptionSeatsAction = useAction(api.stripe.actions.reviseSubscriptionSeats);
+  const previewSubscriptionSeatsAction = useAction(api.stripe.actions.previewSubscriptionSeats);
   const reviseSubscriptionTierAction = useAction(api.stripe.actions.reviseSubscriptionTier);
   const takeOverSubscriptionAction = useAction(api.stripe.actions.takeOverSubscription);
   const cleanupOrphanedPhotosAction = useAction(api.r2.storageActions.adminCleanupOrphanedPhotos);
@@ -169,6 +172,25 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
 
   // Subscription type dialog (individual vs team)
   const [subTypeDialogTier, setSubTypeDialogTier] = useState<SubscriptionTier | null>(null);
+
+  // Native-only confirmation dialog shown before CCT opens. Signals to the
+  // user (and to Play reviewers scanning the UI) that subscription payment
+  // happens outside the app on our website.
+  const [checkoutConfirm, setCheckoutConfirm] = useState<{
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
+
+  // Proration confirmation: when a paying user adds seats (via Create Team or
+  // Edit Seats), show the exact immediate + recurring amounts before the
+  // silent Stripe charge fires. null = dialog closed.
+  const [seatPreview, setSeatPreview] = useState<ProrationPreview | null>(null);
+  const [seatPreviewOpen, setSeatPreviewOpen] = useState(false);
+  const [seatPreviewApplying, setSeatPreviewApplying] = useState(false);
+  const [seatPreviewAction, setSeatPreviewAction] = useState<{
+    label: string;
+    commit: () => Promise<void>;
+  } | null>(null);
 
   // Admin transfer dialog
   const [transferAdminOpen, setTransferAdminOpen] = useState(false);
@@ -286,20 +308,47 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Native checkout dialog cancel handler ─────────────────────────────────
-  // On Android, Stripe Checkout opens in an in-app dialog. If the user presses
-  // the back button (dismissing the dialog without completing), the native plugin
-  // dispatches a 'checkoutDialogCancelled' event so we can reset pending state.
-  useEffect(() => {
-    const handler = () => {
-      setStripePending(null);
-      setSwitchPending(false);
-      setSwitchTarget(null);
-      toast.info("Checkout cancelled — no changes made.");
+  // ── Native checkout launcher ──────────────────────────────────────────────
+  // Google Play policy forbids collecting subscription payments inside the
+  // app's WebView. On native we open Stripe Checkout in Chrome Custom Tabs via
+  // @capacitor/browser. When Stripe redirects back to groundwork.teezfpo.com/
+  // stripe/return, Android's App Link (autoVerify in AndroidManifest.xml +
+  // /.well-known/assetlinks.json on the VPS) intercepts the URL before CCT
+  // renders it, launches the app, and StripeAppLinkHandler (App.tsx) navigates
+  // the WebView to /stripe/return — the normal web-flow mount useEffect below
+  // then picks up session_id from sessionStorage and does the sync + team
+  // creation. browserFinished only fires for user-cancelled CCT (no Stripe
+  // redirect), so we just reset the pending UI state — Convex's reactive
+  // queries handle subscription state updates via the webhook.
+  const launchCheckout = async (
+    checkoutUrl: string,
+    resetPending: () => void
+  ) => {
+    if (!isNative) {
+      window.location.href = checkoutUrl;
+      return;
+    }
+    // On native, show the external-payment confirmation dialog first.
+    // Continue opens CCT; Cancel rolls back the pending UI state.
+    const openCct = async () => {
+      const { Browser } = await import("@capacitor/browser");
+      const finishedListener = await Browser.addListener("browserFinished", () => {
+        void finishedListener.remove();
+        resetPending();
+      });
+      await Browser.open({ url: checkoutUrl });
     };
-    window.addEventListener("checkoutDialogCancelled", handler);
-    return () => window.removeEventListener("checkoutDialogCancelled", handler);
-  }, []);
+    setCheckoutConfirm({
+      onConfirm: () => {
+        setCheckoutConfirm(null);
+        void openCct();
+      },
+      onCancel: () => {
+        setCheckoutConfirm(null);
+        resetPending();
+      },
+    });
+  };
 
   // ── Landing page sign-up with tier intent ─────────────────────────────────
   // Runs once tier is loaded so we can skip the dialog if user already has the plan.
@@ -336,7 +385,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         returnUrl: `${origin}/stripe/return`,
         cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
       });
-      window.location.href = checkoutUrl;
+      await launchCheckout(checkoutUrl, () => setStripePending(null));
     } catch (err) {
       toast.error(extractErrorMessage(err));
       sessionStorage.removeItem("gw_sub_team");
@@ -418,31 +467,57 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         return;
       }
 
-      const hasStripeSub =
+      // Only "active" / "trialing" subs can safely take on extra seats.
+      // cancel_pending is excluded — charging proration for seats on a sub
+      // that's about to end would leave the user paying for a team that
+      // evaporates at period close.
+      const hasLiveStripeSub =
         user.stripeSubscriptionStatus === "active" ||
-        user.stripeSubscriptionStatus === "trialing" ||
-        user.stripeSubscriptionStatus === "cancel_pending";
+        user.stripeSubscriptionStatus === "trialing";
 
-      if (createTeamSeats > 1 && hasStripeSub) {
-        // Multi-seat team with active Stripe sub: create team with 1 seat,
-        // then update the Stripe subscription to charge for extra seats.
-        // Stripe applies immediately with automatic proration — no redirect.
-        const { keyId, code } = await createSelfKeyMutation({
+      if (user.stripeSubscriptionStatus === "cancel_pending") {
+        toast.error(
+          "Your subscription is set to cancel. Reactivate it before creating a multi-seat team."
+        );
+        return;
+      }
+
+      if (createTeamSeats > 1 && hasLiveStripeSub) {
+        // Paying user adding extra seats. Create the team key at 1 seat
+        // first (so we have a target for the preview + subsequent revise),
+        // then ask Stripe what the prorated invoice would look like and
+        // show it before committing the seat change. On cancel the team
+        // stays at 1 seat — the user can grow it later via Edit Seats
+        // (same as a user who deliberately creates a 1-seat team).
+        setSeatPreviewOpen(true);
+        setSeatPreview(null);
+        setSeatPreviewAction(null);
+
+        const { keyId } = await createSelfKeyMutation({
           tier: activeTier,
           maxMembers: 1,
         });
-        toast.info(`Team created (key: ${code}). Adding ${createTeamSeats - 1} extra seat(s)…`);
+        const keyIdTyped = keyId as Parameters<typeof reviseSubscriptionSeatsAction>[0]["keyId"];
 
-        await reviseSubscriptionSeatsAction({
-          keyId: keyId as Parameters<typeof reviseSubscriptionSeatsAction>[0]["keyId"],
+        const preview = await previewSubscriptionSeatsAction({
+          keyId: keyIdTyped,
           maxMembers: createTeamSeats,
         });
-
-        toast.success(
-          `Team workspace created with ${createTeamSeats} seats! You'll be charged the prorated seat cost at next billing.`
-        );
-        setCreateTeamOpen(false);
-        setCreateTeamSeats(1);
+        setSeatPreview(preview);
+        setSeatPreviewAction({
+          label: `Create Team (${createTeamSeats} seats)`,
+          commit: async () => {
+            await reviseSubscriptionSeatsAction({
+              keyId: keyIdTyped,
+              maxMembers: createTeamSeats,
+            });
+            toast.success(
+              `Team workspace created with ${createTeamSeats} seats! Your card was charged the prorated amount just now.`
+            );
+            setCreateTeamOpen(false);
+            setCreateTeamSeats(1);
+          },
+        });
       } else {
         // Single seat team or no active Stripe sub — create directly
         if (createTeamSeats > 1) {
@@ -468,28 +543,77 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     if (!myKeyInfo) return;
     setEditSeatsPending(true);
     try {
-      // For self-created (Stripe-backed) keys, update via Stripe — applied
-      // immediately with automatic proration. For admin-granted keys, write
-      // the seat count directly.
-      if (myKeyInfo.selfCreated) {
-        const { maxMembers } = await reviseSubscriptionSeatsAction({
-          keyId: myKeyInfo.keyId,
-          maxMembers: editSeatsValue,
-        });
-        toast.success(
-          `Seat limit updated to ${maxMembers}. You'll be charged the prorated amount at next billing.`
-        );
-        setEditSeatsOpen(false);
-      } else {
+      // Admin-granted keys have no Stripe sub — write the seat count directly.
+      if (!myKeyInfo.selfCreated) {
         await updateMaxMembersMutation({ keyId: myKeyInfo.keyId, maxMembers: editSeatsValue });
         toast.success(`Seat limit updated to ${editSeatsValue}.`);
         setEditSeatsOpen(false);
+        return;
       }
+
+      // Block seat changes on a cancelling subscription — charging proration
+      // for a sub about to end would leave the user paying for access they're
+      // about to lose.
+      if (user?.stripeSubscriptionStatus === "cancel_pending") {
+        toast.error(
+          "Your subscription is set to cancel. Reactivate it before changing seats."
+        );
+        return;
+      }
+
+      // Self-created (Stripe-backed) key — fetch preview, show confirm dialog,
+      // apply only on confirm.
+      setSeatPreviewOpen(true);
+      setSeatPreview(null);
+      setSeatPreviewAction(null);
+
+      const preview = await previewSubscriptionSeatsAction({
+        keyId: myKeyInfo.keyId,
+        maxMembers: editSeatsValue,
+      });
+      setSeatPreview(preview);
+      setSeatPreviewAction({
+        label: `Update to ${editSeatsValue} seat${editSeatsValue === 1 ? "" : "s"}`,
+        commit: async () => {
+          const { maxMembers } = await reviseSubscriptionSeatsAction({
+            keyId: myKeyInfo.keyId,
+            maxMembers: editSeatsValue,
+          });
+          toast.success(
+            `Seat limit updated to ${maxMembers}. Your card was charged the prorated amount just now.`
+          );
+          setEditSeatsOpen(false);
+        },
+      });
     } catch (err) {
+      setSeatPreviewOpen(false);
+      setSeatPreviewAction(null);
       toast.error(extractErrorMessage(err));
     } finally {
       setEditSeatsPending(false);
     }
+  };
+
+  /** Run the pending commit from the proration-confirm dialog. */
+  const handleSeatPreviewConfirm = async () => {
+    if (!seatPreviewAction) return;
+    setSeatPreviewApplying(true);
+    try {
+      await seatPreviewAction.commit();
+      setSeatPreviewOpen(false);
+      setSeatPreviewAction(null);
+      setSeatPreview(null);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setSeatPreviewApplying(false);
+    }
+  };
+
+  const handleSeatPreviewCancel = () => {
+    setSeatPreviewOpen(false);
+    setSeatPreviewAction(null);
+    setSeatPreview(null);
   };
 
   const handleChangeTeamTier = async (newTier: "pro" | "business") => {
@@ -585,7 +709,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         returnUrl: `${origin}/stripe/return`,
         cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
       });
-      window.location.href = checkoutUrl;
+      await launchCheckout(checkoutUrl, () => {
+        setSwitchPending(false);
+        setSwitchTarget(null);
+      });
     } catch (err) {
       toast.error(extractErrorMessage(err));
       setSwitchPending(false);
@@ -865,13 +992,13 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       returnUrl: `${origin}/stripe/return`,
                       cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
                     });
-                    window.location.href = checkoutUrl;
+                    await launchCheckout(checkoutUrl, () => {});
                   } catch (err) {
                     toast.error(extractErrorMessage(err));
                   }
                 }}
               >
-                Set Up Payment via Stripe
+                Set Up Payment
               </Button>
             </div>
           </div>
@@ -1594,7 +1721,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                       ) : (
                         <>
                           <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                          Switch via Stripe
+                          Switch Plan
                         </>
                       )}
                     </Button>
@@ -1759,7 +1886,7 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
                   Processing…
                 </>
               ) : (
-                "Continue to Stripe"
+                "Continue to Checkout"
               )}
             </Button>
           </DialogFooter>
@@ -2105,6 +2232,42 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
           isPending={stripePending !== null}
         />
       )}
+
+      {/* Native-only: external-payment confirmation before CCT opens */}
+      <Dialog
+        open={!!checkoutConfirm}
+        onOpenChange={(v) => !v && checkoutConfirm?.onCancel()}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Continue in your browser</DialogTitle>
+            <DialogDescription>
+              You'll finish your subscription on our website. Your browser
+              will open, and you'll return here automatically when you're
+              done.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => checkoutConfirm?.onCancel()}>
+              Cancel
+            </Button>
+            <Button onClick={() => checkoutConfirm?.onConfirm()}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Proration preview confirmation — fires for paying users on seat
+          changes so they see the exact dollars before the Stripe charge. */}
+      <ProrationConfirmDialog
+        open={seatPreviewOpen}
+        preview={seatPreview}
+        isApplying={seatPreviewApplying}
+        actionLabel={seatPreviewAction?.label ?? "Confirm"}
+        onConfirm={handleSeatPreviewConfirm}
+        onCancel={handleSeatPreviewCancel}
+      />
     </div>
   );
 }

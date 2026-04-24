@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
 import "leaflet/dist/leaflet.css";
 import { DefaultProviders } from "./components/providers/default.tsx";
@@ -6,6 +6,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { registerServiceWorker } from "@/lib/register-sw.ts";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { CONFIG } from "@/lib/config.ts";
+import { isNative } from "@/lib/platform.ts";
+import { NativeOnlyGuard } from "./components/NativeOnlyGuard.tsx";
 
 // Eagerly load the landing page (first thing users see)
 import Index from "./pages/Index.tsx";
@@ -109,12 +111,58 @@ function OidcErrorGuard() {
   return null;
 }
 
+// Handles the Stripe Checkout return via Android App Links. Configured in
+// AndroidManifest.xml with autoVerify for https://groundwork.teezfpo.com/stripe/return,
+// which Android intercepts from Chrome Custom Tabs before CCT renders anything.
+// The app launches (singleTask — existing instance reused), this listener fires,
+// and we navigate the app's WebView to the return route so the normal
+// StripeReturn handler picks up the session_id.
+function StripeAppLinkHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isNative) return;
+
+    let cleanup: (() => void) | undefined;
+    void (async () => {
+      const [{ App }, { Browser }] = await Promise.all([
+        import("@capacitor/app"),
+        import("@capacitor/browser"),
+      ]);
+      const handle = await App.addListener("appUrlOpen", ({ url }) => {
+        let parsed: URL;
+        try {
+          parsed = new URL(url);
+        } catch {
+          return;
+        }
+        if (parsed.pathname !== "/stripe/return") return;
+        // Close CCT so it's not lingering in the background / recents
+        Browser.close().catch(() => {});
+        // Drive the app WebView to the return route — StripeReturn.tsx will
+        // store session_id in sessionStorage and navigate to /billing.
+        navigate(`/stripe/return${parsed.search}`, { replace: true });
+      });
+      cleanup = () => {
+        void handle.remove();
+      };
+    })();
+
+    return () => {
+      cleanup?.();
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 function AppInner() {
   return (
     <>
       <PwaBackGuard />
       <OidcErrorGuard />
       <BrowserRouter>
+        <StripeAppLinkHandler />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -123,9 +171,9 @@ function AppInner() {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
             <Route path="/account-deletion" element={<AccountDeletionPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/billing" element={<BillingPage />} />
-            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/dashboard" element={<NativeOnlyGuard><DashboardPage /></NativeOnlyGuard>} />
+            <Route path="/billing" element={<NativeOnlyGuard><BillingPage /></NativeOnlyGuard>} />
+            <Route path="/integrations" element={<NativeOnlyGuard><IntegrationsPage /></NativeOnlyGuard>} />
             <Route path="/stripe/return" element={<StripeReturn />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/native-callback" element={<NativeCallback />} />

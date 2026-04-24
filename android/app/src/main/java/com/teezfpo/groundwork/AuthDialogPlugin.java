@@ -30,15 +30,13 @@ public class AuthDialogPlugin extends Plugin {
     public Boolean shouldOverrideLoad(Uri url) {
         String host = url.getHost();
 
-        // Intercept navigation to Keycloak auth endpoint
+        // Intercept navigation to Keycloak auth endpoint so the sign-in flow
+        // stays inside a dialog WebView (no browser URL bar exposure).
+        // Stripe Checkout intentionally does NOT go through this plugin —
+        // Google Play policy forbids processing payments in an in-app WebView,
+        // so the billing page launches CCT via @capacitor/browser.
         if ("auth.teezfpo.com".equals(host)) {
             getActivity().runOnUiThread(() -> openDialog(url.toString(), "auth"));
-            return true;
-        }
-
-        // Intercept navigation to Stripe Checkout
-        if ("checkout.stripe.com".equals(host)) {
-            getActivity().runOnUiThread(() -> openDialog(url.toString(), "checkout"));
             return true;
         }
 

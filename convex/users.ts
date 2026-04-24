@@ -463,6 +463,36 @@ export const _setStripeCheckoutSession = internalMutation({
   },
 });
 
+// Admin-only: wipes Stripe-related fields on a user so they start fresh on
+// next checkout. Used when switching Convex between live/test Stripe modes.
+export const adminResetUserStripeFields = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.userId);
+    if (!existing) {
+      throw new Error("User not found");
+    }
+    const {
+      stripeCustomerId: _sc,
+      stripeSubscriptionId: _ss,
+      stripeSubscriptionStatus: _sst,
+      stripeCheckoutSessionId: _scs,
+      stripeCancelEffectiveDate: _sced,
+      pendingTeamSeats: _pts,
+      pendingTeamSeatsAt: _ptsAt,
+      _creationTime: _ct,
+      _id: _id,
+      ...rest
+    } = existing;
+    await ctx.db.replace(args.userId, {
+      ...rest,
+      subscriptionTier: "free",
+      adminGrantedTier: false,
+    });
+    return { userId: args.userId, cleared: true };
+  },
+});
+
 export const _getByStripeCustomerId = internalQuery({
   args: { stripeCustomerId: v.string() },
   handler: async (ctx, args) => {

@@ -63,7 +63,11 @@ function useAuthDialogCancelGuard() {
 export default function Index() {
   useAuthDialogCancelGuard();
 
-  if (hasStoredOidcSession()) {
+  // Auto-redirect signed-in users to the dashboard only in the native app.
+  // On web, private routes are gated by NativeOnlyGuard, so redirecting would
+  // bounce into the "Available on Android" screen — noisy. Show the marketing
+  // landing page instead.
+  if (isNative && hasStoredOidcSession()) {
     return <RedirectToDashboard />;
   }
 
@@ -78,7 +82,7 @@ export default function Index() {
         </div>
       </AuthLoading>
       <Authenticated>
-        <RedirectToDashboard />
+        {isNative ? <RedirectToDashboard /> : <LandingPage />}
       </Authenticated>
       <Unauthenticated>
         <LandingPage />
