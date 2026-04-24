@@ -27,6 +27,7 @@ import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 import PhotoLightbox from "./PhotoLightbox.tsx";
 import EditLogDialog from "./EditLogDialog.tsx";
+import ZoomablePhoto from "./ZoomablePhoto.tsx";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
@@ -541,21 +542,10 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
               transition={{ duration: 0.2 }}
               onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
             >
-              <motion.img
+              <ZoomablePhoto
                 src={photos[activeIndex]}
                 alt={`Photo ${activeIndex + 1}`}
-                className="max-w-[92vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain cursor-pointer"
-                draggable={false}
-                initial={{ scale: 0.5, opacity: 0, y: 40 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.4, opacity: 0, y: 60 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 350,
-                  damping: 22,
-                  mass: 0.7,
-                }}
-                onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
+                onClose={() => setZoomed(false)}
               />
             </motion.div>
           )}

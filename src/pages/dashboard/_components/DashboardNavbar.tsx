@@ -157,7 +157,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
                 className="relative flex items-center gap-3 h-[4.5rem] pl-5 pr-12 rounded-full active:scale-95 transition-transform focus:outline-none"
                 style={{
                   backgroundColor: "hsl(30 12% 12%)",
-                  border: "1px solid hsl(var(--border))",
+                  border: "1px solid var(--border)",
                 }}
               >
                 {/* User icon */}
@@ -205,7 +205,7 @@ export default function DashboardNavbar({ onNewLog, onStats, onIntegrations, onB
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-4 rounded-3xl" style={{ backgroundColor: "hsl(30 12% 12%)", border: "1px solid hsl(var(--border))" }}>
+            <DropdownMenuContent align="end" className="w-80 p-4 rounded-3xl" style={{ backgroundColor: "hsl(30 12% 12%)", border: "1px solid var(--border)" }}>
               <motion.div
                 initial="hidden"
                 animate="visible"
