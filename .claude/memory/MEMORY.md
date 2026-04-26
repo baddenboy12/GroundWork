@@ -18,6 +18,7 @@
 ## Features
 - [Export System](export_system.md) — PDF (jsPDF) and Excel (ExcelJS) exports, themes, page layout, native mobile save
 - [Android / Capacitor](android_capacitor.md) — Native app with auth dialog, filesystem, share plugins, build process
+- [Play Store Production Release](play_store_production_release.md) — Upload keystore (post-Apr-2026 reset), versionCode history, AAB build recipe
 - [Mobile UI Optimizations](ui_mobile_optimizations.md) — Touch-friendly redesign: speech bubble site list, photo cascade, animations
 - [Subscription & Carousel](subscription_carousel.md) — 3D plan carousel, tier colors, Crown icon, comparison table
 - [Team Subscription & Billing](team_subscription_billing.md) — Grace periods, admin transfer, seat management, cancel-pending

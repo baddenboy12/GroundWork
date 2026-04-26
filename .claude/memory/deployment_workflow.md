@@ -13,9 +13,11 @@ type: workflow
 ```bash
 npm run build
 scp -r dist/* root@172.233.163.131:/opt/groundwork/dist/
+ssh root@172.233.163.131 "chmod -R a+rX /opt/groundwork/dist/"
 ```
 - VPS serves static files from `/opt/groundwork/dist/` via Nginx
 - No git on VPS — just file copy
+- **`chmod a+rX` after every SCP** — without it, nginx (`www-data`) gets 403 on assets and the splash screen hangs forever (index.html serves but the JS bundle is forbidden, so React never mounts)
 - Hard refresh (Ctrl+Shift+R) or clear service worker to see changes
 
 ### 3. Deploy Convex Backend
