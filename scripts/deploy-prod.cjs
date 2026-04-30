@@ -38,12 +38,18 @@ if (branch !== "main") {
 // 2. Clean tree check — only counts tracked modifications outside of
 //    auto-generated paths. Untracked files (local config, keystores) and
 //    convex/_generated/ regeneration are ignored.
-const status = sh("git status --porcelain")
+//
+//    NOTE: read git status directly (no sh() helper) because trimming the
+//    full output strips the leading space that prefixes single-status
+//    lines like " M path" and shifts the path extraction.
+const rawStatus = execSync("git status --porcelain", { encoding: "utf8" });
+const status = rawStatus
   .split("\n")
   .filter((line) => {
     if (!line) return false;
     if (line.startsWith("??")) return false; // untracked
-    const path = line.slice(3).trim();
+    // Porcelain format: XY<space>path. Extract everything from index 3 on.
+    const path = line.slice(3);
     if (path.startsWith("convex/_generated/")) return false; // auto-regenerated
     return true;
   })
