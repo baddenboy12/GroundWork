@@ -22,14 +22,13 @@ const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "verify@noreply.teezfpo.com";
  */
 async function sendEmail(payload: {
   from: string;
-  to: string[];
+  to: string | string[];
   subject: string;
   html: string;
 }): Promise<void> {
   if (!isProductionEnv()) {
-    console.log(
-      `[email/dev] Skipped send to ${payload.to.join(", ")} | subject: ${payload.subject}`
-    );
+    const recipients = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
+    console.log(`[email/dev] Skipped send to ${recipients} | subject: ${payload.subject}`);
     return;
   }
   await getResend().emails.send(payload);
