@@ -161,6 +161,83 @@ export const initializeStripePrices = action({
   },
 });
 
+/**
+ * Internal admin recovery tool. Wipes the stripePrices table and recreates
+ * fresh products + prices in the live Stripe account associated with this
+ * deployment's STRIPE_SECRET_KEY. Use when existing Price IDs become stale
+ * (account swap, archived prices, test/live mode swap on the dev deployment).
+ *
+ * Run via:
+ *   npx convex run stripe/actions:_forceReinitializeStripePrices '{}'   # dev
+ *   npx convex run --prod stripe/actions:_forceReinitializeStripePrices '{}'  # prod
+ *
+ * Internal action — not callable from clients, so no auth check needed.
+ */
+export const _forceReinitializeStripePrices = internalAction({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{
+    deleted: number;
+    productIds: Record<PaidTier, string>;
+    priceIds: Record<PaidTier, { base: string; seat: string }>;
+  }> => {
+    const purged: { deleted: number } = await ctx.runMutation(
+      internal.stripe.prices._deleteAll,
+      {}
+    );
+
+    const stripe = getStripe();
+    const productIds: Record<PaidTier, string> = { pro: "", business: "" };
+    const priceIds: Record<PaidTier, { base: string; seat: string }> = {
+      pro: { base: "", seat: "" },
+      business: { base: "", seat: "" },
+    };
+
+    for (const tier of ["pro", "business"] as PaidTier[]) {
+      const tierLabel = tier === "pro" ? "Pro" : "Business";
+      const product = await stripe.products.create({
+        name: `GroundWork ${tierLabel}`,
+        description: `GroundWork ${tierLabel} subscription`,
+      });
+      productIds[tier] = product.id;
+
+      const basePrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: BASE_PRICE_CENTS[tier],
+        currency: "usd",
+        recurring: { interval: "month" },
+        nickname: `${tierLabel} base`,
+      });
+      priceIds[tier].base = basePrice.id;
+
+      const seatPrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: SEAT_PRICE_CENTS,
+        currency: "usd",
+        recurring: { interval: "month" },
+        nickname: `${tierLabel} extra seat`,
+      });
+      priceIds[tier].seat = seatPrice.id;
+
+      await ctx.runMutation(internal.stripe.prices._upsertPrice, {
+        tier,
+        kind: "base",
+        priceId: basePrice.id,
+        productId: product.id,
+      });
+      await ctx.runMutation(internal.stripe.prices._upsertPrice, {
+        tier,
+        kind: "seat",
+        priceId: seatPrice.id,
+        productId: product.id,
+      });
+    }
+
+    return { deleted: purged.deleted, productIds, priceIds };
+  },
+});
+
 // ── createCheckoutSession ────────────────────────────────────────────────────
 
 /**

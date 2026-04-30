@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as _lib_env from "../_lib/env.js";
 import type * as _lib_tiers from "../_lib/tiers.js";
 import type * as _lib_trial from "../_lib/trial.js";
 import type * as _lib_validators from "../_lib/validators.js";
@@ -40,6 +41,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_lib/env": typeof _lib_env;
   "_lib/tiers": typeof _lib_tiers;
   "_lib/trial": typeof _lib_trial;
   "_lib/validators": typeof _lib_validators;
