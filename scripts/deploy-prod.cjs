@@ -35,11 +35,22 @@ if (branch !== "main") {
   );
 }
 
-// 2. Clean tree check
-const status = sh("git status --porcelain");
+// 2. Clean tree check — only counts tracked modifications outside of
+//    auto-generated paths. Untracked files (local config, keystores) and
+//    convex/_generated/ regeneration are ignored.
+const status = sh("git status --porcelain")
+  .split("\n")
+  .filter((line) => {
+    if (!line) return false;
+    if (line.startsWith("??")) return false; // untracked
+    const path = line.slice(3).trim();
+    if (path.startsWith("convex/_generated/")) return false; // auto-regenerated
+    return true;
+  })
+  .join("\n");
 if (status) {
   fail(
-    `Refusing to deploy to prod with a dirty working tree. Commit or stash first:\n${status}`
+    `Refusing to deploy to prod with uncommitted changes:\n${status}`
   );
 }
 
