@@ -1,5 +1,11 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalQuery,
+  internalMutation,
+  internalAction,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel.d.ts";
 
@@ -714,6 +720,43 @@ export const _deleteUser = internalMutation({
     if (!user) return { deleted: false };
     await ctx.db.delete(args.userId);
     return { deleted: true, email: user.email };
+  },
+});
+
+/** Internal: lookup a user's _id by email (case-insensitive). Returns null
+ * if no user matches. Used by the by-email admin tooling wrappers below. */
+export const _findUserIdByEmail = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, args): Promise<Id<"users"> | null> => {
+    const allUsers = await ctx.db.query("users").collect();
+    const user = allUsers.find(
+      (u) => u.email?.toLowerCase() === args.email.toLowerCase()
+    );
+    return user?._id ?? null;
+  },
+});
+
+/**
+ * Admin tooling: cascade-delete the user identified by email. Wraps
+ * _adminDeleteUserAndAllData with an email lookup so the action can be
+ * triggered without first knowing the userId.
+ */
+export const _adminDeleteUserByEmail = internalAction({
+  args: { email: v.string() },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ found: boolean; userId?: Id<"users">; deleted?: boolean }> => {
+    const userId: Id<"users"> | null = await ctx.runQuery(
+      internal.users._findUserIdByEmail,
+      { email: args.email }
+    );
+    if (!userId) return { found: false };
+    const result: { deleted: boolean } = await ctx.runMutation(
+      internal.users._adminDeleteUserAndAllData,
+      { userId }
+    );
+    return { found: true, userId, deleted: result.deleted };
   },
 });
 
