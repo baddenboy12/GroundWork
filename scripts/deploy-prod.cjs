@@ -86,7 +86,10 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-const head = sh("git log -1 --format=%h\\ %s HEAD");
+// Two separate calls — avoids %s expansion on Windows shells.
+const headHash = sh("git rev-parse --short HEAD");
+const headSubject = sh("git log -1 --pretty=format:%s HEAD");
+const head = `${headHash} ${headSubject}`;
 console.log("\n──────────────────────────────────────────────");
 console.log("  PRODUCTION CONVEX DEPLOY");
 console.log(`  Branch: main (clean, in sync with origin)`);
