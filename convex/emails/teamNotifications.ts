@@ -4,6 +4,7 @@ import escapeHtml from "escape-html";
 import { Resend } from "resend";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
+import { isProductionEnv } from "../_lib/env";
 
 let _resend: Resend | null = null;
 function getResend() {
@@ -13,6 +14,26 @@ function getResend() {
 
 // Sender address — must be verified in Resend dashboard
 const FROM = process.env.GROUNDWORK_EMAIL_FROM ?? "verify@noreply.teezfpo.com";
+
+/**
+ * Wrapper around Resend's send. On non-production deployments (dev), logs the
+ * outbound email but does NOT actually call Resend — prevents test traffic
+ * from sending real emails to real or test recipients.
+ */
+async function sendEmail(payload: {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+}): Promise<void> {
+  if (!isProductionEnv()) {
+    console.log(
+      `[email/dev] Skipped send to ${payload.to.join(", ")} | subject: ${payload.subject}`
+    );
+    return;
+  }
+  await getResend().emails.send(payload);
+}
 
 // ── Shared HTML template helpers ──────────────────────────────────────────────
 
@@ -102,7 +123,7 @@ export const sendVoteProposed = internalAction({
       </div>
       ${ctaButton("Review the vote", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote started for "${siteName}"`,
@@ -140,7 +161,7 @@ export const sendVoteCast = internalAction({
       </p>
       ${ctaButton("View vote status", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: `[GroundWork] Vote update: "${siteName}" — ${approvedCount}/${memberCount} approved`,
@@ -173,7 +194,7 @@ export const sendSiteDeleted = internalAction({
       </div>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: `[GroundWork] Site "${siteName}" has been deleted`,
@@ -208,7 +229,7 @@ export const sendVoteExpired = internalAction({
       </p>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote for "${siteName}" expired`,
@@ -248,7 +269,7 @@ export const sendWelcome = internalAction({
       </ul>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: "Welcome to GroundWork",
@@ -277,7 +298,7 @@ export const sendVoteCancelled = internalAction({
       </p>
       ${ctaButton("Go to dashboard", appUrl)}
     `;
-    await getResend().emails.send({
+    await sendEmail({
       from: FROM,
       to,
       subject: `[GroundWork] Deletion vote for "${siteName}" was cancelled`,
