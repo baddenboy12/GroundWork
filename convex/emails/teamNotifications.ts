@@ -31,7 +31,20 @@ async function sendEmail(payload: {
     console.log(`[email/dev] Skipped send to ${recipients} | subject: ${payload.subject}`);
     return;
   }
-  await getResend().emails.send(payload);
+  // Resend's SDK returns { data, error } on rejection rather than throwing.
+  // Surface the error so config drift (e.g. unverified FROM domain) doesn't
+  // silently swallow welcome / vote / cancellation emails.
+  const result = await getResend().emails.send(payload);
+  if (result.error) {
+    const recipients = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
+    console.error(
+      `[email] Resend rejected send to ${recipients} | subject: ${payload.subject} | error:`,
+      result.error
+    );
+    throw new Error(
+      `Resend send failed: ${result.error.name ?? "error"} — ${result.error.message ?? "unknown"}`
+    );
+  }
 }
 
 // ── Shared HTML template helpers ──────────────────────────────────────────────
