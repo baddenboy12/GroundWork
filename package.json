@@ -7,6 +7,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "build": "tsc -b && vite build",
+    "deploy:prod": "node scripts/deploy-prod.cjs",
     "lint": "eslint .",
     "prettier-fix": "prettier --write .",
     "prettier-check": "prettier --check ."

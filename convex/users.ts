@@ -678,6 +678,34 @@ export const _clearStalePendingSeats = internalMutation({
   },
 });
 
+/**
+ * Admin tooling: clears all subscription/trial state on a user, reverting them
+ * to a fresh "Free tier, never subscribed" state. Used after a Stripe-side
+ * cleanup to keep Convex consistent. Preserves sandboxMode and other
+ * non-subscription fields.
+ */
+export const _adminResetUserByEmail = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const allUsers = await ctx.db.query("users").collect();
+    const user = allUsers.find(
+      (u) => u.email?.toLowerCase() === args.email.toLowerCase()
+    );
+    if (!user) return { found: false as const };
+    await ctx.db.patch(user._id, {
+      subscriptionTier: "free",
+      stripeCustomerId: undefined,
+      stripeSubscriptionId: undefined,
+      stripeSubscriptionStatus: undefined,
+      stripeCancelEffectiveDate: undefined,
+      stripeCheckoutSessionId: undefined,
+      hasUsedTrial: undefined,
+      adminGrantedTier: undefined,
+    });
+    return { found: true as const, userId: user._id, email: user.email };
+  },
+});
+
 /** Internal: delete a user by ID (admin tooling only). */
 export const _deleteUser = internalMutation({
   args: { userId: v.id("users") },
