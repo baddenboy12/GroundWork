@@ -65,7 +65,7 @@ export default function Hero() {
       <div
         key={t}
         className={cn(
-          "relative rounded-2xl border p-4 flex flex-col gap-3",
+          "relative rounded-2xl border p-4 md:p-5 flex flex-col gap-3",
           tint.border,
         )}
         style={{ background: tint.gradient }}
@@ -79,33 +79,33 @@ export default function Hero() {
         )}
 
         <div>
-          <p className="font-bold text-foreground text-xl">{cfg.name}</p>
-          <p className="text-lg text-muted-foreground mt-0.5 whitespace-nowrap">{cfg.tagline}</p>
+          <p className="font-bold text-foreground text-lg md:text-xl">{cfg.name}</p>
+          <p className="text-base md:text-lg text-muted-foreground mt-0.5">{cfg.tagline}</p>
         </div>
 
         <div>
-          <span className="text-4xl font-black text-foreground">{cfg.price}</span>
-          <span className="text-base text-muted-foreground ml-1">{cfg.period}</span>
+          <span className="text-3xl md:text-4xl font-black text-foreground">{cfg.price}</span>
+          <span className="text-sm md:text-base text-muted-foreground ml-1">{cfg.period}</span>
         </div>
 
         <ul className="space-y-2 flex-1">
-          <li className="flex items-center gap-2 text-lg text-muted-foreground whitespace-nowrap">
+          <li className="flex items-center gap-2 text-base md:text-lg text-muted-foreground">
             <Check className="w-4 h-4 text-primary shrink-0" />
             {cfg.maxSites === null ? "Unlimited sites" : `${cfg.maxSites} site${cfg.maxSites > 1 ? "s" : ""}`}
           </li>
-          <li className="flex items-center gap-2 text-lg text-muted-foreground whitespace-nowrap">
+          <li className="flex items-center gap-2 text-base md:text-lg text-muted-foreground">
             <Check className="w-4 h-4 text-primary shrink-0" />
             {cfg.maxLogsPerSite === null ? "Unlimited logs per site" : `${cfg.maxLogsPerSite} log${cfg.maxLogsPerSite > 1 ? "s" : ""} per site`}
           </li>
-          <li className="flex items-center gap-2 text-lg text-muted-foreground whitespace-nowrap">
+          <li className="flex items-center gap-2 text-base md:text-lg text-muted-foreground">
             <Check className="w-4 h-4 text-primary shrink-0" />
             Up to {cfg.maxPhotosPerEntry} photos per entry
           </li>
-          <li className={cn("flex items-center gap-2 text-lg whitespace-nowrap", cfg.export ? "text-muted-foreground" : "text-muted-foreground/40")}>
+          <li className={cn("flex items-center gap-2 text-base md:text-lg", cfg.export ? "text-muted-foreground" : "text-muted-foreground/40")}>
             {cfg.export ? <Check className="w-4 h-4 text-primary shrink-0" /> : <X className="w-4 h-4 shrink-0" />}
             PDF, Excel & CSV export
           </li>
-          <li className={cn("flex items-center gap-2 text-lg whitespace-nowrap", cfg.integrations ? "text-muted-foreground" : "text-muted-foreground/40")}>
+          <li className={cn("flex items-center gap-2 text-base md:text-lg", cfg.integrations ? "text-muted-foreground" : "text-muted-foreground/40")}>
             {cfg.integrations ? <Check className="w-4 h-4 text-primary shrink-0" /> : <X className="w-4 h-4 shrink-0" />}
             Integrations & API
           </li>
@@ -147,7 +147,7 @@ export default function Hero() {
   });
 
   return (
-    <section className={`relative min-h-screen flex flex-col justify-center overflow-hidden pb-4 ${isNative ? "pt-40" : "pt-20"}`}>
+    <section className={`relative min-h-dvh flex flex-col overflow-hidden pb-8 md:pb-4 ${isNative ? "pt-40" : "pt-20"}`}>
       {/* Background image with overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -168,15 +168,15 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-        {/* Hero text — compact */}
-        <div className="text-center max-w-3xl mx-auto mb-20 mt-28">
+      {/* Hero text block — sits at top, no flex push. */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 w-full">
+        <div className="text-center max-w-3xl mx-auto mt-8 md:mt-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium mb-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs md:text-sm font-medium mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Structured Logging, Simplified
             </span>
@@ -192,7 +192,7 @@ export default function Hero() {
           </motion.h1>
 
           <motion.p
-            className="text-base text-muted-foreground mb-3 max-w-xl mx-auto leading-relaxed"
+            className="text-sm md:text-base text-muted-foreground mb-3 max-w-xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -202,19 +202,25 @@ export default function Hero() {
           </motion.p>
 
           <motion.div
-            className="flex flex-wrap justify-center gap-3 mb-3"
+            className="flex flex-wrap justify-center gap-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
             {highlights.map((item) => (
-              <span key={item} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span key={item} className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground">
                 <CheckCircle className="w-4 h-4 text-primary" />
                 {item}
               </span>
             ))}
           </motion.div>
+        </div>
+      </div>
 
+      {/* Buttons + carousel block — small fixed margin keeps them just below
+          the hero text rather than centering or pushing to the bottom. */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 w-full mt-8 md:mt-12">
+        <div className="text-center max-w-3xl mx-auto mb-8 md:mb-10">
           <motion.div
             className="flex flex-wrap justify-center gap-3"
             initial={{ opacity: 0, y: 20 }}
@@ -235,21 +241,31 @@ export default function Hero() {
           </motion.div>
         </div>
 
-        {/* Plan carousel */}
+        {/* Plan layout — vertical stack on narrow viewports (<md, e.g. phone
+            portrait), 3D carousel from md (768px) up so the Capacitor APK
+            (which sets viewport=768) keeps the carousel. */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
         >
-          <PlanCarousel
-            items={planCards}
-            frontIndex={carouselIndex}
-            onFrontIndexChange={setCarouselIndex}
-          />
+          <div className="md:hidden flex flex-col gap-6 max-w-md mx-auto">
+            {planCards}
+          </div>
+          <div className="hidden md:block">
+            <PlanCarousel
+              items={planCards}
+              frontIndex={carouselIndex}
+              onFrontIndexChange={setCarouselIndex}
+              height={400}
+            />
+          </div>
         </motion.div>
       </div>
 
-      {/* Inline footer links */}
+      {/* Inline footer links — mt-auto pins this to the bottom of the
+          section so empty space accumulates between the carousel and
+          the footer instead of pushing the footer up under the carousel. */}
       <div className="relative z-10 mt-auto pt-6 pb-4 px-6">
         <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground/60">
           <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">

@@ -12,9 +12,13 @@ type Props = {
   items: ReactNode[];
   frontIndex: number;
   onFrontIndexChange: (index: number) => void;
+  /** Visible height of the 3D card stage in pixels. Defaults to 480 to preserve
+   *  the original billing-page layout. The landing page passes a smaller value
+   *  so the whole page can fit on a typical laptop viewport without scrolling. */
+  height?: number;
 };
 
-export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: Props) {
+export default function PlanCarousel({ items, frontIndex, onFrontIndexChange, height = 480 }: Props) {
   const count = items.length;
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swiped = useRef(false);
@@ -82,7 +86,7 @@ export default function PlanCarousel({ items, frontIndex, onFrontIndexChange }: 
   return (
     <div className="w-full">
       <div
-        style={{ perspective: 1000, height: 480 }}
+        style={{ perspective: 1000, height }}
         className="relative mx-auto max-w-3xl overflow-visible"
       >
         <div
