@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App-wide background — must match the body { background } in src/index.css.
+         Used as the activity's windowBackground so transparent system bars
+         (post-EdgeToEdge.enable on Android 15+) show this color instead of
+         a default white. -->
+    <color name="app_background">#0f1117</color>
+</resources>

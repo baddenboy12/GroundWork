@@ -1,6 +1,7 @@
 package com.teezfpo.groundwork;
 
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,6 +57,15 @@ public class MainActivity extends BridgeActivity {
         Bridge bridge = getBridge();
         if (bridge != null && bridge.getWebView() != null) {
             View parent = (View) bridge.getWebView().getParent();
+            // Paint the WebView's parent dark so the inset-padding area (the
+            // strip between the system status bar and the WebView content)
+            // matches the rest of the app. Some devices (e.g. OnePlus 13)
+            // don't inherit the activity's windowBackground here; setting it
+            // explicitly avoids a white band under the status bar.
+            parent.setBackgroundColor(Color.parseColor("#0f1117"));
+            // Also paint the WebView itself in case it briefly flashes its
+            // own background before HTML loads.
+            bridge.getWebView().setBackgroundColor(Color.parseColor("#0f1117"));
             ViewCompat.setOnApplyWindowInsetsListener(parent, (v, windowInsets) -> {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
                 // Trim top inset slightly for a tighter feel
