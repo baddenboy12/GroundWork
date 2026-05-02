@@ -8,15 +8,15 @@ export default function Navbar() {
 
   return (
     <nav className="fixed left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border top-0">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
         {/* Logo — matches dashboard sizing */}
-        <a href="/" className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-2 md:gap-3">
           <img
             src="/icon/icon-192.png"
             alt="GroundWork"
-            className="w-14 h-14 rounded-lg"
+            className="w-12 h-12 md:w-14 md:h-14 rounded-lg"
           />
-          <span className="font-bold text-[1.75rem] text-foreground">
+          <span className="font-bold text-2xl md:text-[1.75rem] text-foreground">
             Ground<span className="text-primary">Work</span>
           </span>
         </a>

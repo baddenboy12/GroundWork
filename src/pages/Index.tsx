@@ -26,7 +26,7 @@ function RedirectToDashboard() {
 
 function LandingPage() {
   return (
-    <div className="h-screen bg-background overflow-hidden">
+    <div className="min-h-dvh bg-background">
       <Navbar />
       <Hero />
     </div>

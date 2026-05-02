@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta id="viewport-meta" name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Hard-coded width=768 so mobile browsers and the Capacitor APK both
+         render at the same canonical layout width and scale to fit the device.
+         Desktop browsers ignore viewport-meta width directives, so laptop and
+         4K still render at their full window size. The native-only override
+         below adds user-scalable=no for a closer-to-native feel. -->
+    <meta id="viewport-meta" name="viewport" content="width=768, viewport-fit=cover" />
 
     <!-- CSP is applied server-side via headers for web; omitted here for Capacitor native compatibility -->
 
@@ -47,7 +52,9 @@
           }
           document.documentElement.classList.add(theme);
 
-          // For native Android: match the PWA viewport (768px)
+          // Native APK only: add user-scalable=no for a closer-to-native feel.
+          // Width is already 768 from the initial meta tag so first paint is
+          // already at the correct breakpoint — no JS-driven viewport switch.
           if (navigator.userAgent.indexOf("GroundWorkNative") !== -1) {
             document.documentElement.classList.add("native-android");
             var vp = document.getElementById("viewport-meta");
