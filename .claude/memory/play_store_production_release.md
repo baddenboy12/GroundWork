@@ -13,8 +13,11 @@ type: project
 - **SHA1**: `A6:40:D1:D3:54:BD:C2:7D:E8:39:4D:42:AD:3A:2F:53:76:6D:94:7E`
 - **MD5**: `E4:47:F8:61:83:DA:F6:CC:4B:97:B0:5F:89:69:53:92`
 - **Password**: stored in `~/.gradle/gradle.properties` under `GROUNDWORK_UPLOAD_STORE_PASSWORD`. Never echoed. Use `keytool -storepass:env <var>` to verify, never `-storepass <literal>`.
+- **Confirmed working**: 2026-05-02 — AAB signed with this keystore matches the SHA1 in `groundwork-upload_certificate.pem` and is what Play Console expects.
 
-The keystore is intentionally outside the repo (Downloads folder). Gradle reads its path from `~/.gradle/gradle.properties` via `GROUNDWORK_UPLOAD_STORE_FILE`. **If that file is missing, the release build silently produces an unsigned AAB.** Re-download into Downloads if it disappears.
+The keystore is intentionally outside the repo (Downloads folder). Gradle reads its path from `~/.gradle/gradle.properties` via `GROUNDWORK_UPLOAD_STORE_FILE` — must be the **absolute** path `C:/Users/cyr/Downloads/groundwork-upload.keystore`, not a bare filename (which would resolve to `android/app/` and pick up the WRONG legacy keystore `groundwork-release.keystore`). **If the file is missing or the path is wrong, the release build silently signs with the wrong key and Play rejects it.** Re-download into Downloads if it disappears.
+
+**Do NOT confuse with the legacy `android/app/groundwork-release.keystore`** — that one is signed `CN=Corey Butler, O=TeezFPO` (SHA1 `E9:32:6C:E1:F0:89:4B:2E:72:79:A8:FA:EC:52:31:F0:39:61:3F:05`) and Play will reject any AAB signed with it.
 
 **Why:** A previous upload key was lost, requiring a Play Console upload key reset (approved Apr 26 2026 06:38 UTC). The fingerprint above is what Play now expects on every uploaded AAB.
 
