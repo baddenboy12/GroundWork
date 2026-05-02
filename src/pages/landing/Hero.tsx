@@ -220,7 +220,7 @@ export default function Hero() {
       {/* Buttons + carousel block — small fixed margin keeps them just below
           the hero text rather than centering or pushing to the bottom. */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 w-full mt-8 md:mt-12">
-        <div className="text-center max-w-3xl mx-auto mb-8 md:mb-10">
+        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
           <motion.div
             className="flex flex-wrap justify-center gap-3"
             initial={{ opacity: 0, y: 20 }}
