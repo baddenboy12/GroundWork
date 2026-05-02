@@ -1,7 +1,6 @@
 package com.teezfpo.groundwork;
 
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +9,7 @@ import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
+import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -26,6 +26,14 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Opt into edge-to-edge before super.onCreate. Replaces the deprecated
+        // window.setStatusBarColor / setNavigationBarColor calls (which Google
+        // Play Console flagged on Android 15+/SDK 35), and provides backward-
+        // compatible behavior on older Android versions. The window background
+        // (set via the activity theme) shows through the now-transparent
+        // system bars; our dark theme makes the bars look dark as before.
+        EdgeToEdge.enable(this);
+
         // Register the auth dialog plugin BEFORE super.onCreate
         // so it's available when Capacitor initializes
         registerPlugin(AuthDialogPlugin.class);
@@ -39,9 +47,6 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         Window window = getWindow();
-        window.setStatusBarColor(Color.parseColor("#0f1117"));
-        window.setNavigationBarColor(Color.parseColor("#0f1117"));
-
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.setAppearanceLightStatusBars(false);
 
