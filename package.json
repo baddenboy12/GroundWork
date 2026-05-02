@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "build:dev": "tsc -b && vite build --mode development",
     "deploy:prod": "node scripts/deploy-prod.cjs",
+    "deploy:web:prod": "node scripts/deploy-web-prod.cjs",
     "deploy:dev": "npm run build:dev && scp -r dist/* root@172.233.163.131:/opt/groundwork/dist-dev/",
     "apk:dev": "node scripts/build-apk.cjs dev",
     "apk:release": "node scripts/build-apk.cjs release",
