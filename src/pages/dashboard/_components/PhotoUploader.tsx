@@ -202,7 +202,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                   type="button"
                   data-no-drag
                   onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-background/80 flex items-center justify-center hover:bg-destructive hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
