@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Smartphone, ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { isNative } from "@/lib/platform";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -21,9 +21,19 @@ export function NativeOnlyGuard({ children }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-          <Smartphone className="size-8 text-primary" />
-        </div>
+        <a
+          href="https://play.google.com/store/apps/details?id=com.teezfpo.groundwork"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block transition-opacity hover:opacity-90"
+          aria-label="Get GroundWork on Google Play"
+        >
+          <img
+            src="/google-play-badge.png"
+            alt="Get it on Google Play"
+            className="h-20 w-auto"
+          />
+        </a>
 
         <div className="space-y-2">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
