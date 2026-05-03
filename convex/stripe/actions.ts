@@ -704,6 +704,43 @@ export const cancelSubscription = action({
   },
 });
 
+// ── _adminCancelSubscriptionByEmail (admin tooling) ──────────────────────────
+
+/**
+ * Admin tooling: immediately cancels the Stripe subscription on the user
+ * identified by email (no proration, ends right now). Used by the launch-day
+ * wipe flow before cascade-deleting the Convex user. Idempotent — returns
+ * `{canceled:false, reason:"no stripe sub"}` for users without a sub.
+ */
+export const _adminCancelSubscriptionByEmail = internalAction({
+  args: { email: v.string() },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ canceled: boolean; subId?: string; reason?: string }> => {
+    const userId: Id<"users"> | null = await ctx.runQuery(
+      internal.users._findUserIdByEmail,
+      { email: args.email }
+    );
+    if (!userId) return { canceled: false, reason: "user not found" };
+    const user = await ctx.runQuery(internal.users._getUserById, { userId });
+    if (!user) return { canceled: false, reason: "user not found" };
+    if (!user.stripeSubscriptionId) {
+      return { canceled: false, reason: "no stripe sub on user" };
+    }
+    const stripe = getStripe();
+    try {
+      const sub = await stripe.subscriptions.cancel(user.stripeSubscriptionId, {
+        prorate: false,
+      });
+      return { canceled: true, subId: sub.id };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { canceled: false, reason: `stripe error: ${msg}` };
+    }
+  },
+});
+
 // ── reactivateSubscription ───────────────────────────────────────────────────
 
 /**

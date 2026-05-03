@@ -356,6 +356,13 @@ export const _getByToken = internalQuery({
   },
 });
 
+export const _getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
 export const _getById = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -733,6 +740,37 @@ export const _findUserIdByEmail = internalQuery({
       (u) => u.email?.toLowerCase() === args.email.toLowerCase()
     );
     return user?._id ?? null;
+  },
+});
+
+/**
+ * Admin tooling: truncates the auxiliary tables that are NOT covered by the
+ * per-user cascade — clientErrors, siteDeleteVotes, rateLimits,
+ * processedStripeEvents. Used by the launch-day wipe to get a true clean
+ * slate. Returns counts deleted per table.
+ */
+export const _adminWipeAuxTables = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const counts: Record<string, number> = {};
+
+    const errors = await ctx.db.query("clientErrors").collect();
+    for (const e of errors) await ctx.db.delete(e._id);
+    counts.clientErrors = errors.length;
+
+    const votes = await ctx.db.query("siteDeleteVotes").collect();
+    for (const v of votes) await ctx.db.delete(v._id);
+    counts.siteDeleteVotes = votes.length;
+
+    const limits = await ctx.db.query("rateLimits").collect();
+    for (const l of limits) await ctx.db.delete(l._id);
+    counts.rateLimits = limits.length;
+
+    const events = await ctx.db.query("processedStripeEvents").collect();
+    for (const ev of events) await ctx.db.delete(ev._id);
+    counts.processedStripeEvents = events.length;
+
+    return counts;
   },
 });
 
