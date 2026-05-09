@@ -10,7 +10,14 @@ When Stripe redirects Chrome Custom Tabs to `https://groundwork.teezfpo.com/stri
 
 ## Moving parts — don't break these together
 
-1. **VPS: `/opt/groundwork/dist/.well-known/assetlinks.json`** — lists the SHA256 fingerprints of every keystore that should be allowed to claim the domain. Served at `https://groundwork.teezfpo.com/.well-known/assetlinks.json` with `Content-Type: application/json`. Currently contains two fingerprints (previous and current debug keystores). When a release build is created, add the release keystore fingerprint + Play App Signing upload cert here, or the App Link fails silently and CCT falls back to showing the URL.
+1. **VPS: `/opt/groundwork/dist/.well-known/assetlinks.json`** — lists the SHA-256 fingerprints of every keystore that should be allowed to claim the domain. Served at `https://groundwork.teezfpo.com/.well-known/assetlinks.json` with `Content-Type: application/json`. Source of truth lives at [public/.well-known/assetlinks.json](public/.well-known/assetlinks.json) and is copied verbatim into `dist/` by Vite — but `scp -r dist/* …` **skips it** because the shell glob `*` excludes dotfiles; deploy with an explicit `scp dist/.well-known/assetlinks.json …` or `scp -r dist/.well-known …` after the main bundle copy.
+
+   **Required fingerprints (as of v1.0.5, May 2026):**
+   - **Play App Signing certificate** (`40:D1:74:FF:1C:83:17:4D:77:0F:87:79:42:75:78:86:1F:70:E0:74:8A:82:5B:70:01:8E:DD:B5:06:7D:76:9A`) — what end users' Play-installed APKs are signed with. **THIS IS THE CRITICAL ONE.** Get from Play Console → Setup → App integrity → App signing → "App signing key certificate" → SHA-256.
+   - **Upload key certificate** (`0C:65:C7:9C:40:29:97:F2:58:52:57:66:39:4F:DF:FE:A7:53:20:DA:DB:A4:97:EA:80:C0:F4:88:C2:71:60:7F`) — for any internal-track or sideloaded AAB-signed installs.
+   - **Debug keystore** (`B8:52:77:D0:18:F5:F7:4B:91:A2:CB:4B:83:6D:60:7C:5E:BE:24:FA:3A:59:96:9B:15:61:CA:A1:D7:AD:94:65`) — default `~/.android/debug.keystore`, lets sideloaded debug APKs verify the App Link locally.
+
+   **Lesson learned (May 2026):** The file used to contain only the upload keystore SHA-256 (`8D:1D:18:…`, which was actually stale from before the Apr-2026 upload key reset). End-user APKs are re-signed by Play App Signing with a different cert, so only the App Signing fingerprint matters for production users. Play Console's "Deep links" page reported "1 domain failed validation" for `groundwork.teezfpo.com` and "Link not working" for `/stripe/return` — symptom in-app was that Stripe Checkout return landed in CCT showing the web `NativeOnlyGuard` "Available on Android" page instead of bouncing into the app. Fix shipped in v1.0.5 (versionCode 6).
 
 2. **`android/app/src/main/AndroidManifest.xml`** — intent filter with `android:autoVerify="true"` and `android:path="/stripe/return"` scoped exactly so only this path triggers the app. Do not widen to `pathPrefix="/"` or users won't be able to browse the site in their regular Chrome.
 

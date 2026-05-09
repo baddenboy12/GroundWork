@@ -58,10 +58,16 @@ The Convex CLI needs two things before `npx convex run` works:
 4. Prefer `./node_modules/.bin/convex` over `npx convex` when pushing — `npx` installs a separate copy that can't resolve workspace deps.
 
 ## Test Accounts
-- Corey Butler: baddenboy12@gmail.com (app super_admin)
-- Corey2 Butler2: baddenboy15@live.com
-- Corey3 Butler3: c.yr@hotmail.com
-- Torian Neymour: torianneymour@yahoo.com (sandbox tester)
+
+Verified against both deployments on **May 9 2026**. Only active accounts listed; previously-listed test accounts (`baddenboy15@live.com`, `torianneymour@yahoo.com`) did not exist on either deployment when checked, and `c.yr@hotmail.com` was cascade-deleted from prod that same day. The earlier mapping had `c.yr@hotmail.com` mislabeled as "Corey3 Butler3" — in prod it was actually named "Corey2 Butler2".
+
+| Deployment | Email | Name | Tier | Notes |
+|---|---|---|---|---|
+| Prod (`warmhearted-barracuda-277`) | baddenboy12@gmail.com | Corey Butler | business | App super_admin |
+| Prod | cornell.williams@cablebahamas.com | Cornell Williams | business | Real customer (not a test account) |
+| Dev (`useful-ox-860`) | baddenboy12@gmail.com | Corey Butler | business | Same human, separate account in dev |
+
+When creating new test accounts, re-run `_debugListUsers` against the relevant deployment and update this table — don't carry forward stale entries.
 
 ## Sandbox Mode
 - `sandboxMode` field on users table — lets designated users switch tiers freely without PayPal
