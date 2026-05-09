@@ -32,6 +32,8 @@ Play tracks consume versionCodes globally — a code used on internal/closed tes
 | 1 | 1.0 | Internal testing (Release1) | Active 13 Apr 2026 |
 | 2 | 1.0 | Closed testing - Alpha (2.0) | Active 13 Apr 2026 |
 | 3 | 1.0.2 | Production (first prod release) | Apr 26 2026 |
+| 5 | 1.0.4 | Production | (prior release) |
+| 6 | 1.0.5 | Production | May 9 2026 — App Link `/stripe/return` fix (added Play App Signing fingerprint to assetlinks.json) |
 
 **How to apply:** Always increment `versionCode` past the highest one already on Play, regardless of track. Bumping `versionName` is optional but recommended. File: [android/app/build.gradle:10-11](android/app/build.gradle:10).
 

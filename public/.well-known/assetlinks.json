@@ -5,7 +5,9 @@
       "namespace": "android_app",
       "package_name": "com.teezfpo.groundwork",
       "sha256_cert_fingerprints": [
-        "8D:1D:18:AF:FF:B3:32:5C:9F:F5:65:A9:21:BC:39:CB:82:6F:E6:EE:B9:EA:D7:27:2D:19:53:20:63:D0:FA:63"
+        "40:D1:74:FF:1C:83:17:4D:77:0F:87:79:42:75:78:86:1F:70:E0:74:8A:82:5B:70:01:8E:DD:B5:06:7D:76:9A",
+        "0C:65:C7:9C:40:29:97:F2:58:52:57:66:39:4F:DF:FE:A7:53:20:DA:DB:A4:97:EA:80:C0:F4:88:C2:71:60:7F",
+        "B8:52:77:D0:18:F5:F7:4B:91:A2:CB:4B:83:6D:60:7C:5E:BE:24:FA:3A:59:96:9B:15:61:CA:A1:D7:AD:94:65"
       ]
     }
   }

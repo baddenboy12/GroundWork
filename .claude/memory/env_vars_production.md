@@ -37,3 +37,16 @@ If the first two come back empty, the build read the wrong env file — abort be
 ## Why this exists
 
 On 2026-04-23 a v247 deploy shipped a bundle built from `.env.local` alone — no OIDC vars, dev Convex URL. Auth broke for every user. The runtime `env.ts` was silent in prod, so the build succeeded anyway. Fixed by adding `.env.production.local` + making `env.ts` throw in all modes.
+
+## Worktree gotcha (2026-05-09)
+
+`.env*` files are gitignored, so `git worktree add` does **not** copy them into a new worktree. Running `npm run build` from a fresh worktree silently produces a bundle with **no** `VITE_*` vars at all → `env.ts` throws on app boot → users see only the splash screen, never the React tree (web landing AND Capacitor APK both fail because the APK ships the same `dist/` assets via `cap sync`).
+
+**Before `npm run build` in a worktree, always:**
+
+```bash
+cp /c/Users/cyr/Projects/GroundWork/.env.local              ./.env.local
+cp /c/Users/cyr/Projects/GroundWork/.env.production.local   ./.env.production.local
+```
+
+Run the pre-deploy sanity grep below regardless. `android/local.properties` (Android SDK path) is also gitignored and has the same worktree gotcha — copy it from the main checkout before `gradlew`.

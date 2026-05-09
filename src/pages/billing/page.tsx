@@ -14,6 +14,7 @@ import {
 } from "../dashboard/_lib/subscription.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -183,6 +184,18 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
     onCancel: () => void;
   } | null>(null);
 
+  // Trial signup from landing page: full-screen overlay that locks the user
+  // into the funnel from the moment they hit /billing post-signup until Stripe
+  // Checkout completes (or they tap Try again after cancelling). No close/back
+  // buttons by design — users can't escape into the regular billing UI mid-flow.
+  // "preparing" = we're calling createCheckoutSession + opening CCT.
+  // "cancelled" = user closed CCT without paying; show Try again button.
+  // null = no overlay (default; remount after successful Stripe return clears it).
+  const [signupAutoLaunch, setSignupAutoLaunch] = useState<
+    "preparing" | "cancelled" | null
+  >(null);
+  const autoLaunchTierRef = useRef<SubscriptionTier | null>(null);
+
   // Proration confirmation: when a paying user adds seats (via Create Team or
   // Edit Seats), show the exact immediate + recurring amounts before the
   // silent Stripe charge fires. null = dialog closed.
@@ -324,14 +337,19 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   // queries handle subscription state updates via the webhook.
   const launchCheckout = async (
     checkoutUrl: string,
-    resetPending: () => void
+    resetPending: () => void,
+    opts?: { skipConfirm?: boolean }
   ) => {
     if (!isNative) {
       window.location.href = checkoutUrl;
       return;
     }
-    // On native, show the external-payment confirmation dialog first.
-    // Continue opens CCT; Cancel rolls back the pending UI state.
+    // On native, the default flow shows the external-payment confirmation
+    // dialog first. Continue opens CCT; Cancel rolls back the pending UI state.
+    // Callers that have their own committed UI (e.g. the trial-signup
+    // auto-launch overlay) pass skipConfirm to bypass the dialog and open CCT
+    // immediately — the overlay itself signals to the user that they're
+    // leaving the app for payment.
     const openCct = async () => {
       const { Browser } = await import("@capacitor/browser");
       const finishedListener = await Browser.addListener("browserFinished", () => {
@@ -340,6 +358,10 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
       });
       await Browser.open({ url: checkoutUrl });
     };
+    if (opts?.skipConfirm) {
+      await openCct();
+      return;
+    }
     setCheckoutConfirm({
       onConfirm: () => {
         setCheckoutConfirm(null);
@@ -353,22 +375,55 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
   };
 
   // ── Landing page sign-up with tier intent ─────────────────────────────────
-  // Runs once tier is loaded so we can skip the dialog if user already has the plan.
+  // After signup from the landing page, auto-launch Stripe Checkout for the
+  // chosen tier as Individual / 1 seat — no individual-vs-team dialog, no
+  // "Continue in your browser" dialog. The full-screen overlay below covers
+  // the regular /billing UI so the user can't browse plans or back out
+  // mid-funnel. Team conversion happens later from the regular /billing flow.
+  //
+  // We fire on mount with no gate on `isLoading` / `tier` — Callback.tsx only
+  // navigates to /billing after `isConvexAuthenticated` is true and the user
+  // record has been synced via `updateCurrentUser`, so by the time this
+  // effect runs the user is fully authenticated. Gating on useSubscription's
+  // `isLoading` was racy: on the first /billing mount post-signup the
+  // `getCurrentUser` query was sometimes still pending, leaving the effect
+  // permanently blocked until the user navigated away and back.
+  // The (rare) edge case where the user is already on the chosen tier is
+  // handled by `handleStripeSubscribe`'s internal `newTier === tier` short-
+  // circuit, which fires onCancelled → overlay flips to "Try again" so the
+  // user isn't stuck on the spinner.
   const signupTierHandled = useRef(false);
   useEffect(() => {
-    if (isLoading || signupTierHandled.current) return;
-    const signupTier = sessionStorage.getItem("gw_signup_tier");
+    if (signupTierHandled.current) return;
+    const signupTier = localStorage.getItem("gw_signup_tier");
     if (!signupTier || (signupTier !== "pro" && signupTier !== "business")) return;
     signupTierHandled.current = true;
-    sessionStorage.removeItem("gw_signup_tier");
-    // Only prompt if user doesn't already have this tier (or higher)
-    const tierRank = { free: 0, starter: 1, pro: 2, business: 3 };
-    if ((tierRank[tier] ?? 0) >= (tierRank[signupTier as SubscriptionTier] ?? 0)) return;
-    setSubTypeDialogTier(signupTier as SubscriptionTier);
-  }, [isLoading, tier]);
+    localStorage.removeItem("gw_signup_tier");
+    const autoTier = signupTier as SubscriptionTier;
+    autoLaunchTierRef.current = autoTier;
+    setSignupAutoLaunch("preparing");
+    void handleStripeSubscribe(autoTier, false, 1, {
+      skipConfirm: true,
+      onCancelled: () => setSignupAutoLaunch("cancelled"),
+    });
+    // handleStripeSubscribe is referentially stable enough; we explicitly
+    // want this to fire only once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleStripeSubscribe = async (newTier: SubscriptionTier, isTeam: boolean, maxMembers: number) => {
-    if (newTier === "free" || newTier === "starter" || newTier === tier) return;
+  const handleStripeSubscribe = async (
+    newTier: SubscriptionTier,
+    isTeam: boolean,
+    maxMembers: number,
+    opts?: { skipConfirm?: boolean; onCancelled?: () => void }
+  ) => {
+    if (newTier === "free" || newTier === "starter" || newTier === tier) {
+      // No-op early return: notify auto-launch callers so the overlay doesn't
+      // get stuck on "preparing" forever in the edge case where the user is
+      // already on (or above) the chosen tier.
+      opts?.onCancelled?.();
+      return;
+    }
     setStripePending(newTier);
     try {
       if (isTeam) {
@@ -387,11 +442,26 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         returnUrl: `${origin}/stripe/return`,
         cancelUrl: `${origin}/stripe/return?stripe_cancelled=1`,
       });
-      await launchCheckout(checkoutUrl, () => setStripePending(null));
+      await launchCheckout(
+        checkoutUrl,
+        () => {
+          // browserFinished fires when CCT closes without a Stripe redirect
+          // (i.e. user cancelled). Successful Stripe returns go via the
+          // /stripe/return App Link → /billing remount, which clears state
+          // naturally and runs the post-checkout sync useEffect.
+          setStripePending(null);
+          opts?.onCancelled?.();
+        },
+        { skipConfirm: opts?.skipConfirm }
+      );
     } catch (err) {
       toast.error(extractErrorMessage(err));
       sessionStorage.removeItem("gw_sub_team");
       setStripePending(null);
+      // Surface the failure to auto-launch callers so the overlay can flip
+      // to its "Try again" state instead of leaving the user stuck on the
+      // "Preparing your trial" spinner forever.
+      opts?.onCancelled?.();
     }
   };
 
@@ -2284,6 +2354,60 @@ export function BillingInner({ onBack }: { onBack?: () => void } = {}) {
         onConfirm={handleSeatPreviewConfirm}
         onCancel={handleSeatPreviewCancel}
       />
+
+      {/* Trial-signup full-screen overlay. Painted last so it covers all of
+          /billing (plan carousel, nav, dialogs). No close/back button by
+          design — the user is committed to either completing Stripe Checkout
+          or tapping Try again after a cancel. The overlay self-clears when
+          /billing remounts after a successful Stripe return (App Link →
+          /stripe/return → /billing fresh mount). */}
+      {signupAutoLaunch && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background gap-6 p-6">
+          {signupAutoLaunch === "preparing" ? (
+            <>
+              <Spinner className="size-12 text-primary" />
+              <div className="text-center space-y-2 max-w-xs">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  Preparing your 30-day trial
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Opening secure checkout in your browser…
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-center space-y-2 max-w-xs">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  Trial signup not completed
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  You closed the checkout before finishing. Tap Try again to
+                  start your 30-day trial.
+                </p>
+              </div>
+              <Button
+                size="lg"
+                onClick={() => {
+                  if (!autoLaunchTierRef.current) return;
+                  setSignupAutoLaunch("preparing");
+                  void handleStripeSubscribe(
+                    autoLaunchTierRef.current,
+                    false,
+                    1,
+                    {
+                      skipConfirm: true,
+                      onCancelled: () => setSignupAutoLaunch("cancelled"),
+                    }
+                  );
+                }}
+              >
+                Try again
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

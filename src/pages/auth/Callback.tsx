@@ -126,7 +126,11 @@ export default function AuthCallback() {
   const [retrying, setRetrying] = useState(false);
 
   const navigateAfterAuth = useCallback(() => {
-    const signupTier = sessionStorage.getItem("gw_signup_tier");
+    // Trial-signup intent is stored in localStorage so it survives the native
+    // auth handoff (AuthDialog → main WebView reload via NativeCallback). If
+    // present, route straight into the trial funnel on /billing, where the
+    // mount useEffect auto-launches Stripe Checkout and clears the flag.
+    const signupTier = localStorage.getItem("gw_signup_tier");
     if (signupTier) {
       navigate("/billing", { replace: true });
     } else {

@@ -44,7 +44,11 @@ export default function Hero() {
 
   const handleSignUp = (tier: SubscriptionTier) => {
     if (tier !== "free") {
-      sessionStorage.setItem("gw_signup_tier", tier);
+      // localStorage (not sessionStorage) so the intent survives the native
+      // auth handoff: AuthDialog WebView → main WebView reload via
+      // window.location.replace through NativeCallback → /auth/callback. The
+      // /billing auto-launch useEffect is responsible for cleanup.
+      localStorage.setItem("gw_signup_tier", tier);
     }
     void signinRedirect({ prompt: "create" });
   };

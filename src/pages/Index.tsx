@@ -9,6 +9,17 @@ import Hero from "./landing/Hero.tsx";
 function RedirectToDashboard() {
   const navigate = useNavigate();
   useEffect(() => {
+    // Trial-signup intent guard: if the user picked a paid plan from the
+    // landing page before signing up, funnel them to /billing (where the
+    // auto-launch overlay opens Stripe Checkout) instead of dropping them
+    // on /dashboard. Catches any case where navigateAfterAuth missed the
+    // localStorage value or where the user was bounced through "/" first.
+    const signupTier = localStorage.getItem("gw_signup_tier");
+    if (signupTier === "pro" || signupTier === "business") {
+      navigate("/billing", { replace: true });
+      return;
+    }
+
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as { standalone?: boolean }).standalone === true;
