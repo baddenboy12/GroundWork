@@ -17,7 +17,7 @@ You are a QA engineer testing GroundWork's billing system. Use Chrome MCP tools 
 ## PayPal API Setup
 ```bash
 TOKEN=$(curl -s -X POST "https://api-m.sandbox.paypal.com/v1/oauth2/token" \
-  -u "REDACTED_PAYPAL_CLIENT_ID:REDACTED_PAYPAL_SECRET" \
+  -u "$PAYPAL_SANDBOX_CLIENT_ID:$PAYPAL_SANDBOX_CLIENT_SECRET" \
   -d "grant_type=client_credentials" | jq -r '.access_token')
 ```
 

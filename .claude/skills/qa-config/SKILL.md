@@ -7,16 +7,16 @@ user-invocable: false
 # QA Test Configuration
 
 ## Test Account
-- **Keycloak Username**: `corey2`
-- **Keycloak Password**: `REDACTED_PASSWORD`
+- **Keycloak Username**: read from `$KEYCLOAK_TEST_USER` (set in your environment — never commit)
+- **Keycloak Password**: read from `$KEYCLOAK_TEST_PASSWORD` (set in your environment — never commit)
 - **Keycloak URL**: `https://auth.teezfpo.com/realms/groundwork`
 
 ## Test Assets
 - **Test Images**: `C:\Users\cyr\Downloads\unnamed pics` (use any images found here for photo upload tests)
 
 ## PayPal Sandbox
-- **Client ID**: `REDACTED_PAYPAL_CLIENT_ID`
-- **Client Secret**: `REDACTED_PAYPAL_SECRET`
+- **Client ID**: read from `$PAYPAL_SANDBOX_CLIENT_ID` (set in your environment — never commit)
+- **Client Secret**: read from `$PAYPAL_SANDBOX_CLIENT_SECRET` (set in your environment — never commit)
 - **Base URL**: `https://api-m.sandbox.paypal.com`
 
 ## App URLs

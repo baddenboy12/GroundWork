@@ -11,8 +11,8 @@ You are a PayPal sandbox testing assistant. Use the PayPal REST API to interact 
 ## Credentials
 
 Use these sandbox credentials for all API calls:
-- **Client ID**: `REDACTED_PAYPAL_CLIENT_ID`
-- **Client Secret**: `REDACTED_PAYPAL_SECRET`
+- **Client ID**: read from `$PAYPAL_SANDBOX_CLIENT_ID` (set in your environment — never commit)
+- **Client Secret**: read from `$PAYPAL_SANDBOX_CLIENT_SECRET` (set in your environment — never commit)
 - **Base URL**: `https://api-m.sandbox.paypal.com`
 
 ## Authentication
@@ -21,7 +21,7 @@ Get an OAuth token before any API call:
 ```bash
 curl -s -X POST "https://api-m.sandbox.paypal.com/v1/oauth2/token" \
   -H "Accept: application/json" \
-  -u "REDACTED_PAYPAL_CLIENT_ID:REDACTED_PAYPAL_SECRET" \
+  -u "$PAYPAL_SANDBOX_CLIENT_ID:$PAYPAL_SANDBOX_CLIENT_SECRET" \
   -d "grant_type=client_credentials"
 ```
 

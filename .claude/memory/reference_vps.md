@@ -22,8 +22,8 @@ type: reference
 ## Keycloak Admin API
 - **Endpoint**: `https://auth.teezfpo.com`
 - **Realm**: `groundwork`
-- **Admin username**: `corey`
-- **Admin password**: `REDACTED_PASSWORD`
+- **Admin username**: read from `$KEYCLOAK_ADMIN_USER` (set in your environment — never commit)
+- **Admin password**: read from `$KEYCLOAK_ADMIN_PASSWORD` (set in your environment — never commit)
 - **Client ID used by app**: `groundwork-app`
 
 ### Authentication
@@ -31,14 +31,14 @@ type: reference
 # Get admin token (expires in 60s)
 curl -s -X POST "https://auth.teezfpo.com/realms/master/protocol/openid-connect/token" \
   -d "client_id=admin-cli" \
-  -d "username=corey" \
-  -d "password=REDACTED_PASSWORD" \
+  -d "username=$KEYCLOAK_ADMIN_USER" \
+  -d "password=$KEYCLOAK_ADMIN_PASSWORD" \
   -d "grant_type=password"
 ```
 
 ### Common API calls
 ```bash
-TOKEN=$(curl -s -X POST "https://auth.teezfpo.com/realms/master/protocol/openid-connect/token" -d "client_id=admin-cli" -d "username=corey" -d "password=REDACTED_PASSWORD" -d "grant_type=password" | jq -r '.access_token')
+TOKEN=$(curl -s -X POST "https://auth.teezfpo.com/realms/master/protocol/openid-connect/token" -d "client_id=admin-cli" -d "username=$KEYCLOAK_ADMIN_USER" -d "password=$KEYCLOAK_ADMIN_PASSWORD" -d "grant_type=password" | jq -r '.access_token')
 
 # Get client config (groundwork-app)
 curl -s -H "Authorization: Bearer $TOKEN" "https://auth.teezfpo.com/admin/realms/groundwork/clients?clientId=groundwork-app"
