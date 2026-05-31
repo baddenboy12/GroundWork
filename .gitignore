@@ -32,6 +32,9 @@ tsconfig.tsbuildinfo
 # Claude Code local settings (may contain credentials in permission strings)
 .claude/settings.local.json
 
+# Local agent tooling mirror — keep out of the public repo (may contain creds)
+.agents/
+
 # TWA build artifacts
 twa/.gradle/
 twa/app/build/
