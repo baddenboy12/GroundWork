@@ -145,7 +145,7 @@ export default function ExpandableTextarea({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-[1rem] h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] translate-y-0 overflow-hidden rounded-3xl p-0 sm:max-w-2xl"
+          className="top-[4rem] h-[min(68dvh,44rem)] max-h-[calc(100dvh-6rem)] translate-y-0 overflow-hidden rounded-3xl p-0 sm:max-w-2xl"
           onOpenAutoFocus={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
@@ -181,7 +181,7 @@ export default function ExpandableTextarea({
               onChange={(event) => onValueChange(event.target.value)}
               disabled={disabled}
               style={style}
-              className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-5 py-5 !text-[24px] leading-relaxed shadow-none focus-visible:ring-0"
+              className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-5 py-5 !text-[30px] leading-relaxed shadow-none focus-visible:ring-0"
             />
           </div>
         </DialogContent>
