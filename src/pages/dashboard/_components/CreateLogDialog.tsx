@@ -29,7 +29,6 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import {
   Select,
   SelectContent,
@@ -46,6 +45,7 @@ import {
 import { findFuzzyMatches } from "../_lib/fuzzy-match.ts";
 import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
 import LocationPicker from "./LocationPicker.tsx";
+import ExpandableTextarea from "./ExpandableTextarea.tsx";
 import UpgradeDialog from "./UpgradeDialog.tsx";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { AlertTriangle, Lock, MapPin, Plus, WifiOff } from "lucide-react";
@@ -98,6 +98,7 @@ export default function CreateLogDialog({
   const [loading, setLoading] = useState(false);
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [notesEditorOpen, setNotesEditorOpen] = useState(false);
   const photosProcessing = photos.some((p) => p.compressing);
 
   const siteInputRef = useRef<HTMLInputElement>(null);
@@ -158,6 +159,7 @@ export default function CreateLogDialog({
 
   const discardAndClose = useCallback(() => {
     setConfirmCloseOpen(false);
+    setNotesEditorOpen(false);
     setTitle("");
     setContent("");
     setCategory("general");
@@ -172,6 +174,10 @@ export default function CreateLogDialog({
   }, [initialSiteName, onClose]);
 
   const requestClose = useCallback(() => {
+    if (notesEditorOpen) {
+      setNotesEditorOpen(false);
+      return;
+    }
     if (loading) return;
     if (confirmCloseOpen) {
       setConfirmCloseOpen(false);
@@ -182,7 +188,7 @@ export default function CreateLogDialog({
       return;
     }
     discardAndClose();
-  }, [confirmCloseOpen, discardAndClose, hasDraft, loading]);
+  }, [confirmCloseOpen, discardAndClose, hasDraft, loading, notesEditorOpen]);
 
   useEffect(() => {
     if (!open) {
@@ -629,11 +635,14 @@ export default function CreateLogDialog({
                 <Label htmlFor="log-content" className="text-xl font-semibold">
                   Notes *
                 </Label>
-                <Textarea
+                <ExpandableTextarea
                   id="log-content"
+                  editorTitle="Notes"
                   placeholder="Describe what was observed, done, or found..."
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onValueChange={setContent}
+                  expandedOpen={notesEditorOpen}
+                  onExpandedOpenChange={setNotesEditorOpen}
                   rows={6}
                   style={{
                     fontFamily: "'MS Reference Sans Serif', sans-serif",

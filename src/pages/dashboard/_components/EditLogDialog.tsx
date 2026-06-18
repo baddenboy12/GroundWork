@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ import {
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 import { LOG_CATEGORIES, CATEGORY_LABELS, type LogCategory } from "../_lib/constants.ts";
 import LocationPicker from "./LocationPicker.tsx";
+import ExpandableTextarea from "./ExpandableTextarea.tsx";
 import PhotoUploader, { type R2Photo } from "./PhotoUploader.tsx";
 import { Lock, ChevronDown, Search, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
@@ -77,6 +77,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const [removedKeys, setRemovedKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
+  const [notesEditorOpen, setNotesEditorOpen] = useState(false);
   const [siteSearch, setSiteSearch] = useState("");
   const siteDropdownRef = useRef<HTMLDivElement>(null);
   const photosProcessing = photos.some((p) => p.compressing);
@@ -118,6 +119,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
       setPhotos(logPhotosToR2(log));
       setRemovedKeys([]);
       setSiteDropdownOpen(false);
+      setNotesEditorOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, log._id, sites]);
@@ -148,6 +150,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
     );
     setPhotos(logPhotosToR2(log));
     setRemovedKeys([]);
+    setNotesEditorOpen(false);
     onClose();
   };
 
@@ -349,10 +352,13 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="edit-log-content" className="text-xl font-semibold">Notes *</Label>
-            <Textarea
+            <ExpandableTextarea
               id="edit-log-content"
+              editorTitle="Notes"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onValueChange={setContent}
+              expandedOpen={notesEditorOpen}
+              onExpandedOpenChange={setNotesEditorOpen}
               rows={7}
               style={{ fontFamily: "'MS Reference Sans Serif', sans-serif" }}
               className="!text-[18px] min-h-[180px] resize-none rounded-xl"
