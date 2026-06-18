@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useNativeBackButton } from "@/hooks/use-native-back-button.ts";
 
 type Props = {
   photos: string[];
@@ -14,6 +15,14 @@ export default function PhotoLightbox({ photos, initialIndex, onClose }: Props) 
   const [direction, setDirection] = useState(0); // -1 = going left, 1 = going right
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+
+  useNativeBackButton(
+    useCallback(() => {
+      onClose();
+      return true;
+    }, [onClose]),
+    { priority: 200 },
+  );
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

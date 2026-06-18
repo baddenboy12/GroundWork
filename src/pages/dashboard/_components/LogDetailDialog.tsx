@@ -49,6 +49,7 @@ import {
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
+import { useNativeBackButton } from "@/hooks/use-native-back-button.ts";
 
 type LogWithAuthor = Doc<"logs"> & { authorName: string; photoUrls: string[] };
 
@@ -73,11 +74,11 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
   const menuOpenRef = useRef(false);
   const menuClosedAt = useRef(0);
 
-  const handleMenuOpenChange = (isOpen: boolean) => {
+  const handleMenuOpenChange = useCallback((isOpen: boolean) => {
     setMenuOpen(isOpen);
     menuOpenRef.current = isOpen;
     if (!isOpen) menuClosedAt.current = Date.now();
-  };
+  }, []);
 
   const handlePanelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -113,6 +114,38 @@ export default function LogDetailDialog({ log, open, onClose }: Props) {
       onClose();
     }, 250);
   }, [closing, onClose]);
+
+  useNativeBackButton(
+    useCallback(() => {
+      if (!visible) return false;
+      if (lightboxIndex !== null) {
+        setLightboxIndex(null);
+        return true;
+      }
+      if (editOpen) {
+        setEditOpen(false);
+        return true;
+      }
+      if (deleteOpen) {
+        setDeleteOpen(false);
+        return true;
+      }
+      if (menuOpenRef.current) {
+        handleMenuOpenChange(false);
+        return true;
+      }
+      handleClose();
+      return true;
+    }, [
+      deleteOpen,
+      editOpen,
+      handleClose,
+      handleMenuOpenChange,
+      lightboxIndex,
+      visible,
+    ]),
+    { priority: 100 },
+  );
 
   // Close on Escape (only when lightbox is not open)
   useEffect(() => {
@@ -466,9 +499,21 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  const previewGestureStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickUntil = useRef(0);
 
   const maxVisible = Math.min(photos.length, 4);
   const swipeThreshold = 50;
+  const tapThreshold = 14;
+
+  useNativeBackButton(
+    useCallback(() => {
+      if (!zoomed) return false;
+      setZoomed(false);
+      return true;
+    }, [zoomed]),
+    { priority: 200 },
+  );
 
   const goNext = () => {
     if (activeIndex < photos.length - 1) {
@@ -484,16 +529,52 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
     }
   };
 
-  const handleDragEnd = (
-    _: unknown,
-    info: { offset: { x: number }; velocity: { x: number } },
-  ) => {
-    const swipe = info.offset.x + info.velocity.x * 0.3;
-    if (swipe < -swipeThreshold && activeIndex < photos.length - 1) {
-      goNext();
-    } else if (swipe > swipeThreshold && activeIndex > 0) {
-      goPrev();
+  const handlePreviewGestureEnd = (clientX: number, clientY: number) => {
+    const start = previewGestureStart.current;
+    previewGestureStart.current = null;
+    if (!start) {
+      setZoomed(true);
+      return;
     }
+
+    const dx = clientX - start.x;
+    const dy = clientY - start.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (Math.abs(dx) > swipeThreshold && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goNext();
+      else goPrev();
+      return;
+    }
+
+    if (distance <= tapThreshold) setZoomed(true);
+  };
+
+  const handlePreviewTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    previewGestureStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handlePreviewTouchEnd = (e: React.TouchEvent) => {
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    suppressClickUntil.current = Date.now() + 700;
+    e.preventDefault();
+    e.stopPropagation();
+    handlePreviewGestureEnd(touch.clientX, touch.clientY);
+  };
+
+  const handlePreviewMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    previewGestureStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePreviewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (Date.now() < suppressClickUntil.current) return;
+    handlePreviewGestureEnd(e.clientX, e.clientY);
   };
 
   // Tilt angles for stacked cards behind the active one
@@ -540,13 +621,8 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
           <motion.div
             key={activeIndex}
             custom={direction}
-            className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl cursor-pointer touch-pan-y"
+            className="absolute inset-0 rounded-xl overflow-hidden border border-border/50 shadow-2xl"
             style={{ zIndex: maxVisible }}
-            onClick={() => setZoomed(true)}
-            drag={photos.length > 1 ? "x" : false}
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.7}
-            onDragEnd={handleDragEnd}
             variants={{
               enter: (d: number) => ({
                 x: d > 0 ? 200 : -200,
@@ -585,6 +661,29 @@ function PhotoCascade({ photos }: PhotoCascadeProps) {
             />
           </motion.div>
         </AnimatePresence>
+
+        <button
+          type="button"
+          aria-label={`Open photo ${activeIndex + 1}`}
+          className="absolute inset-0 rounded-xl bg-transparent cursor-pointer touch-pan-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          style={{
+            zIndex: maxVisible + 1,
+            WebkitTapHighlightColor: "transparent",
+          }}
+          onMouseDown={handlePreviewMouseDown}
+          onClick={handlePreviewClick}
+          onTouchStart={handlePreviewTouchStart}
+          onTouchEnd={handlePreviewTouchEnd}
+          onTouchCancel={() => {
+            previewGestureStart.current = null;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setZoomed(true);
+            }
+          }}
+        />
       </div>
 
       {/* Navigation arrows + counter */}
