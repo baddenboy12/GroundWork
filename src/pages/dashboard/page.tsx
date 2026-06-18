@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
   Authenticated,
   Unauthenticated,
@@ -27,6 +27,7 @@ import { usePushNotifications } from "@/hooks/use-push-notifications.ts";
 import { useSubscription } from "@/hooks/use-subscription.ts";
 import { hasStoredOidcSession } from "@/lib/offline-session.ts";
 import { cn } from "@/lib/utils.ts";
+import { useNativeBackButton } from "@/hooks/use-native-back-button.ts";
 import OfflineBanner from "@/components/ui/offline-banner.tsx";
 import DashboardNavbar from "./_components/DashboardNavbar.tsx";
 import SitePopout from "./_components/SitePopout.tsx";
@@ -110,6 +111,7 @@ function DashboardInner() {
     null,
   );
   const [globalCreateOpen, setGlobalCreateOpen] = useState(false);
+  const [createCloseRequestId, setCreateCloseRequestId] = useState(0);
   const [createDialogLoaded, setCreateDialogLoaded] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
@@ -176,6 +178,54 @@ function DashboardInner() {
     setExportDialogLoaded(true);
     setExportOpen(true);
   };
+
+  const handleNativeBack = useCallback(() => {
+    if (globalCreateOpen) {
+      setCreateCloseRequestId((id) => id + 1);
+      return true;
+    }
+    if (exportUpgradeOpen) {
+      setExportUpgradeOpen(false);
+      return true;
+    }
+    if (exportOpen) {
+      setExportOpen(false);
+      return true;
+    }
+    if (showStats) {
+      setShowStats(false);
+      return true;
+    }
+    if (showIntegrations) {
+      setShowIntegrations(false);
+      return true;
+    }
+    if (showBilling) {
+      setShowBilling(false);
+      return true;
+    }
+    if (selectedSiteId) {
+      setSelectedSiteId(null);
+      setFilters(DEFAULT_FILTERS);
+      return true;
+    }
+    if (isFiltered) {
+      setFilters(DEFAULT_FILTERS);
+      return true;
+    }
+    return true;
+  }, [
+    exportOpen,
+    exportUpgradeOpen,
+    globalCreateOpen,
+    isFiltered,
+    selectedSiteId,
+    showBilling,
+    showIntegrations,
+    showStats,
+  ]);
+
+  useNativeBackButton(handleNativeBack);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -336,6 +386,7 @@ function DashboardInner() {
             onClose={() => setGlobalCreateOpen(false)}
             onCreated={handleLogCreated}
             initialSiteName={selectedSite?.name}
+            closeRequestId={createCloseRequestId}
           />
         </Suspense>
       )}
