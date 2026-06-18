@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, LayoutGroup } from "motion/react";
 import { ImagePlus, X, Camera } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
@@ -15,6 +15,8 @@ export type R2Photo = {
   fileName: string;
   /** Present when the photo has NOT been uploaded to R2 yet (staged locally). */
   file?: File;
+  /** True while a just-selected file is being compressed in the background. */
+  compressing?: boolean;
 };
 
 type Props = {
@@ -27,7 +29,17 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const photosRef = useRef(photos);
   const { takePhoto, isNative: isCapacitor } = useNativeCamera();
+
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+
+  const updatePhotos = (nextPhotos: R2Photo[]) => {
+    photosRef.current = nextPhotos;
+    onChange(nextPhotos);
+  };
 
   /**
    * Stage files locally — no R2 upload yet.
@@ -39,31 +51,64 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
       toast.error("Only image files are supported");
       return;
     }
-    const remaining = maxPhotos - photos.length;
+    const remaining = maxPhotos - photosRef.current.length;
     if (remaining <= 0) {
       toast.error(`Maximum ${maxPhotos} photos allowed`);
       return;
     }
     const toStage = fileArray.slice(0, remaining);
-    const staged: R2Photo[] = [];
-    for (const file of toStage) {
-      const compressed = await compressImage(file);
-      staged.push({
-        url: "",            // not uploaded yet
-        key: "",            // not uploaded yet
-        bytes: compressed.size,
-        previewUrl: URL.createObjectURL(compressed),
-        fileName: compressed.name,
-        file: compressed,   // kept for deferred upload
-      });
+    if (fileArray.length > remaining) {
+      toast.error(`Only ${remaining} more photo${remaining === 1 ? "" : "s"} can be added`);
     }
-    onChange([...photos, ...staged]);
+
+    const staged: R2Photo[] = toStage.map((file, index) => ({
+      url: "",            // not uploaded yet
+      key: "",            // not uploaded yet
+      bytes: file.size,
+      previewUrl: URL.createObjectURL(file),
+      fileName: file.name || `photo_${Date.now()}_${index}.jpg`,
+      file,               // replaced with compressed file below
+      compressing: true,
+    }));
+
+    updatePhotos([...photosRef.current, ...staged]);
+
+    for (const stagedPhoto of staged) {
+      void (async () => {
+        try {
+          const compressed = await compressImage(stagedPhoto.file!);
+          updatePhotos(
+            photosRef.current.map((photo) =>
+              photo.previewUrl === stagedPhoto.previewUrl
+                ? {
+                    ...photo,
+                    bytes: compressed.size,
+                    fileName: compressed.name,
+                    file: compressed,
+                    compressing: false,
+                  }
+                : photo
+            )
+          );
+        } catch {
+          toast.error(`Failed to compress ${stagedPhoto.fileName}; using original image`);
+          updatePhotos(
+            photosRef.current.map((photo) =>
+              photo.previewUrl === stagedPhoto.previewUrl
+                ? { ...photo, compressing: false }
+                : photo
+            )
+          );
+        }
+      })();
+    }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      void stageFiles(e.target.files);
-      e.target.value = "";
+    if (e.currentTarget.files) {
+      const files = Array.from(e.currentTarget.files);
+      e.currentTarget.value = "";
+      void stageFiles(files);
     }
   };
 
@@ -79,7 +124,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
     if (photo.previewUrl.startsWith("blob:")) {
       URL.revokeObjectURL(photo.previewUrl);
     }
-    onChange(photos.filter((_, i) => i !== index));
+    updatePhotos(photos.filter((_, i) => i !== index));
   };
 
   const { dragIndex, swappedIndex, containerRef, handlePointerDown, handlePointerMove, handlePointerUp } = useDragReorder(photos, onChange);
@@ -195,7 +240,7 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Prop
                 {/* Pending badge */}
                 {photo.file && (
                   <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-muted-foreground">
-                    Pending
+                    {photo.compressing ? "Processing" : "Pending"}
                   </div>
                 )}
                 <button

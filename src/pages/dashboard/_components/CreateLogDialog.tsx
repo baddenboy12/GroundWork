@@ -73,6 +73,7 @@ export default function CreateLogDialog({
   const [offlinePhotos, setOfflinePhotos] = useState<OfflinePhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [siteUpgradeOpen, setSiteUpgradeOpen] = useState(false);
+  const photosProcessing = photos.some((p) => p.compressing);
 
   const siteInputRef = useRef<HTMLInputElement>(null);
   const didAutoFillRef = useRef(false);
@@ -137,6 +138,10 @@ export default function CreateLogDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteName.trim() || !title.trim() || !content.trim()) return;
+    if (photosProcessing) {
+      toast.error("Photos are still processing");
+      return;
+    }
     setLoading(true);
 
     // ── Offline path: queue entry locally ─────────────────────────────────
@@ -520,9 +525,15 @@ export default function CreateLogDialog({
                   <Button
                     type="submit"
                     className="w-full h-16 text-xl px-8 rounded-2xl"
-                    disabled={loading || !siteName.trim() || !title.trim() || !content.trim()}
+                    disabled={loading || photosProcessing || !siteName.trim() || !title.trim() || !content.trim()}
                   >
-                    {loading ? (photos.some((p) => p.file) ? "Uploading & saving…" : "Saving…") : "Save entry"}
+                    {photosProcessing
+                      ? "Processing photos…"
+                      : loading
+                        ? photos.some((p) => p.file)
+                          ? "Uploading & saving…"
+                          : "Saving…"
+                        : "Save entry"}
                   </Button>
                 </motion.div>
               </motion.div>

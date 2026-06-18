@@ -79,6 +79,7 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
   const [siteSearch, setSiteSearch] = useState("");
   const siteDropdownRef = useRef<HTMLDivElement>(null);
+  const photosProcessing = photos.some((p) => p.compressing);
 
   // Close site dropdown on outside click/touch
   useEffect(() => {
@@ -153,6 +154,10 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    if (photosProcessing) {
+      toast.error("Photos are still processing");
+      return;
+    }
     if (!isOnline) {
       toast.error("You're offline — saving changes requires a connection");
       return;
@@ -374,9 +379,9 @@ export default function EditLogDialog({ open, onClose, log }: Props) {
             <Button
               type="submit"
               className="h-16 text-xl px-8 rounded-2xl"
-              disabled={loading || !title.trim() || !content.trim() || !isOnline}
+              disabled={loading || photosProcessing || !title.trim() || !content.trim() || !isOnline}
             >
-              {loading
+              {photosProcessing ? "Processing photos..." : loading
                 ? photos.some((p) => p.file)
                   ? "Uploading & saving…"
                   : "Saving…"
