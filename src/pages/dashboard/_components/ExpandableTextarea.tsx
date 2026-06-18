@@ -6,7 +6,7 @@ import {
   type FocusEvent,
   type PointerEvent,
 } from "react";
-import { Check, X } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -160,16 +160,6 @@ export default function ExpandableTextarea({
                 >
                   <Check className="!h-5 !w-5" />
                   Done
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-14 w-14 rounded-2xl"
-                  onClick={() => setOpen(false)}
-                  aria-label={`Close ${editorTitle}`}
-                >
-                  <X className="!h-8 !w-8" />
                 </Button>
               </div>
             </DialogHeader>
